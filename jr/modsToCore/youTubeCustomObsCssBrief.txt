@@ -1,0 +1,44 @@
+﻿
+TRYING:
+ytls-navigationREN,tp-yt-paper-icon-item#send-feedback-item, #header-container.ytls-core-app,.schedule-button-container.ytls-broadcast-list-content,.subheading-row.ytls-broadcast-list-content,#chat,#footer-container.ytls-broadcast-list-content,.edit.ytls-broadcast-metadata {display:none;}ytls-stream-status-bar{top:-57px;position:relative;width:425px;}ytls-live-dashboard-widget-renderer{top:-66px;position:relative;}      #panels.ytls-stream-settings-widget-renderer {margin: 10px 0 0} ytls-live-dashboard-analytics-renderer.ytls-live-dashboard-widget-renderer { padding: 10px 2px 2px; } .container.ytls-stream-health-message-box { padding: 10px 2px 2px; } .header-title.ytls-stream-health-message-box {margin-bottom: 2px;} .right-container.ytls-stream-health-message-box>.header-title.ytls-stream-health-message-box {margin-bottom: 0px;} .message.ytls-stream-health-message-box {padding-top: 2px;} tp-yt-paper-tabs {height:30px;font-size:10px;}   .connection-status.ytls-stream-health-message-box, .connection-status.ytls-stream-health-message-box, .message-title.ytls-stream-health-message-box {font-size: 12px; line-height: 12px; margin-bottom: 2px;} ytls-live-control-room-renderer {padding:2px;} ytls-navigation {display:block;overflow:hidden;position:absolute;top:0px;right:20px;z-index:2;width:40px;height:300px} tp-yt-paper-icon-item.ytls-navigation {padding: 0 2px 0 2px;min-height: 28px;} .content-icon.tp-yt-paper-icon-item {align-items: left; width: 24px; margin-left: 0px;margin-right:0px;}.feature-item-text {display:none; width:0px;}.content-icon{width:24px;}tp-yt-paper-icon-item{width:28px;}#features.ytls-navigation, #entity-section.ytls-navigation {padding: 2px 0;width: 28px;}ytls-navigation,ytls-navigation[collapsed-nav] { width: 28px;}tp-yt-paper-icon-item:not(#entity-back-button) {display:none;}::-webkit-scrollbar-corner{background:rgba(0,0,0,0);
+}
+
+
+
+ 
+
+LATEST GOOD:
+
+ytls-navigationREN,tp-yt-paper-icon-item#send-feedback-item, #header-container.ytls-core-app,.schedule-button-container.ytls-broadcast-list-content,.subheading-row.ytls-broadcast-list-content,#chat,#footer-container.ytls-broadcast-list-content,.edit.ytls-broadcast-metadata {display:none;}ytls-stream-status-bar{top:-57px;position:relative;width:425px;}ytls-live-dashboard-widget-renderer{top:-66px;position:relative;}      #panels.ytls-stream-settings-widget-renderer {margin: 10px 0 0} ytls-live-dashboard-analytics-renderer.ytls-live-dashboard-widget-renderer { padding: 10px 2px 2px; } .container.ytls-stream-health-message-box { padding: 10px 2px 2px; } .header-title.ytls-stream-health-message-box {margin-bottom: 2px;} .right-container.ytls-stream-health-message-box>.header-title.ytls-stream-health-message-box {margin-bottom: 0px;} .message.ytls-stream-health-message-box {padding-top: 2px;} tp-yt-paper-tabs {height:30px;font-size:10px;}   .connection-status.ytls-stream-health-message-box, .connection-status.ytls-stream-health-message-box, .message-title.ytls-stream-health-message-box {font-size: 12px; line-height: 12px; margin-bottom: 2px;} ytls-live-control-room-renderer {padding:2px;} ytls-navigation {display:block;overflow:hidden;position:absolute;top:0px;right:20px;z-index:2;width:40px;height:300px} tp-yt-paper-icon-item.ytls-navigation {padding: 0 2px 0 2px;min-height: 28px;} .content-icon.tp-yt-paper-icon-item {align-items: left; width: 24px; margin-left: 0px;margin-right:0px;}.feature-item-text {display:none; width:0px;}.content-icon{width:24px;}tp-yt-paper-icon-item{width:28px;}#features.ytls-navigation, #entity-section.ytls-navigation {padding: 2px 0;width: 28px;}ytls-navigation,ytls-navigation[collapsed-nav] { width: 28px;}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+OLDER:
+
+
+ytls-navigation,#header-container.ytls-core-app,.schedule-button-container.ytls-broadcast-list-content,.subheading-row.ytls-broadcast-list-content,#chat,#footer-container.ytls-broadcast-list-content{display:none;}ytls-stream-status-bar{top:-63px;position:relative;width:425px;}ytls-live-dashboard-widget-renderer{top:-73px;position:relative;}      #panels.ytls-stream-settings-widget-renderer {margin: 2px 0 0} ytls-live-dashboard-analytics-renderer.ytls-live-dashboard-widget-renderer { padding: 2px 2px 2px; } .container.ytls-stream-health-message-box { padding: 2px 2px 2px; } .header-title.ytls-stream-health-message-box {margin-bottom: 2px;} .right-container.ytls-stream-health-message-box>.header-title.ytls-stream-health-message-box {margin-bottom: 0px;} .message.ytls-stream-health-message-box {padding-top: 2px;} tp-yt-paper-tabs {height:30px;font-size:10px;}   .connection-status.ytls-stream-health-message-box, .connection-status.ytls-stream-health-message-box, .message-title.ytls-stream-health-message-box {font-size: 12px; line-height: 12px; margin-bottom: 2px;}
+
+
+
+
+.connection-status.ytls-stream-health-message-box, .connection-status.ytls-stream-health-message-box, .message-title.ytls-stream-health-message-box {font-size: 12px; line-height: 12px; margin-bottom: 2px;}
+
+
+
+
+

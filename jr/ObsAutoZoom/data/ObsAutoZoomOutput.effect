@@ -1,0 +1,272 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 pixel_size;
+//
+uniform float2 hardClip_ul;
+uniform float2 hardClip_lr;
+//
+uniform float2 clip_ul;
+uniform float2 clip_lr;
+uniform bool effectInside;
+//
+uniform int passNumber;
+//
+uniform texture2d secondaryTexture;
+//
+uniform float exteriorDullness;
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+sampler_state textureSampler {
+	Filter    = Bicubic;
+	AddressU  = Border;
+	AddressV  = Border;
+	BorderColor = 00000000;
+};
+
+
+sampler_state LinearClampSampler {
+	Filter = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+	MinLOD = 0;
+	MaxLOD = 0;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+// see https://github.com/Jam3/glsl-fast-gaussian-blur/blob/master/13.glsl
+float4 blur13(float2 uv, float2 direction) {
+
+  float4 color = float4(0,0,0,0);
+  float2 off1 = float2(1.411764705882353, 1.411764705882353) * direction;
+  float2 off2 = float2(3.2941176470588234, 3.2941176470588234) * direction;
+  float2 off3 = float2(5.176470588235294, 5.176470588235294) * direction;
+  color += image.Sample(LinearClampSampler,uv) * 0.1964825501511404;
+  color += image.Sample(LinearClampSampler,uv + (off1 *pixel_size)) * 0.2969069646728344;
+  color += image.Sample(LinearClampSampler,uv - (off1 *pixel_size)) * 0.2969069646728344;
+  color += image.Sample(LinearClampSampler,uv + (off2 *pixel_size)) * 0.09447039785044732;
+  color += image.Sample(LinearClampSampler,uv - (off2 *pixel_size)) * 0.09447039785044732;
+  color += image.Sample(LinearClampSampler,uv + (off3 *pixel_size)) * 0.010381362401148057;
+  color += image.Sample(LinearClampSampler,uv - (off3 *pixel_size)) * 0.010381362401148057;
+  return color;
+}
+
+
+
+float4 PsBlurPixel(VertData vtx, int blurPassNumber) {
+
+	float2 direction;
+	if (blurPassNumber%2==0) {
+		direction = float2(1.0,0.0);
+	} else {
+		direction = float2(0.0,1.0);
+	}
+
+	return blur13(vtx.uv, direction);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+int getPixelsEffectType(VertData v_in) {
+	if (v_in.uv.x < hardClip_ul.x || v_in.uv.x > hardClip_lr.x || v_in.uv.y < hardClip_ul.y || v_in.uv.y > hardClip_lr.y) {
+		// in hard clip area
+		clip(-1);
+		return -1;
+		}
+
+	bool doEffect = false;
+	if (v_in.uv.x < clip_ul.x || v_in.uv.x > clip_lr.x || v_in.uv.y < clip_ul.y || v_in.uv.y > clip_lr.y) {
+		if (!effectInside) {
+			return 1;
+		}
+	} else {
+		if (effectInside) {
+			return 1;
+		}
+	}
+
+	// no effect
+	return 0;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSBlur(VertData v_in) : TARGET
+{
+	int pixelEffectType = getPixelsEffectType(v_in);
+	if (pixelEffectType==-1) {
+		// doesn't matter what we return here
+		return float4(0.0,0.0,0.0,0.0);
+	}
+	if (pixelEffectType==0) {
+		// return original unchanged
+		return image.Sample(textureSampler, v_in.uv);
+	}
+
+	// do effect on this pixel
+	float4 color = PsBlurPixel(v_in, passNumber);
+	// also darken and semi-transpar?
+	if (false) {
+		color /= 2.0;
+	}
+	return color;
+}
+
+
+
+
+float4 PSDrawInterior(VertData v_in) : TARGET
+{
+	int pixelEffectType = getPixelsEffectType(v_in);
+	if (pixelEffectType==-1) {
+		// doesn't matter what we return here
+		return float4(0.0,0.0,0.0,0.0);
+	}
+	if (pixelEffectType==0) {
+		// return original unchanged
+		return float4(1,0,0,1);
+		return image.Sample(textureSampler, v_in.uv);
+	}
+
+	// let this go through, with transparent here 
+	return float4(0,0,0,0);
+}
+
+
+float4 PSDrawInteriorExterior(VertData v_in) : TARGET
+{
+	int pixelEffectType = getPixelsEffectType(v_in);
+	if (pixelEffectType==-1) {
+		// doesn't matter what we return here
+		return float4(0.0,0.0,0.0,0.0);
+	}
+	if (pixelEffectType==0) {
+		// return original unchanged
+		return image.Sample(textureSampler, v_in.uv);
+	}
+
+	// use secondary texture for this point
+	return secondaryTexture.Sample(textureSampler, v_in.uv) * exteriorDullness;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique Blur
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSBlur(v_in);
+	}
+}
+
+
+technique DrawInterior
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSDrawInterior(v_in);
+	}
+}
+
+
+technique DrawInteriorExterior
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSDrawInteriorExterior(v_in);
+	}
+}
+//---------------------------------------------------------------------------
+

@@ -1,0 +1,158 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float splitPosition;
+uniform float2 mulVal;
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+sampler_state textureSampler {
+	//Filter    = Linear;
+	Filter    = Bicubic;
+	AddressU  = Border;
+	AddressV  = Border;
+	BorderColor = 00000000;
+};
+
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+VertData VSDraw(VertData v_in)
+{
+	VertData vert_out;
+
+	/*
+	float3 vertpos = v_in.pos.xyz;
+	// swap at dividing line split position
+	if (vertpos.x >= splitPosition) {
+		vertpos.x -= splitPosition;
+	} else {
+		vertpos.x += (1.0-splitPosition);
+	}
+	*/
+
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv * mulVal;
+
+	/*
+	// swap at dividing line split position
+	if (vert_out.uv.x >= splitPosition) {
+		vert_out.uv.x -= splitPosition;
+	} else {
+		vert_out.uv.x += (1.0-splitPosition);
+	}
+	*/
+
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSDraw(VertData v_in) : TARGET
+{
+	// clip to crop area?
+	/*
+	if (v_in.uv.x < clip_ul.x || v_in.uv.x > clip_lr.x || v_in.uv.y < clip_ul.y || v_in.uv.y > clip_lr.y) {
+		clip(-1);
+		// can we return anyhing here?
+		return float4(0.0,0.0,0.0,0.0);
+		}
+	*/
+
+	
+	float2 vertpos = v_in.uv;
+	float spos = splitPosition;
+	// swap at dividing line split position
+	if (vertpos.x >= spos) {
+		vertpos.x -= spos;
+	} else {
+		vertpos.x += (1.0-spos);
+	}
+
+
+	return image.Sample(textureSampler, vertpos);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDraw(v_in);
+		pixel_shader  = PSDraw(v_in);
+	}
+}
+//---------------------------------------------------------------------------

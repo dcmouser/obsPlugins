@@ -1,0 +1,281 @@
+#pragma once
+
+
+//---------------------------------------------------------------------------
+// chroma options based on obs chroma plugin
+#define SETTING_markerChromaMode				"markerChromaMode"
+#define TEXT_markerChromaMode					obs_module_text("markerChromaMode")
+#define SETTING_Def_markerChromaMode			"color 1"
+//
+#define SETTING_COLOR_TYPE1						"key_color_type1"
+#define TEXT_COLOR_TYPE1						obs_module_text("KeyColorType1")
+#define SETTING_Def_KEY_COLOR					0x00FF00
+#define SETTING_KEY_COLOR1						"key_color_1"
+#define TEXT_KEY_COLOR1							obs_module_text("KeyColor1")
+#define SETTING_Def_COLOR_TYPE					"green"
+#define SETTING_SIMILARITY1						"similarity1"
+#define TEXT_SIMILARITY1						obs_module_text("Similarity1")
+#define SETTING_Def_SIMILARITY					365
+#define SETTING_SMOOTHNESS1						"smoothness1"
+#define TEXT_SMOOTHNESS1						obs_module_text("Smoothness1")
+#define SETTING_Def_SMOOTHNESS					122
+//
+#define SETTING_COLOR_TYPE2						"key_color_type2"
+#define TEXT_COLOR_TYPE2						obs_module_text("KeyColorType2")
+#define SETTING_KEY_COLOR2						"key_color_2"
+#define TEXT_KEY_COLOR2							obs_module_text("KeyColor2")
+#define SETTING_SIMILARITY2						"similarity2"
+#define TEXT_SIMILARITY2						obs_module_text("Similarity2")
+#define SETTING_SMOOTHNESS2						"smoothness2"
+#define TEXT_SMOOTHNESS2						obs_module_text("Smoothness2")
+//
+#define SETTING_DualColorGapFill				"dualColorGapFill"
+#define TEXT_DualColorGapFill					obs_module_text("dualColorGapFill")
+#define SETTING_Def_DualColorGapFill			2
+// 
+//
+#define SETTING_ChromaThreshold					"ChromaThreshold"
+#define TEXT_ChromaThreshold					obs_module_text("Chroma threshold (redundant; leave at 500")
+#define SETTING_Def_ChromaThreshold				500
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+#define SETTING_ignoreMarkers					"ignoreMarkers"
+#define TEXT_ignoreMarkers						obs_module_text("Ignore markers, just show configured full (markerless) view/source")
+
+#define SETTING_debugRegions					"dbgRegions"
+#define TEXT_debugRegions						obs_module_text("Debug overlay region detection (to assist setting marker options).")
+#define SETTING_Def_debugRegions				false
+#define SETTING_debugChroma						"dbgChroma"
+#define TEXT_debugChroma						obs_module_text("Hide background camera image so chroma is more obvious (to assist setting chrome options)")
+#define SETTING_Def_debugChroma					false
+#define SETTING_debugAllUpdate					"dbgAllUpdate"
+#define TEXT_debugAllUpdate						obs_module_text("When showing debug overlay, force all cameras to update every cycle")
+#define SETTING_Def_debugAllUpdate				true
+
+#define SETTING_enableAutoUpdate				"enableAutoUpdate"
+#define TEXT_enableAutoUpdate					obs_module_text("Auto update detection of marker locations (set rate below)")
+#define SETTING_Def_enableAutoUpdate			true
+#define SETTING_updateRate						"updateRate"
+#define TEXT_updateRate							obs_module_text("Update marker positions every N frames")
+#define SETTING_Def_updateRate					3
+//
+// valid region filtering
+#define SETTING_rmDensityMin					"rmTDensityMin"
+#define TEXT_rmDensityMin						obs_module_text("rmTDensityMin")
+#define SETTING_Def_rmDensityMin				50
+#define SETTING_rmAspectMin						"rmTAspectMin"
+#define TEXT_rmAspectMin						obs_module_text("rmTAspectMin")
+#define SETTING_Def_rmAspectMin					70
+#define SETTING_rmSizeMin						"rmSizeMin"
+#define TEXT_rmSizeMin							obs_module_text("rmSizeMin")
+#define SETTING_Def_rmSizeMin					3
+#define SETTING_rmSizeMax						"rmSizeMax"
+#define TEXT_rmSizeMax							obs_module_text("rmSizeMax")
+#define SETTING_Def_rmSizeMax					100
+#define SETTING_rmStageSize						"rmStageSize"
+#define TEXT_rmStageSize						obs_module_text("Stage size for doing visual analysis (see help)")
+#define SETTING_Def_rmStageSize					3
+#define SETTING_Max_rmStageSize					5
+#define SETTING_rmTooCloseDist					"rmTooCloseDist"
+#define TEXT_rmTooCloseDist						obs_module_text("Marker separation distance to ignore")
+#define SETTING_Def_rmTooCloseDist				60
+
+#define SETTING_rmMinColor2Percent				"rmMinColor2Percent"
+#define TEXT_rmMinColor2Percent					obs_module_text("Minimum % of color 2 in dual mode")
+#define SETTING_Def_rmMinColor2Percent			5
+#define SETTING_rmMaxColor2Percent				"rmMaxColor2Percent"
+#define TEXT_rmMaxColor2Percent					obs_module_text("Maximum % of color 2 in dual mode")
+#define SETTING_Def_rmMaxColor2Percent			95
+
+// zoomCrop stuff
+#define SETTING_zcPreserveAspectRatio			"zcPreserveAspectRatio"
+#define TEXT_zcPreserveAspectRatio				obs_module_text("Preserve aspect ratio of display")
+#define SETTING_Def_zcPreserveAspectRatio		true
+
+#define SETTING_zcMarkerPos						"zcMarkerPos"
+#define TEXT_zcMarkerPos						obs_module_text("Position of view relative to markers")
+#define SETTING_Def_zcMarkerPos					"center"
+
+#define SETTING_zcBoxMargin						"zcBoxMargin"
+#define TEXT_zcBoxMargin						obs_module_text("Position margin from markers")
+#define SETTING_Def_zcBoxMargin					0
+#define SETTING_zcBoxMoveSpeed					"zcBoxMoveSpeed"
+#define TEXT_zcBoxMoveSpeed						obs_module_text("Travel speed of view change")
+#define SETTING_Def_zcBoxMoveSpeed				8
+#define SETTING_zcBoxMoveDelay					"zcBoxMoveDelay"
+#define TEXT_zcBoxMoveDelay						obs_module_text("Delay between traveling to new view")
+#define SETTING_Def_zcBoxMoveDelay				10
+
+// used for a bunch of things which are derived from it
+#define SETTING_zcReactionDistance				"zcReactionDistance"
+#define TEXT_zcReactionDistance					obs_module_text("zcReactionDistance")
+#define SETTING_Def_zcReactionDistance			35
+
+
+#define SETTING_zcAlignment						"Alignment"
+#define TEXT_zcAlignment						obs_module_text("Alignment when view doesn't fill screen")
+#define SETTING_Def_zcAlignment					"center"
+
+#define SETTING_zcMode							"ZcMode"
+#define TEXT_zcMode								obs_module_text("Zoom vs. Crop mode")
+#define SETTING_Def_zcMode						"zoom and crop"
+#define Def_zcMode_ZoomCrop	0
+#define Def_zcMode_OnlyCrop	1
+#define Def_zcMode_OnlyZoom	2
+
+#define SETTING_zcCropStyle						"ZcCropStyle"
+#define TEXT_zcCropStyle						obs_module_text("Crop style")
+#define SETTING_Def_zcCropStyle					"black bars"
+#define Def_zcCropStyles_blackBars	0
+#define Def_zcCropStyle_blur		1
+
+#define SETTING_zcMaxZoom						"MaxZoom"
+#define TEXT_zcMaxZoom							obs_module_text("Maximum zoom magnification")
+#define SETTING_Def_zcMaxZoom					999
+//
+#define SETTING_zcOutputSize					"OutputSize"
+#define TEXT_zcOutputSize						obs_module_text("Output size (Width x Height); default 1920x1080")
+#define SETTING_Def_zcOutputSize				"1920x1080"
+
+#define SETTING_manualViewSourceIndex			"manualViewSourceIndex"
+#define TEXT_manualViewSourceIndex				obs_module_text("Current/manually source shown when markerless cycle is disabled")
+#define SETTING_DEF_manualViewSourceIndex		0
+
+#define SETTING_zcMarkerlessCycleList			"markerlessCycleList"
+#define TEXT_zcMarkerlessCycleList				obs_module_text("Markerless cycle list (| separated s=#,z=#.#,a=[ul|uc|ur|ml|mc|mr|ll|lc|lr])")
+#define SETTING_Def_zcMarkerlessCycleList		"s=0,z=0 | s=1,z=0 | s=1,z=1,a=mc | s=0,z=2,a=lc"
+#define DefMarkerlessCycleListBufMaxSize		255
+#define SETTING_markerlessCycleIndex			"markerlessCycleIndex"
+#define TEXT_markerlessCycleIndex				obs_module_text("Current markerless cycle entry above")
+#define SETTING_Def_markerlessCycleIndex		0
+
+#define SETTING_enableAutoSourceHunting			"enableAutoSourceHunting"
+#define TEXT_enableAutoSourceHunting			obs_module_text("Enable automatic source switching (prefer closer zoom = latter source)")
+#define SETTING_Def_enableAutoSourceHunting		true
+#define SETTING_enableMarkerlessCoordinates		"enableMarkerlessCoordinates"
+#define TEXT_enableMarkerlessCoordinates		obs_module_text("Use markerless cycles above (to control view when no markers detected)")
+#define SETTING_Def_enableMarkerlessCoordinates	true
+
+
+#define SETTING_zcEasing						"zcEasing"
+#define TEXT_zcEasing							obs_module_text("Travel easting")
+#define SETTING_Def_zcEasing					"eased"
+//
+#define SETTING_srcN							"NumSources"
+#define TEXT_srcN								obs_module_text("Number of top-down camera sources")
+#define SETTING_Def_srcN						1
+
+#define SETTING_resizeOutput					"resizeOutput"
+#define TEXT_resizeOutput						obs_module_text("resizeOutput")
+#define SETTING_Def_resizeOutput				false
+
+#define SETTING_fadeMode						"fadeMode"
+#define TEXT_fadeMode							obs_module_text("Fade mode when switching between camera sources")
+#define SETTING_Def_fadeMode					"normal"
+
+// for our list of sources
+#define SETTING_sourceNameWithArg				"src%d"
+#define TEXT_sourceNameWithArg					obs_module_text("Source %d")
+#define SETTING_sourceZoomScaleWithArg			"srcZs%d"
+#define TEXT_sourceZoomScaleWithArg				obs_module_text("Source %d zoom scale modifier (default 100; see help)")
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+// non-confiruable options
+
+// try to speed up render if we are just rendering the exact source as it no zoom/crop/etc.
+#define DefBypassZoomOnUntouchedOutput					false
+// for the showImage effect option alpha value
+#define DefEffectAlphaShowImage							0.25f
+// momentum thresholds
+#define DefMomentumCounterTargetNormal					5
+#define DefMomentumCounterTargetMissingMarkers			15
+//
+
+#define DefChangeMomentumDistanceThresholdMoving		((float)opt_zcReactionDistance/2.0f)
+#define DefChangeMomentumDistanceThresholdStabilized	((float)opt_zcReactionDistance/1.5f)
+//
+#define DefThresholdTargetStableDistance				((float)opt_zcReactionDistance)
+//
+#define DefChangeMomentumDistanceThresholdDontDrift		((float)opt_zcReactionDistance/4.0f)
+#define DefIntegerizeStableAveragingLocation			false
+//
+#define DefThresholdTargetStableCount					((float)opt_zcBoxMoveDelay/2.0f)
+//
+#define DefAverageSmoothingRateToCloseTarget			0.90f
+//
+#define DefMaxSources									10
+#define DefNameLenSource								80
+//
+#define DefAlwaysUpdateTrackingWhenHunting				true
+//
+#define DefPollMissingMarkersZoomOutCheckMult			10
+
+// set this to low value to fix failure to zoom in; set long to try to find insane obs bug failure of source to update
+#define DefSettledLookingPositionRecheckLimit			40
+
+#define DefForSingleValidRegionAssumePrevious			true
+#define DefMarkerlessStreakCyclesBeforeSwitch			2
+
+// set to 500 for half a second of tweaking of zoomcrop to markers after a oneshot settles
+#define DEF_MsSecsToHuntAfterOneShotSettles				500
+
+#define DefMaxMarkerlessEntries							20
+#define DefFadeDuration									0.5f;
+
+// setting to 1 means fades are rendered at full resolution, 2 or more reduces sizes of textures during fade; but it doesnt seem to have noticable cpu effect so leave at 1
+#define DefFadeTextureReduction							1
+
+#define DefDelayHuntingBriefTimeMs						500
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+#define DefKludgeTouchAllSourcesOnRenderCycle			true
+#define DefKludgeTouchAllSourcesOnRenderCycleRate		2
+//
+// i made a change in the algorithm to fix what appeared to be a bug; now coming back weeks later it seems the original code was good?
+#define DefUseJesseCounterTraceFix						false
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+// this hides audio of source
+// we dont use these
+
+#define DefDebugClearDrawingSpaced						false
+#define DefDebugObsGraphicsKludge						false
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+// ones we use long term:
+#define DefDebugDisableChromaCalibrate					true
+#define DefDebugDontEnumerateSourceOnRequest			true
+#define	DefDebugComplainBadIndexInRegionDetector		false
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+// testing
+// just to help us do temporary quick debug checks
+#define DefDebugTest									false
+#define DefDebugTestSkipKludgeRefreshTouchRendering		false
+#define DefDebugTryReallocateStagingSurfaceEveryTime	false
+#define DefDebugDoForegroundPixelCountTest				false
+//---------------------------------------------------------------------------
+

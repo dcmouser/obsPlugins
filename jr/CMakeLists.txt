@@ -1,0 +1,10 @@
+if(OS_WINDOWS)
+endif()
+
+add_subdirectory(obs-textml)
+add_subdirectory(transition-fadeDelayed)
+add_subdirectory(ObsAutoZoom)
+add_subdirectory(ObsScreenFlip)
+add_subdirectory(jrstats)
+add_subdirectory(jrtimestamps)
+#add_subdirectory(jrytdock)

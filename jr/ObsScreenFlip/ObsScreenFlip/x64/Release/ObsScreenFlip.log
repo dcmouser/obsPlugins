@@ -1,0 +1,15 @@
+﻿  jrPlugin.cpp
+  jrPluginMainRenderHook.cpp
+  pluginCodeSetttings.cpp
+E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\src\pluginCodeSetttings.cpp(37,7): warning C4101: 'name': unreferenced local variable
+E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\src\pluginCodeSetttings.cpp(36,18): warning C4101: 'p': unreferenced local variable
+E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\src\pluginCodeSetttings.cpp(38,7): warning C4101: 'label': unreferenced local variable
+E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\src\pluginCodeSetttings.cpp(368,20): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  pluginRender.cpp
+     Creating library E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\x64\Release\ObsScreenFlip.lib and object E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\x64\Release\ObsScreenFlip.exp
+  Generating code
+  10 of 62 functions (16.1%) were compiled, the rest were copied from previous compilation.
+    1 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  ObsScreenFlip.vcxproj -> E:\MyDocs\Programming\VersionControl\Git\ObsScreenFlip\x64\Release\ObsScreenFlip.dll
