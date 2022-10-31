@@ -261,7 +261,7 @@ void jrTimestamper::onSceneChange() {
 	obs_source_release(sceneSource);
 
 	//
-	blog(LOG_WARNING, "Test log entry scene change to %s.", sceneName);
+	// blog(LOG_WARNING, "Test log entry scene change to %s.", sceneName.c_str());
 	//
 	recordSceneChangeIfAppropriate(sceneName);
 }
