@@ -68,6 +68,7 @@ protected:
 	QLabel *memUsage = nullptr;
 
 	QLabel *renderTime = nullptr;
+	QLabel *frameCount = nullptr;
 	QLabel *skippedFrames = nullptr;
 	QLabel *missedFrames = nullptr;
 	

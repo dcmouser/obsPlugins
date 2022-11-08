@@ -527,6 +527,8 @@ void jrStats::buildUi() {
 	renderTime = new QLabel(this);
 	skippedFrames = new QLabel(this);
 	missedFrames = new QLabel(this);
+	//
+	frameCount = new QLabel(this);
 
 	str = MakeMissedFramesText(9999, 99999, 99.99);
 	textWidth = missedFrames->fontMetrics().boundingRect(str).width();
@@ -536,6 +538,7 @@ void jrStats::buildUi() {
 
 	if (flagUseAlternateVerticalLayout) {
 		newStat(basicStatsLayout, "AverageTimeToRender", renderTime, row, 0); row++;
+		newStat(basicStatsLayout, "FrameCount", frameCount, row, 0); row++;
 		newStat(basicStatsLayout, "MissedFrames", missedFrames, row, 0); row++;
 		newStat(basicStatsLayout, "SkippedFrames", skippedFrames, row, 0); row++;
 		newStatBare(basicStatsLayout, "FPS", fps, row, 0); row++;
@@ -551,6 +554,7 @@ void jrStats::buildUi() {
 		row = 0;
 		newStatBare(basicStatsLayout, "FPS", fps, row, 2); row++;
 		newStat(basicStatsLayout, "AverageTimeToRender", renderTime, row, 2); row++;
+		newStat(basicStatsLayout, "FrameCount", frameCount, row, 2); row++;
 		newStat(basicStatsLayout, "MissedFrames", missedFrames, row, 2); row++;
 		newStat(basicStatsLayout, "SkippedFrames", skippedFrames, row, 2); row++;
 	}
@@ -931,6 +935,8 @@ void jrStats::Update()
 	else
 		setThemeID(renderTime, "");
 
+
+
 	/* ------------------ */
 
 	video_t *video = obs_get_video();
@@ -949,10 +955,16 @@ void jrStats::Update()
 		      : 0.0l;
 	num *= 100.0l;
 
-	str = QString("%1 / %2 (%3%)")
-		      .arg(QString::number(total_skipped),
-			   QString::number(total_encoded),
-			   QString::number(num, 'f', 1));
+	if (true) {
+		str = QString("%1 (%2%)")
+			.arg(QString::number(total_skipped),
+				QString::number(num, 'f', 1));
+	} else {
+		str = QString("%1 / %2 (%3%)")
+			.arg(QString::number(total_skipped),
+				QString::number(total_encoded),
+				QString::number(num, 'f', 1));
+	}
 	skippedFrames->setText(str);
 
 	if (num > 5.0l)
@@ -973,6 +985,23 @@ void jrStats::Update()
 	}
 	total_rendered -= first_rendered;
 	total_lagged -= first_lagged;
+
+
+	/* ------------------ */
+	// new standalone frame counter
+	// total_rendered starts going up immediately just from preview; total_encoded goes up only when recording
+	uint32_t fcount = total_rendered;
+	if (false || (total_encoded < total_rendered && total_encoded>0)) {
+		fcount = total_encoded;
+	}
+	str = QString("%1")
+		.arg(QString::number(fcount));
+	frameCount->setText(str);
+	setThemeID(frameCount, "");
+	/* ------------------ */
+
+
+
 
 	num = total_rendered
 		      ? (long double)total_lagged / (long double)total_rendered
@@ -1187,10 +1216,17 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec)
 		num = total ? (long double)dropped / (long double)total * 100.0l
 			    : 0.0l;
 
-		str = QString("%1 / %2 (%3%)")
-			      .arg(QString::number(dropped),
-				   QString::number(total),
-				   QString::number(num, 'f', 1));
+		if (true) {
+			str = QString("%1 (%2%)")
+				.arg(QString::number(dropped),
+					QString::number(num, 'f', 1));
+		} else {
+			str = QString("%1 / %2 (%3%)")
+				.arg(QString::number(dropped),
+					QString::number(total),
+					QString::number(num, 'f', 1));
+		}
+
 		droppedFrames->setText(str);
 
 		if (num > 5.0l)
@@ -1687,10 +1723,16 @@ QString jrStats::MakeTimeLeftText(int hours, int minutes)
 
 QString jrStats::MakeMissedFramesText(uint32_t total_lagged, uint32_t total_rendered, long double num)
 {
-	return QString("%1 / %2 (%3%)")
-		.arg(QString::number(total_lagged),
-		     QString::number(total_rendered),
-		     QString::number(num, 'f', 1));
+	if (true) {
+		return QString("%1 (%2%)")
+			.arg(QString::number(total_lagged),
+				QString::number(num, 'f', 1));
+	} else {
+		return QString("%1 / %2 (%3%)")
+			.arg(QString::number(total_lagged),
+				QString::number(total_rendered),
+				QString::number(num, 'f', 1));
+	}
 }
 //---------------------------------------------------------------------------
 
