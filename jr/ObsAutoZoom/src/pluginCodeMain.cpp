@@ -358,7 +358,18 @@ void JrPlugin::updateComputedOptions() {
 
 
 
-
+// 11/5/22
+// a word on opt_enableAutoUpdate vs opt_ignoreMarkers, since they are so similar
+// when enabled, opt_ignoreMarkers will instantly switch to a preconfigured default markerless view, as if no markers were present
+// when disabled, opt_enableAutoUpdate will stop seeking markers and changing to adapte to them, but will NOT move from their current position if they had last adjusted to a marker
+// so you can adjust to a marker and then disable opt_enableAutoUpdate to hold position.
+// But it is confusing to have both, and need hotkey for both.
+// To unify, we could have a hotkey for toggling opt_enableAutoUpdate and then a hotkey for forcing opt_enableAutoUpdate off AND reseting view to preconfigured default markerless view once
+// That is, "ignore markerless" is not reall needed, it is a combination of turning off auto update and also resetting view
+// So this would still need 2 hotkeys BUT not two TOGGLE hotkeys, which is confusing.
+// This makes more sense because some combinations of the toggles make no sense and some are redundant -- it doesnt ever make sense to have ignore on and update on, and if ignore is on, state of update is irrelevant
+// PROBLEM: The only loss with this scheme is that with two toggles one could use markers to designate a zoom region, and then turn off auto update, and then easily toggle between using that zoom region vs default markerless, even without markers,
+// assuming the previous marker position remains unchanged.  If we do away with the two toggles, then the only way to switch away from the remembered marker positions is to clear and forget them.
 
 
 
@@ -369,7 +380,12 @@ void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 	//
 	// trigger hotkey
 	if (id == hotkeyId_ToggleAutoUpdate) {
+		// ATTN: TODO - should we combine ignore markers with auto update and just have one setting?
 		opt_enableAutoUpdate = !opt_enableAutoUpdate;
+		if (opt_enableAutoUpdate) {
+			// if we turn on auto update, then we turn off ignore markers
+			opt_ignoreMarkers = false;
+		}
 		saveVolatileSettings();
 	} else if (id == hotkeyId_OneShotZoomCrop) {
 		initiateOneShot();
@@ -384,14 +400,21 @@ void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 		opt_debugRegions = !opt_debugRegions;
 		saveVolatileSettings();
 	} else if (id == hotkeyId_ToggleIgnoreMarkers) {
+		// ATTN: TODO - should we combine ignore markers with auto update and just have one setting?
 		saveCurrentViewedSourceAsManualViewOption();
 		opt_ignoreMarkers = !opt_ignoreMarkers;
+		if (!opt_ignoreMarkers) {
+			// if we turn off ignore markers, we turn on auto update
+			opt_enableAutoUpdate = true;
+		}
 		gotoCurrentMarkerlessCoordinates();
 		saveVolatileSettings();
 	} else if (id == hotkeyId_CycleViewForward) {
+		// ATTN: TODO - should we force ignore markers in this case?
 		viewCycleAdvance(1);
 		saveVolatileSettings();
 	} else if (id == hotkeyId_CycleViewBack) {
+		// ATTN: TODO - should we force ignore markers in this case?
 		viewCycleAdvance(-1);
 		saveVolatileSettings();
 	} else if (id == hotkeyId_toggleEnableMarkerlessUse) {

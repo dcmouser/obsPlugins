@@ -135,6 +135,8 @@ void JrPlugin::cancelOneShot() {
 void JrPlugin::initiateOneShot() {
 	// turn off auto updating
 	opt_enableAutoUpdate = false;
+	// turn off ignore if it is on?
+	opt_ignoreMarkers = false;
 	saveVolatileSettings();
 	// abort any hunting
 	stracker.abortHunting();
