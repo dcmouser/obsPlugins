@@ -22,16 +22,16 @@
 
 #include "../../jrcommon/src/jrobsplugin_options.hpp"
 
-class jrYtDock;
+class jrNoteDock;
 
 
 
 class OptionsDialog : public JrPluginOptionsDialog {
 	//Q_OBJECT
-	jrYtDock* pluginp = NULL;
+	jrNoteDock* pluginp = NULL;
 	QGridLayout *mainLayout;
 public:
-	OptionsDialog(QMainWindow *parent, jrYtDock* inpluginp);
+	OptionsDialog(QMainWindow *parent, jrNoteDock* inpluginp);
 	~OptionsDialog();
 public:
 	virtual void onClickApply();

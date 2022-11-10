@@ -23,6 +23,7 @@
 #include <QGridLayout>
 #include <QScreen>
 */
+#include <QDateTime>
 
 
 
@@ -465,6 +466,7 @@ void jrStats::buildUi() {
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
 	//
 	QGridLayout *basicStatsLayout = new QGridLayout(this);
+	QGridLayout *infoLayout = new QGridLayout(this);
 	QGridLayout *outLayoutStream = new QGridLayout(this);
 	QGridLayout *outLayoutRecord = new QGridLayout(this);
 
@@ -560,7 +562,8 @@ void jrStats::buildUi() {
 	}
 
 
-	
+	int linePaddingTop = 8;
+	int linePaddingBot = 4;
 
 
 	// on air layout widgets
@@ -589,8 +592,6 @@ void jrStats::buildUi() {
 	connect(resetButton, &QPushButton::clicked, [this]() { Reset(); });
 
 
-	int linePaddingTop = 8;
-	int linePaddingBot = 4;
 
 	mainLayout->addWidget(onAirOffLayoutWidget);
 	mainLayout->addWidget(onAirBreakLayoutWidget);
@@ -605,7 +606,14 @@ void jrStats::buildUi() {
 	}
 
 	mainLayout->addSpacing(4);
+	mainLayout->addLayout(infoLayout);
+	addLineSeparatorToLayout(mainLayout, linePaddingTop, linePaddingBot);
+
 	mainLayout->addLayout(basicStatsLayout);
+
+
+	// new date time layout?
+	buildUiInfoLayout(infoLayout, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel);
 
 	// streaming and recording stats
 	buildUiAddOutputLabels(outLayoutStream, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel);
@@ -765,6 +773,56 @@ void jrStats::buildUiAddOutputLabels(QGridLayout* layout, QString name, float fo
 
 
 
+//---------------------------------------------------------------------------
+void jrStats::buildUiInfoLayout(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel)
+{
+
+	auto newStatBare = [&](QGridLayout* layout, QString name, QWidget *label, int row, int col, bool flagBold) {
+		QLabel *typeLabel = new QLabel(name, this);
+		layout->addWidget(typeLabel, row, col);
+		if (label) {
+			layout->addWidget(label, row, col + 1);
+		}
+		bool flagSetFontSize = true;
+		if (flagSetFontSize) {
+			// font sizes
+			if (true) {
+				int newPointSize = (int)(typeLabel->font().pointSize() * fontSizeMultTypeLabel);
+				//				QString qss = QString("* {font-size: %1pt; font-weight: bold; border: 1px solid;}").arg(QString::number(newPointSize));
+				if (flagBold) {
+					QString qss = QString("* {font-weight: bold; font-size: %1pt;}").arg(QString::number(newPointSize));
+					typeLabel->setStyleSheet(qss);
+				}
+				else {
+					QString qss = QString("* {font-size: %1pt;}").arg(QString::number(newPointSize));
+					typeLabel->setStyleSheet(qss);
+				}
+			}
+			if (label) {
+				int newPointSize = (int)(label->font().pointSize() * fontSizeMultLabel);
+				//				QString qss = QString("* {font-size: %1pt; font-weight: bold; border: 1px solid;}").arg(QString::number(newPointSize));
+				QString qss = QString("* {font-size: %1pt;}").arg(QString::number(newPointSize));
+				label->setStyleSheet(qss);
+			}
+		}
+	};
+	auto newStat = [&](QGridLayout* layout, const char *strLoc, QWidget *label, int row, int col) {
+		//std::string str = "jrstats.Stats.";
+		//str += strLoc;
+		std::string str = std::string(strLoc);
+		newStatBare(layout, QTStr(obs_module_text(str.c_str())), label, row, col, false);
+	};
+
+	// new date and time
+	int row = 0;
+	if (true) {
+		dateLabel = new QLabel(this);
+		timeLabel = new QLabel(this);
+		newStat(layout, "Time", timeLabel, row, 0); ++row;
+		newStat(layout, "Date", dateLabel, row, 0); ++row;
+	}
+}
+//---------------------------------------------------------------------------
 
 
 
@@ -904,12 +962,13 @@ void jrStats::Update()
 	str = QString::number(num, 'f', 1) + abrv;
 	hddSpace->setText(str);
 
-	if (num_bytes < GBYTE)
+	if (num_bytes < GBYTE) {
 		setThemeID(hddSpace, "error");
-	else if (num_bytes < (5 * GBYTE))
+	} else if (num_bytes < (5 * GBYTE)) {
 		setThemeID(hddSpace, "warning");
-	else
+	} else {
 		setThemeID(hddSpace, "");
+	}
 
 	/* ------------------ */
 
@@ -1001,6 +1060,21 @@ void jrStats::Update()
 	/* ------------------ */
 
 
+	/* ------------------ */
+	// new date time
+	if (true) {
+		//str = QDateTime::currentDateTime().toString("HH:mm:ss");
+		str = QDateTime::currentDateTime().toString("h:mm:ss a");
+		timeLabel->setText(str);
+		setThemeID(timeLabel, "");
+		//
+//		str = QDateTime::currentDateTime().toString("MMM dd, yyyy");
+		str = QDateTime::currentDateTime().toString("ddd, MMM dd");
+		dateLabel->setText(str);
+		setThemeID(dateLabel, "");
+	}
+	/* ------------------ */
+
 
 
 	num = total_rendered
@@ -1088,6 +1162,15 @@ void jrStats::RecordingTimeLeft()
 
 	QString text = MakeTimeLeftText(hours, minutes);
 	recordTimeLeft->setText(text);
+
+	if (hours < DefMinHoursLeftBeforeError) {
+		setThemeID(recordTimeLeft, "error");
+	} else if (hours < DefMinHoursLeftBeforeWarning) {
+		setThemeID(recordTimeLeft, "warning");
+	}
+	else {
+		setThemeID(recordTimeLeft, "");
+	}
 	//recordTimeLeft->setMinimumWidth(recordTimeLeft->width());
 }
 //---------------------------------------------------------------------------

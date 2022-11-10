@@ -1,5 +1,5 @@
-#include "jrytdock.hpp"
-#include "jrytdock_options.hpp"
+#include "jrnotedock.hpp"
+#include "jrnotedock_options.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
 
 #include <obs-module.h>
@@ -17,7 +17,7 @@
 #include <QtWidgets/QColorDialog>
 
 
-OptionsDialog::OptionsDialog(QMainWindow* parent, jrYtDock* inpluginp)
+OptionsDialog::OptionsDialog(QMainWindow* parent, jrNoteDock* inpluginp)
 	: JrPluginOptionsDialog(parent)
 {
 	pluginp = inpluginp;
@@ -44,22 +44,28 @@ void OptionsDialog::buildUi() {
 	mainLayout = new QGridLayout;
 	//
 	//mainLayout->setColumnStretch(1, 1);
-
-	// bottom button row
-	QHBoxLayout *bottomLayout = new QHBoxLayout;
 	//
-	QPushButton *cancelButton = new QPushButton(obs_module_text("Cancel"));
-	bottomLayout->addWidget(cancelButton, 0, Qt::AlignLeft);
-	connect(cancelButton, &QPushButton::clicked, [this]() { onClickCancel(); close(); });
-	//
-	QPushButton *closeApplyButton = new QPushButton(obs_module_text("Apply and Close"));
-	bottomLayout->addWidget(closeApplyButton, 0, Qt::AlignRight);
-	connect(closeApplyButton, &QPushButton::clicked, [this]() { onClickApply(); close(); });
-
+	
 	// entire layout
 	QVBoxLayout* vlayout = new QVBoxLayout;
 	vlayout->addLayout(mainLayout);
-	vlayout->addLayout(bottomLayout);
+
+	if (true) {
+		// bottom button row
+		QHBoxLayout* bottomLayout = new QHBoxLayout;
+		//
+		QPushButton* cancelButton = new QPushButton(obs_module_text("Cancel"));
+		bottomLayout->addWidget(cancelButton, 0, Qt::AlignLeft);
+		connect(cancelButton, &QPushButton::clicked, [this]() { onClickCancel(); close(); });
+		//
+		QPushButton* closeApplyButton = new QPushButton(obs_module_text("Apply and Close"));
+		bottomLayout->addWidget(closeApplyButton, 0, Qt::AlignRight);
+		connect(closeApplyButton, &QPushButton::clicked, [this]() { onClickApply(); close(); });
+		//
+		vlayout->addLayout(bottomLayout);
+	}
+
+
 	setLayout(vlayout);
 
 	// dialog

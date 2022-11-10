@@ -401,6 +401,8 @@ void TextSource::UpdateFont(float fontSizeAdjustment)
 	lf.lfQuality = ANTIALIASED_QUALITY;
 	lf.lfCharSet = DEFAULT_CHARSET;
 
+	//blog(LOG_WARNING, "In UpdateFont with adjustment= %f and face_size = %d, and lfHeight = %d.", fontSizeAdjustment, face_size, lf.lfHeight);
+
 	if (!face.empty()) {
 		wcscpy(lf.lfFaceName, face.c_str());
 		hfont = CreateFontIndirect(&lf);
@@ -540,21 +542,28 @@ void TextSource::parseLineSplitModString(std::wstring modString, float &fontSize
 			if (oneline[1] == L'+') {
 				fontSizeAdjustment =
 					1.0f +
-					(float)_wtoi(amt.c_str()) / 100.0f;
+					(float)_wtof(amt.c_str()) / 100.0f;
 			} else if (oneline[1] == L'-') {
 				fontSizeAdjustment =
 					1.0f -
-					(float)_wtoi(amt.c_str()) / 100.0f;
+					(float)_wtof(amt.c_str()) / 100.0f;
+			}
+			if (false) {
+				// testing
+				std::string str1, str2;
+				std::transform(oneline.begin(), oneline.end(), std::back_inserter(str1), [](wchar_t c) {	return (char)c;	});
+				std::transform(amt.begin(), amt.end(), std::back_inserter(str2), [](wchar_t c) {	return (char)c;	});
+				blog(LOG_WARNING, "font size adjust is online (%s vs %s) maps to '%f'.", str1.c_str(), str2.c_str(), fontSizeAdjustment);
 			}
 		} else if (oneline[0] == L'l' || oneline[0] == L'L') {
 			if (oneline[1] == L'+') {
 				lineSpaceAdjustment =
 					1.0f +
-					(float)_wtoi(amt.c_str()) / 100.0f;
+					(float)_wtof(amt.c_str()) / 100.0f;
 			} else if (oneline[1] == L'-') {
 				lineSpaceAdjustment =
 					1.0f -
-					(float)_wtoi(amt.c_str()) / 100.0f;
+					(float)_wtof(amt.c_str()) / 100.0f;
 			}
 		} else if (oneline[0] == L'h' || oneline[0] == L'H') {
 			if (oneline[1] == L'+') {

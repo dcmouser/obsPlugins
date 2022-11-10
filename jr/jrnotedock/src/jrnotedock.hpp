@@ -38,13 +38,33 @@ class OptionsDialog;
 
 
 //---------------------------------------------------------------------------
-class jrYtDock : public QDockWidget, public jrObsPlugin {
+void note_frontend_save(obs_data_t* save_data, bool saving, void* data);
+
+class jrNoteDock : public QDockWidget, public jrObsPlugin {
 	// produces link error:
 	//Q_OBJECT
+
+
+protected:
+	// from scene notes plugin
+	QTextEdit *textEdit;
+	bool notes_locked = false;
+	QString notesQstr;
+	bool dirtyChanges = false;
+public:
+	void allocateInitNoteStuff();
+	void builtNoteStuffUi();
+	void destructNoteStuff();
+	void saveNotes(obs_data_t *settings);
+	void loadNotes(obs_data_t *settings);
+	void jrSetDefaultFont(QTextEdit *te);
+
+
+protected:
 	QTimer timer;
 public:
-	jrYtDock(QWidget *parent = nullptr);
-	~jrYtDock();
+	jrNoteDock(QWidget *parent = nullptr);
+	~jrNoteDock();
 public:
 	static void ObsFrontendEvent(enum obs_frontend_event event, void* ptr);
 	static void ObsHotkeyCallback(void* data, obs_hotkey_id id, obs_hotkey_t* key, bool pressed);

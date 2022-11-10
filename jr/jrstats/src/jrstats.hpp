@@ -29,6 +29,9 @@ enum JrEnumOnAirMode {JrEnumOnAirMode_Off, JrEnumOnAirMode_Recording, JrEnumOnAi
 
 //---------------------------------------------------------------------------
 #define Def_breakPatternStringNewlined "Title\nBreak\nIntro\n"
+//
+#define DefMinHoursLeftBeforeError 24
+#define DefMinHoursLeftBeforeWarning 48
 //---------------------------------------------------------------------------
 
 
@@ -92,6 +95,10 @@ protected:
 	uint64_t num_bytes = 0;
 	std::vector<long double> bitrates;
 
+	QLabel *dateLabel = nullptr;
+	QLabel *timeLabel = nullptr;
+
+
 	struct OutputLabels {
 		QPointer<QLabel> name;
 		QPointer<QLabel> status;
@@ -152,6 +159,7 @@ protected:
 protected:
 	void buildUi();
 	void buildUiAddOutputLabels(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel);
+	void buildUiInfoLayout(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel);
 protected:
 	void Update();
 protected:
