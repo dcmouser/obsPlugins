@@ -379,12 +379,11 @@ void jrNoteDock::buildUi() {
 	setFloating(true);
 	hide();
 
-	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+	mainLayout = new QVBoxLayout(this);
 
 	auto *dockWidgetContents = new QWidget;
 	dockWidgetContents->setLayout(mainLayout);
 	setWidget(dockWidgetContents);
-
 
 
 	// bottom buttons
@@ -554,7 +553,17 @@ void jrNoteDock::allocateInitNoteStuff() {
 
 
 void jrNoteDock::builtNoteStuffUi() {
+
+	// the text edit
 	textEdit = new QTextEdit(this);
+
+	if (true) {
+		mainLayout->setSpacing(0);
+		mainLayout->setContentsMargins (0, 0, 0, 0);
+		textEdit->setContentsMargins (0, 0, 0, 0);
+	}
+
+
 
 
 	// ATTN: jr default font
@@ -563,13 +572,16 @@ void jrNoteDock::builtNoteStuffUi() {
 		jrSetDefaultFont(textEdit);
 	}
 
-	auto *mainLayout = new QVBoxLayout(this);
+	//auto *mainLayout = new QVBoxLayout(this);
 
 	mainLayout->addWidget(textEdit);
 
+	/*
+	// already done
 	auto *dockWidgetContents = new QWidget;
 	dockWidgetContents->setLayout(mainLayout);
 	setWidget(dockWidgetContents);
+	*/
 
 	auto changeText = [this]() {
 		dirtyChanges = true;

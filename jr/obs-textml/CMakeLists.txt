@@ -11,7 +11,7 @@ set(MODULE_DESCRIPTION "JR OBS GDI+ text module")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in
                obs-textml.rc)
 
-target_sources(obs-textml PRIVATE gdiplus/obs-textml.cpp obs-textml.rc)
+target_sources(obs-textml PRIVATE gdiplus/obs-textml.cpp gdiplus/jrcolorhelper.cpp gdiplus/jrcolorhelper.hpp gdiplus/winklerrgbhsv.cpp gdiplus/winklerrgbhsv.hpp obs-textml.rc)
 
 target_link_libraries(obs-textml PRIVATE gdiplus)
 

@@ -13,6 +13,11 @@
 #include <memory>
 #include <locale>
 
+#include "jrcolorhelper.hpp"
+
+
+
+
 using namespace std;
 using namespace Gdiplus;
 
@@ -157,39 +162,6 @@ using namespace Gdiplus;
 
 /* ------------------------------------------------------------------------- */
 
-uint32_t hueShiftColor(uint32_t color, int hueShift) {
-	// see http://beesbuzz.biz/code/16-hsv-color-transforms
-	// this doesnt seem to work quite right, but im running out of patience and it doesnt really matter it's just used to inject some color changes
-	if (hueShift == 0) {
-		return color;
-	}
-
-	float H = (float)hueShift;// / 180.0f;
-	float U = cos(H*M_PI/180);
-	float W = sin(H*M_PI/180);
-
-//	BYTE red = (color   & 0xFF000000) >> 8;
-//	BYTE green = (color & 0x00FF0000) >> 16;
-//	BYTE blue = (color  & 0x0000FF00) >> 24;
-	BYTE red =   (color & 0xFF000000) >> 24;
-	BYTE green = (color & 0x00FF0000) >> 16;
-	BYTE blue =  (color & 0x0000FF00) >> 8;
-
-	double redOut = (.299+.701*U+.168*W)*red
-	+ (.587-.587*U+.330*W)*green
-	+ (.114-.114*U-.497*W)*blue;
-	double greenOut = (.299-.299*U-.328*W)*red
-	+ (.587+.413*U+.035*W)*green
-	+ (.114-.114*U+.292*W)*blue;
-	double blueOut = (.299-.3*U+1.25*W)*red
-	+ (.587-.588*U-1.05*W)*green
-	+ (.114+.886*U-.203*W)*blue;
-
-	//uint32_t colorOut = RGB(redOut, greenOut, blueOut);
-	uint32_t colorOut = RGB(blueOut, greenOut, redOut);
-	//blog(LOG_WARNING, "Asked hue shift from %d to %d (with %d)", color, colorOut, hueShift);
-	return colorOut;
-}
 
 
 
@@ -198,11 +170,16 @@ static inline DWORD get_alpha_val(uint32_t opacity)
 	return ((opacity * 255 / 100) & 0xFF) << 24;
 }
 
+
 static inline DWORD calc_color(uint32_t color, uint32_t opacity, int hueShift)
 {
 	//return color & 0xFFFFFF | get_alpha_val(opacity);
 	return hueShiftColor(color,hueShift) & 0xFFFFFF | get_alpha_val(opacity);
 }
+
+/* ------------------------------------------------------------------------- */
+
+
 
 static inline wstring to_wide(const char *utf8)
 {
