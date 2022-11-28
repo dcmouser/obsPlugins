@@ -184,6 +184,14 @@ using namespace Gdiplus;
 #define S_NOTES				"notes"
 #define S_NOTES_TEXT			T_("Private Notes")
 #define S_NOTES_DEF			""
+#define S_HueQuickShift			"hueQuickShift"
+#define S_HueQuickShift_TEXT		"Quick hue shift"
+#define S_HueQuickShift_DEF		0
+#define S_FontSizeQuickScale		"fontSizeQuickScale"
+#define S_FontSizeQuickScale_TEXT	"Quick font size modifier"
+#define S_FontSizeQuickScale_DEF	100
+
+
 #define DEF_MAX_LINES			100
 
 /* clang-format on */
@@ -333,9 +341,13 @@ struct TextSource {
 	int tweakWraplen;
 	bool gradientPerLine;
 	float tweakHeightAdjust;
+	//
+	float fontSizeQuickScale = 1.0f;
+	int hueQuickShift = 0;
+	//
 	float lineHeightOrig[DEF_MAX_LINES];
 	float lineHeight[DEF_MAX_LINES];
-	float lastFontSizeAdjustment;
+	int lastFontSize;
 	bool flagClearNextLineFontSizeAdjustment;
 
 	/* --------------------------- */
@@ -357,7 +369,7 @@ struct TextSource {
 		}
 	}
 
-	void UpdateFont(TextModifier &tmodifier);
+	void UpdateFont(TextModifier &tmodifier, bool flagForceUpdate);
 	void GetStringFormat(StringFormat &format);
 	void RemoveNewlinePadding(const StringFormat &format, RectF &box);
 	void CalculateTextSizes(const StringFormat &format, RectF &bounding_box, SIZE &text_size);
@@ -388,15 +400,21 @@ static time_t get_modified_timestamp(const char *filename)
 	return stats.st_mtime;
 }
 
-void TextSource::UpdateFont(TextModifier &tmodifier)
+void TextSource::UpdateFont(TextModifier &tmodifier, bool flagForceUpdate)
 {
-	lastFontSizeAdjustment = tmodifier.fontSizeAdjustment;
+	int fontSize = (int) ((float)face_size * tmodifier.fontSizeAdjustment * fontSizeQuickScale);
+	if (!flagForceUpdate && fontSize == lastFontSize) {
+		// unchanged, nothing to do
+		return;
+	}
+	// update
+	lastFontSize = fontSize;
 	//
 	hfont = nullptr;
 	font.reset(nullptr);
 
 	LOGFONT lf = {};
-	lf.lfHeight = (int)((float)face_size * tmodifier.fontSizeAdjustment);
+	lf.lfHeight = fontSize;
 	lf.lfWeight = bold ? FW_BOLD : FW_DONTCARE;
 	lf.lfItalic = italic;
 	lf.lfUnderline = underline;
@@ -753,9 +771,8 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 					// comment
 					continue;
 				}
-				if (tmodifier.fontSizeAdjustment != lastFontSizeAdjustment) {
-					UpdateFont(tmodifier);
-				}
+				UpdateFont(tmodifier, false);
+
 				bounding_box_temp.X = bounding_box_temp.Y = bounding_box_temp.Width = bounding_box_temp.Height = 0;
 
 				stat = graphics.MeasureString(
@@ -901,7 +918,7 @@ void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
 }
 
 void TextSource::setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier) {
-	brushp->SetLinearColors(Color(calc_color(cl1, opacity, tmodifier.hueShift)), Color(calc_color(cl2, opacity2, tmodifier.hueShift)));
+	brushp->SetLinearColors(Color(calc_color(cl1, opacity, tmodifier.hueShift + hueQuickShift)), Color(calc_color(cl2, opacity2, tmodifier.hueShift + hueQuickShift)));
 }
 
 
@@ -987,12 +1004,7 @@ void TextSource::RenderText()
 					// comment
 					continue;
 				}
-				if (tmodifier.fontSizeAdjustment != lastFontSizeAdjustment) {
-					UpdateFont(tmodifier);
-				}
-				if (tmodifier.hueShift != 0) {
-
-				}
+				UpdateFont(tmodifier, false);
 
 				// currentX - try to offset tweak based on font
 				float fsize = (float)face_size * tmodifier.fontSizeAdjustment;
@@ -1015,19 +1027,21 @@ void TextSource::RenderText()
 				rcolor1 = (tmodifier.color1 != 0) ? tmodifier.color1 : color;
 				rcolor2 = (tmodifier.color2 != 0) ? tmodifier.color2 : color2;
 
+				int fHue = tmodifier.hueShift + hueQuickShift;
+				//blog(LOG_WARNING, " hue shift = %d last was %d and tmodhue = %d and quick = %d.", fHue, lastHueShift, tmodifier.hueShift, hueQuickShift);
 				if (gradientPerLine) {
 					brushp = new LinearGradientBrush(RectF(linebox.X, linebox.Y, (float)size.cx, lineHeightOrig[lineNumber]),
-						Color(calc_color(rcolor1, opacity, tmodifier.hueShift)),
-						Color(calc_color(rcolor2, opacity2, tmodifier.hueShift)),
+						Color(calc_color(rcolor1, opacity, fHue)),
+						Color(calc_color(rcolor2, opacity2, fHue)),
 						gradient_dir, 1);
 					flagDeleteBrush = true;
 				} else {
-					if (tmodifier.hueShift != lastHueShift) {
+					if (fHue != lastHueShift) {
 						setCurrentBrushColorUsingHueShift(brushp, rcolor1, rcolor2, tmodifier);
-						lastHueShift = tmodifier.hueShift;
-					}
+						}
 				}
-					
+				lastHueShift = fHue;
+
 				if (use_outline) {
 					// too close to left margin
 					//box.Offset(outline_size / 2, outline_size / 2);
@@ -1229,7 +1243,8 @@ inline void TextSource::Update(obs_data_t *s)
 	tweakWraplen = (int)obs_data_get_int(s, S_WRAPLEN);
 	tweakHeightAdjust = 1.0f + (float)obs_data_get_int(s, S_LINESPACEADJUST) / 100.0f;
 	gradientPerLine = obs_data_get_bool(s, S_GRADIENTPERLINE);
-
+	fontSizeQuickScale = (float)obs_data_get_int(s, S_FontSizeQuickScale) / 100.0f;
+	hueQuickShift = (int)obs_data_get_int(s, S_HueQuickShift);
 
 	/* ----------------------------- */
 	TextModifier tmodifier;
@@ -1247,7 +1262,11 @@ inline void TextSource::Update(obs_data_t *s)
 		underline = new_underline;
 		strikeout = new_strikeout;
 
-		UpdateFont(tmodifier);
+		UpdateFont(tmodifier, true);
+	}
+	else {
+		// should we still update the font here in case theyve changed quick scale? I don't think we need to
+		//UpdateFont(tmodifier, false);
 	}
 
 	/* ----------------------------- */
@@ -1527,6 +1546,10 @@ static obs_properties_t *get_properties(void *data)
 	p=obs_properties_add_bool(propgroup, S_GRADIENTPERLINE, S_GRADIENTPERLINE_TEXT);
 	p=obs_properties_add_int_slider(propgroup, S_WRAPLEN, S_WRAPLEN_TEXT, 0, 255, 1);
 	p=obs_properties_add_int_slider(propgroup, S_LINESPACEADJUST, S_LINESPACEADJUST_TEXT, -90, 90, 1);
+	//
+	p=obs_properties_add_int_slider(propgroup, S_FontSizeQuickScale, S_FontSizeQuickScale_TEXT, 25, 200, 1);
+	p=obs_properties_add_int_slider(propgroup, S_HueQuickShift, S_HueQuickShift_TEXT, 0, 360, 1);
+	//
 	p=obs_properties_add_text(propgroup, S_NOTES, S_NOTES_TEXT, OBS_TEXT_MULTILINE);
 
 
@@ -1633,6 +1656,8 @@ static void defaults(obs_data_t *settings, int ver)
 	obs_data_set_default_bool(settings, S_GRADIENTPERLINE, S_GRADIENTPERLINE_DEF);
 	obs_data_set_default_int(settings, S_WRAPLEN, S_WRAPLEN_DEF);
 	obs_data_set_default_int(settings, S_LINESPACEADJUST, S_LINESPACEADJUST_DEF);
+	obs_data_set_default_int(settings, S_HueQuickShift, S_HueQuickShift_DEF);
+	obs_data_set_default_int(settings, S_FontSizeQuickScale, S_FontSizeQuickScale_DEF);
 
 	obs_data_release(font_obj);
 };
