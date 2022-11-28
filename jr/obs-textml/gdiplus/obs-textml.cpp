@@ -16,6 +16,34 @@
 #include "jrcolorhelper.hpp"
 
 
+//---------------------------------------------------------------------------
+// new 11/28/22 - adjustments do NOT reset on newlines
+#define DefClearAdjustmentsOnHardNewline false
+#define DefClearAdjustmentsOnNNewline false
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+class TextModifier {
+public:
+	float fontSizeAdjustment;
+	float lineSpaceAdjustment;
+	int hueShift;
+	float wordWrapAdjustment;
+	int xoff, yoff;
+	uint32_t color1, color2;
+public:
+	TextModifier() { reset(); };
+	void reset() { fontSizeAdjustment = 1.0f; lineSpaceAdjustment = 1.0f; hueShift = 0; wordWrapAdjustment = 1.0f; xoff = 0; yoff = 0; color1 = 0; color2 = 0; };
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
 
 
 using namespace std;
@@ -308,7 +336,6 @@ struct TextSource {
 	float lineHeightOrig[DEF_MAX_LINES];
 	float lineHeight[DEF_MAX_LINES];
 	float lastFontSizeAdjustment;
-	float wordWrapAdjustment;
 	bool flagClearNextLineFontSizeAdjustment;
 
 	/* --------------------------- */
@@ -330,13 +357,11 @@ struct TextSource {
 		}
 	}
 
-	void UpdateFont(float fontSizeAdjustment);
+	void UpdateFont(TextModifier &tmodifier);
 	void GetStringFormat(StringFormat &format);
 	void RemoveNewlinePadding(const StringFormat &format, RectF &box);
-	void CalculateTextSizes(const StringFormat &format, RectF &bounding_box,
-				SIZE &text_size);
-	void RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
-			       const Brush &brush, int hueShift);
+	void CalculateTextSizes(const StringFormat &format, RectF &bounding_box, SIZE &text_size);
+	void RenderOutlineText(Graphics &graphics, const GraphicsPath &path, const Brush &brush, TextModifier &tmodifier);
 	void RenderText();
 	void LoadFileText();
 	void TransformText();
@@ -349,9 +374,10 @@ struct TextSource {
 	inline void Render();
 protected:
 	bool jrSplitWStringOnChar(std::wstring& mainstr, std::wstring& oneline, wchar_t wc);
-	void parseLineSplitModString(std::wstring modString, float& fontSizeAdjustment, float& lineSpaceAdjustment, int &hueShift, float& wordWrapAdjustment);
-	bool jrSplitWStringLine(std::wstring& mainstr, std::wstring &oneline, float &fontSizeAdjustment, float &lineSpaceAdjustment, int &hueShift, float& wordWrapAdjustment);
-	void setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, int hueShift);
+	void parseLineSplitModString(std::wstring modString, TextModifier &tmodifier);
+	bool jrSplitWStringLine(std::wstring& mainstr, std::wstring &oneline, TextModifier &tmodifier);
+	void setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier);
+	uint32_t parseColorStr(std::wstring ws);
 };
 
 static time_t get_modified_timestamp(const char *filename)
@@ -362,15 +388,15 @@ static time_t get_modified_timestamp(const char *filename)
 	return stats.st_mtime;
 }
 
-void TextSource::UpdateFont(float fontSizeAdjustment)
+void TextSource::UpdateFont(TextModifier &tmodifier)
 {
-	lastFontSizeAdjustment = fontSizeAdjustment;
+	lastFontSizeAdjustment = tmodifier.fontSizeAdjustment;
 	//
 	hfont = nullptr;
 	font.reset(nullptr);
 
 	LOGFONT lf = {};
-	lf.lfHeight = (int)((float)face_size * fontSizeAdjustment);
+	lf.lfHeight = (int)((float)face_size * tmodifier.fontSizeAdjustment);
 	lf.lfWeight = bold ? FW_BOLD : FW_DONTCARE;
 	lf.lfItalic = italic;
 	lf.lfUnderline = underline;
@@ -378,7 +404,7 @@ void TextSource::UpdateFont(float fontSizeAdjustment)
 	lf.lfQuality = ANTIALIASED_QUALITY;
 	lf.lfCharSet = DEFAULT_CHARSET;
 
-	//blog(LOG_WARNING, "In UpdateFont with adjustment= %f and face_size = %d, and lfHeight = %d.", fontSizeAdjustment, face_size, lf.lfHeight);
+	//blog(LOG_WARNING, "In UpdateFont with adjustment= %f and face_size = %d, and lfHeight = %d.", tmodifier.fontSizeAdjustment, face_size, lf.lfHeight);
 
 	if (!face.empty()) {
 		wcscpy(lf.lfFaceName, face.c_str());
@@ -507,7 +533,7 @@ bool TextSource::jrSplitWStringOnChar(std::wstring& mainstr, std::wstring& oneli
 }
 
 
-void TextSource::parseLineSplitModString(std::wstring modString, float &fontSizeAdjustment, float &lineSpaceAdjustment, int &hueShift, float& wordWrapAdjustment) {
+void TextSource::parseLineSplitModString(std::wstring modString, TextModifier &tmodifier) {
 	std::wstring oneline;
 	while (jrSplitWStringOnChar(modString, oneline, L',')) {
 		if (oneline.length() < 2) {
@@ -517,11 +543,11 @@ void TextSource::parseLineSplitModString(std::wstring modString, float &fontSize
 		std::wstring amt = oneline.substr(2);
 		if (oneline[0] == L'f' || oneline[0] == L'F') {
 			if (oneline[1] == L'+') {
-				fontSizeAdjustment =
+				tmodifier.fontSizeAdjustment =
 					1.0f +
 					(float)_wtof(amt.c_str()) / 100.0f;
 			} else if (oneline[1] == L'-') {
-				fontSizeAdjustment =
+				tmodifier.fontSizeAdjustment =
 					1.0f -
 					(float)_wtof(amt.c_str()) / 100.0f;
 			}
@@ -530,40 +556,68 @@ void TextSource::parseLineSplitModString(std::wstring modString, float &fontSize
 				std::string str1, str2;
 				std::transform(oneline.begin(), oneline.end(), std::back_inserter(str1), [](wchar_t c) {	return (char)c;	});
 				std::transform(amt.begin(), amt.end(), std::back_inserter(str2), [](wchar_t c) {	return (char)c;	});
-				blog(LOG_WARNING, "font size adjust is online (%s vs %s) maps to '%f'.", str1.c_str(), str2.c_str(), fontSizeAdjustment);
+				blog(LOG_WARNING, "font size adjust is online (%s vs %s) maps to '%f'.", str1.c_str(), str2.c_str(), tmodifier.fontSizeAdjustment);
 			}
 		} else if (oneline[0] == L'l' || oneline[0] == L'L') {
 			if (oneline[1] == L'+') {
-				lineSpaceAdjustment =
+				tmodifier.lineSpaceAdjustment =
 					1.0f +
 					(float)_wtof(amt.c_str()) / 100.0f;
 			} else if (oneline[1] == L'-') {
-				lineSpaceAdjustment =
+				tmodifier.lineSpaceAdjustment =
 					1.0f -
 					(float)_wtof(amt.c_str()) / 100.0f;
 			}
 		} else if (oneline[0] == L'h' || oneline[0] == L'H') {
 			if (oneline[1] == L'+') {
-				hueShift = _wtoi(amt.c_str());
+				tmodifier.hueShift = _wtoi(amt.c_str());
 			} else if (oneline[1] == L'-') {
-				hueShift = -_wtoi(amt.c_str());
+				tmodifier.hueShift = -_wtoi(amt.c_str());
 			}
 		} else if (oneline[0] == L'w' || oneline[0] == L'W') {
 			if (oneline[1] == L'+') {
-				wordWrapAdjustment =
+				tmodifier.wordWrapAdjustment =
 					1.0f +
 					(float)_wtoi(amt.c_str()) / 100.0f;
 			} else if (oneline[1] == L'-') {
-				wordWrapAdjustment =
+				tmodifier.wordWrapAdjustment =
 					1.0f -
 					(float)_wtoi(amt.c_str()) / 100.0f;
+			}
+		} else if (oneline[0] == L'x' || oneline[0] == L'X') {
+			if (oneline[1] == L'+') {
+				tmodifier.xoff =
+					_wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.xoff =
+					0 - _wtoi(amt.c_str());
+			}
+		} else if (oneline[0] == L'y' || oneline[0] == L'Y') {
+			if (oneline[1] == L'+') {
+				tmodifier.yoff =
+					_wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.yoff =
+					0 - _wtoi(amt.c_str());
+			}
+		} else if (oneline[0] == L'c' || oneline[0] == L'C') {
+			if (oneline.length() >= 10) {
+				amt = oneline.substr(3);
+				if (oneline[1] == L'1' && oneline[2] == L'=') {
+					tmodifier.color1 =
+						parseColorStr(amt);
+				}
+				else if (oneline[1] == L'2' && oneline[2] == L'=') {
+					tmodifier.color2 =
+						parseColorStr(amt);
+				}
 			}
 		}
 	}
 }
 
 
-bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline, float &fontSizeAdjustment, float &lineSpaceAdjustment, int &hueShift, float& wordWrapAdjustment) {
+bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline, TextModifier &tmodifier) {
 	// split off the next line from mainstr into oneline, doing wrap if needed
 	int slen = (int)mainstr.length();
 	if (slen == 0) {
@@ -582,11 +636,8 @@ bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline
 	int realStartPos = 0;
 	// we do NOT clear this, so that split lines keep their adjustments
 	if (flagClearNextLineFontSizeAdjustment) {
-		fontSizeAdjustment = 1.0f;
-		hueShift = 0;
+		tmodifier.reset();
 		flagClearNextLineFontSizeAdjustment = false;
-		wordWrapAdjustment = 1.0f;
-		lineSpaceAdjustment = 1.0f;
 	}
 
 	// special font size adjustments
@@ -602,7 +653,7 @@ bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline
 					realStartPos = pos+1;
 					flagInSpecialMod = false;
 					std::wstring modString = mainstr.substr(1, pos-1);
-					parseLineSplitModString(modString, fontSizeAdjustment, lineSpaceAdjustment, hueShift, wordWrapAdjustment);
+					parseLineSplitModString(modString, tmodifier);
 				}
 				continue;
 			}
@@ -619,13 +670,13 @@ bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline
 				// newline break
 				breakLinePos = lastSpacePosStart;
 				resumePos = lastSpacePosEnd + 1;
-				flagClearNextLineFontSizeAdjustment = true;
+				flagClearNextLineFontSizeAdjustment = DefClearAdjustmentsOnHardNewline;
 				break;
 			}
 			flagInSpaces = true;
 		} else {
 			if (w == L'\\') {
-				if (pos < slen - 1 && mainstr[pos + 1] == L'n') {
+				if (pos < slen - 1 && (mainstr[pos + 1] == L'n' || mainstr[pos + 1] == L'N')) {
 					// newline equive
 					if (lastSpacePosStart != -1 && flagInSpaces) {
 						breakLinePos = lastSpacePosStart;
@@ -633,11 +684,11 @@ bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline
 						breakLinePos = pos;
 					}
 					resumePos = pos + 2;
-					flagClearNextLineFontSizeAdjustment = true;
+					flagClearNextLineFontSizeAdjustment = DefClearAdjustmentsOnNNewline;
 					break;
 				}
 			}
-			if (charCount >= tweakWraplen*wordWrapAdjustment && tweakWraplen>0) {
+			if (charCount >= tweakWraplen*tmodifier.wordWrapAdjustment && tweakWraplen>0) {
 				// ok we want to break on the last space/newline
 				if (lastSpacePosStart > -1) {
 					// break at last space
@@ -682,6 +733,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 	RectF layout_box;
 	RectF temp_box;
 	Status stat;
+	TextModifier tmodifier;
 
 	if (!text.empty()) {
 		if (multineTweakEnable) {
@@ -692,20 +744,17 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 			int lineNumber = 1;
 			lineHeightOrig[0] = 1.0f;
 			lineHeight[0] = 1.0f;
-			float fontSizeAdjustment = 0.0f;
-			float lineSpaceAdjustment = 0.0f;
-			float wordWrapAdjustment = 0.0f;
-			int hueShift = 0;
+			tmodifier.reset();
 			
 			bounding_box.X = bounding_box.Y = bounding_box.Width = bounding_box.Height = 0;
 			flagClearNextLineFontSizeAdjustment = true;
-			while (jrSplitWStringLine(tempText, oneLine, fontSizeAdjustment, lineSpaceAdjustment, hueShift, wordWrapAdjustment)) {
+			while (jrSplitWStringLine(tempText, oneLine, tmodifier)) {
 				if (oneLine.length() >= 2 && oneLine[0] == L'/' && oneLine[1] == L'/') {
 					// comment
 					continue;
 				}
-				if (fontSizeAdjustment != lastFontSizeAdjustment) {
-					UpdateFont(fontSizeAdjustment);
+				if (tmodifier.fontSizeAdjustment != lastFontSizeAdjustment) {
+					UpdateFont(tmodifier);
 				}
 				bounding_box_temp.X = bounding_box_temp.Y = bounding_box_temp.Width = bounding_box_temp.Height = 0;
 
@@ -720,9 +769,9 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 				bounding_box.Width = max(bounding_box.Width, bounding_box_temp.Width);
 				lineHeightOrig[lineNumber] = (float)bounding_box_temp.Height;
 				lineHeight[lineNumber] = ( (float)bounding_box_temp.Height * tweakHeightAdjust);
-				if (lineSpaceAdjustment != 1.0f && lineNumber > 0) {
+				if (tmodifier.lineSpaceAdjustment != 1.0f && lineNumber > 0) {
 					// effects line height of the previous line
-					lineHeight[lineNumber - 1] *= lineSpaceAdjustment;
+					lineHeight[lineNumber - 1] *= tmodifier.lineSpaceAdjustment;
 				}
 				//blog(LOG_WARNING, "Line %d returned height %f tweaked with %f to %f.", lineNumber, bounding_box_temp.Height, tweakHeightAdjust, lineHeight[lineNumber]);
 				if (lineNumber > 1) {
@@ -834,9 +883,9 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 }
 
 void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
-				   const Brush &brush, int hueShift)
+				   const Brush &brush, TextModifier &tmodifier)
 {
-	//DWORD outline_rgba = calc_color(outline_color, outline_opacity, hueShift);
+	//DWORD outline_rgba = calc_color(outline_color, outline_opacity, tmodifier.hueShift);
 	DWORD outline_rgba = calc_color(outline_color, outline_opacity, 0);
 	Status stat;
 
@@ -851,8 +900,8 @@ void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
 	warn_stat("graphics.FillPath");
 }
 
-void TextSource::setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, int hueShift) {
-	brushp->SetLinearColors(Color(calc_color(color, opacity, hueShift)), Color(calc_color(color2, opacity2, hueShift)));
+void TextSource::setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier) {
+	brushp->SetLinearColors(Color(calc_color(cl1, opacity, tmodifier.hueShift)), Color(calc_color(cl2, opacity2, tmodifier.hueShift)));
 }
 
 
@@ -865,6 +914,8 @@ void TextSource::RenderText()
 	RectF linebox;
 	SIZE size;
 	LinearGradientBrush *brushp;
+	//
+	TextModifier tmodifier;
 
 	GetStringFormat(format);
 	CalculateTextSizes(format, box, size);
@@ -913,31 +964,45 @@ void TextSource::RenderText()
 			std::wstring oneLine;
 			RectF bounding_box_temp;
 			int lineNumber = 1;
-			float fontSizeAdjustment = 0.0f;
-			float lineSpaceAdjustment = 0.0f;
-			float wordWrapAdjustment = 0.0f;
-			// little buffer on left hand side
-			float leftMarginX = (float)face_size * 0.10f;
+			tmodifier.reset();
+
+			// kludge little buffer on left hand side
+
 			flagClearNextLineFontSizeAdjustment = true;
+			float currentX = 0.0f;
 			float currentY = 0.0f;
 			bool flagDeleteBrush = false;
-			int hueShift = 0;
 			int lastHueShift = 0;
 			//
+			float marginFontSizeOffsetScale = 0.055f;
+			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;// 0.10f;
 			box.X = leftMarginX;
 			//
+			uint32_t rcolor1 = color;
+			uint32_t rcolor2 = color2;
 			//
-			while (jrSplitWStringLine(tempText, oneLine, fontSizeAdjustment, lineSpaceAdjustment, hueShift, wordWrapAdjustment)) {
+			//
+			while (jrSplitWStringLine(tempText, oneLine, tmodifier)) {
 				if (oneLine.length() >= 2 && oneLine[0] == L'/' && oneLine[1] == L'/') {
 					// comment
 					continue;
 				}
-				if (fontSizeAdjustment != lastFontSizeAdjustment) {
-					UpdateFont(fontSizeAdjustment);
+				if (tmodifier.fontSizeAdjustment != lastFontSizeAdjustment) {
+					UpdateFont(tmodifier);
 				}
-				if (hueShift != 0) {
+				if (tmodifier.hueShift != 0) {
 
 				}
+
+				// currentX - try to offset tweak based on font
+				float fsize = (float)face_size * tmodifier.fontSizeAdjustment;
+				float leftMarginX = fsize * marginFontSizeOffsetScale;
+				currentX = box.X - leftMarginX;
+				currentX += tmodifier.xoff;
+				currentY += tmodifier.yoff;
+				// we clear yoff each time
+				tmodifier.yoff = 0;
+
 
 				// a kludge for first line spacing adjustment, so user can use lineheight adjustment on first line to shift entire text up or down
 				if (lineNumber == 1) {
@@ -945,18 +1010,21 @@ void TextSource::RenderText()
 				}
 
 				// the area this line will be drawn into
-				linebox = RectF(box.X, currentY, box.Width, lineHeightOrig[lineNumber]);
+				linebox = RectF(currentX, currentY, box.Width, lineHeightOrig[lineNumber]);
+
+				rcolor1 = (tmodifier.color1 != 0) ? tmodifier.color1 : color;
+				rcolor2 = (tmodifier.color2 != 0) ? tmodifier.color2 : color2;
 
 				if (gradientPerLine) {
 					brushp = new LinearGradientBrush(RectF(linebox.X, linebox.Y, (float)size.cx, lineHeightOrig[lineNumber]),
-						Color(calc_color(color, opacity, hueShift)),
-						Color(calc_color(color2, opacity2, hueShift)),
+						Color(calc_color(rcolor1, opacity, tmodifier.hueShift)),
+						Color(calc_color(rcolor2, opacity2, tmodifier.hueShift)),
 						gradient_dir, 1);
 					flagDeleteBrush = true;
 				} else {
-					if (hueShift != lastHueShift) {
-						setCurrentBrushColorUsingHueShift(brushp, hueShift);
-						lastHueShift = hueShift;
+					if (tmodifier.hueShift != lastHueShift) {
+						setCurrentBrushColorUsingHueShift(brushp, rcolor1, rcolor2, tmodifier);
+						lastHueShift = tmodifier.hueShift;
 					}
 				}
 					
@@ -974,7 +1042,7 @@ void TextSource::RenderText()
 						font->GetSize(), linebox, &format);
 					warn_stat("path.AddString");
 
-					RenderOutlineText(graphics_bitmap, path, *brushp, hueShift);
+					RenderOutlineText(graphics_bitmap, path, *brushp, tmodifier);
 				}
 				else {
 					stat = graphics_bitmap.DrawString(oneLine.c_str(),
@@ -1008,7 +1076,7 @@ void TextSource::RenderText()
 						      &format);
 				warn_stat("path.AddString");
 
-				RenderOutlineText(graphics_bitmap, path, *brushp, 0);
+				RenderOutlineText(graphics_bitmap, path, *brushp, tmodifier);
 			} else {
 				stat = graphics_bitmap.DrawString(
 					text.c_str(), (int)text.size(),
@@ -1164,6 +1232,7 @@ inline void TextSource::Update(obs_data_t *s)
 
 
 	/* ----------------------------- */
+	TextModifier tmodifier;
 
 	wstring new_face = to_wide(font_face);
 
@@ -1178,7 +1247,7 @@ inline void TextSource::Update(obs_data_t *s)
 		underline = new_underline;
 		strikeout = new_strikeout;
 
-		UpdateFont(1.0f);
+		UpdateFont(tmodifier);
 	}
 
 	/* ----------------------------- */
@@ -1305,6 +1374,37 @@ inline void TextSource::Render()
 
 	gs_enable_framebuffer_srgb(previous);
 }
+
+
+
+
+
+uint32_t TextSource::parseColorStr(std::wstring ws) {
+	//return 0xFF4466;
+
+	//blog(LOG_WARNING, "parseColorStr: %ls", ws);
+
+	int r, g, b;
+	int parsedCount = swscanf(ws.c_str(), L"#%02x%02x%02x", &r, &g, &b);
+	if (parsedCount != 3) {
+		return 0;
+	}
+	uint32_t cl = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+	return cl;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* ------------------------------------------------------------------------- */
 
@@ -1629,3 +1729,6 @@ void obs_module_unload(void)
 {
 	GdiplusShutdown(gdip_token);
 }
+
+
+
