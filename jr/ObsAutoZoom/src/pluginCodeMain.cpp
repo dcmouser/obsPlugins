@@ -483,12 +483,10 @@ void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 		saveVolatileSettings();
 	} else if (id == hotkeyId_CycleViewForward) {
 		// ATTN: TODO - should we force ignore markers in this case?
-		viewCycleAdvance(1);
-		saveVolatileSettings();
+		smartVisibleViewCycleAdvance(1);
 	} else if (id == hotkeyId_CycleViewBack) {
 		// ATTN: TODO - should we force ignore markers in this case?
-		viewCycleAdvance(-1);
-		saveVolatileSettings();
+		smartVisibleViewCycleAdvance(-1);
 	} else if (id == hotkeyId_toggleAutoSourceHunting) {
 		saveCurrentViewedSourceAsManualViewOption();
 		opt_enableAutoSourceHunting = !opt_enableAutoSourceHunting;

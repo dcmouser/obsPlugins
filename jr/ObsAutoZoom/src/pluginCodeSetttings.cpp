@@ -713,11 +713,17 @@ void JrPlugin::addPropertyForASourceOption(obs_properties_t *pp, const char *nam
 
 
 //---------------------------------------------------------------------------
+// ATTN: 12/07/22 - this seems to cause memory leak
 void JrPlugin::saveVolatileSettings() {
 	// called when we change a setting in runtime object that we want to push into the stored configured object in obs
 	// these are mostly things that can be toggled with hotkeys
 	// ATTN:TODO - decide whether you really DO want to push these to be remembered or reset them?
 	// see https://obsproject.com/docs/reference-sources.html
+
+
+	// ATTN: test
+	// return;
+
 
 	// borrow settings
 	obs_data_t* settings = obs_source_get_settings(getThisPluginSource());
@@ -750,6 +756,9 @@ void JrPlugin::saveVolatileSettings() {
 
 	// release settings
 	obs_data_release(settings);
+
+	// release properties
+	obs_properties_destroy(props);
 }
 
 

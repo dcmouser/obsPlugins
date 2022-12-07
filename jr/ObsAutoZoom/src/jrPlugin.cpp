@@ -458,11 +458,18 @@ uint32_t plugin_height(void *data)
 
 
 
+//---------------------------------------------------------------------------
+// signal based zoom in and out
+void plugin_media_next(void *data) {
+	JrPlugin *plugin = (JrPlugin*) data;
+	plugin->viewCycleAdvance(1);
+}
 
-
-
-
-
+void plugin_media_previous(void *data) {
+	JrPlugin *plugin = (JrPlugin*) data;
+	plugin->viewCycleAdvance(-1);
+}
+//---------------------------------------------------------------------------
 
 
 
@@ -493,7 +500,7 @@ const char *plugin_get_name(void *data)
 void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	pluginInfo->version = 2;
 	// note that the OBS_SOURCE_COMPOSITE flag below is supposed to be used by sources that composite multiple children, which we seem to do -- not sure its needed though
-	pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW /* | OBS_SOURCE_COMPOSITE*/;
+	pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW  /* | OBS_SOURCE_COMPOSITE*/;
 	pluginInfo->get_name = plugin_get_name;
 	pluginInfo->create = plugin_create;
 	pluginInfo->destroy = plugin_destroy;
@@ -510,6 +517,8 @@ void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	pluginInfo->enum_active_sources = plugin_enum_sources;
 	pluginInfo->audio_render = plugin_audio_render;
 	pluginInfo->icon_type = OBS_ICON_TYPE_CAMERA;
+	pluginInfo->media_next = plugin_media_next;
+	pluginInfo->media_previous = plugin_media_previous;
 }
 
 

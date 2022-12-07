@@ -384,6 +384,13 @@ public:
 	bool getMarkerlessModeIsManualZoom() { return opt_markerlessMode == 0; }
 	bool getMarkerlessModeIsDisabled() { return opt_markerlessMode == 2; }
 public:
+	bool isThisPluginSourceActiveAndVisible();
+	obs_source_t* findActiveAndVisibleAutoZoomSource();
+	obs_source_t* findActiveAndVisibleAutoZoomSourceInScene(obs_scene_t* scenep);
+	obs_source_t* findActiveAndVisibleAutoZoomSourceInSceneUsingEnum(obs_scene_t* scenep);
+	//
+	void smartVisibleViewCycleAdvance(int delta);
+public:
 	void viewCycleAdvance(int delta);
 	void markerlessCycleListAdvance(int delta);
 	void viewingSourceManuallyAdvance(int delta);
@@ -409,4 +416,7 @@ public:
 //---------------------------------------------------------------------------
 
 
-
+//---------------------------------------------------------------------------
+// static
+bool findAutoZoomSourceFromSceneItemEnum(obs_scene_t* scene, obs_sceneitem_t* item, void* param);
+//---------------------------------------------------------------------------

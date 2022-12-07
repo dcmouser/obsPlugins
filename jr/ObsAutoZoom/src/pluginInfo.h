@@ -3,8 +3,8 @@
 //---------------------------------------------------------------------------
 #define DefMyPluginName			"ObsAutoZoom"
 #define DefMyPluginAuthor		"mouser@donationcoder.com"
-#define DefMyPluginVersion		"v2.1"
-#define DefMyPluginVersionDate	"Nov 20, 2022"
+#define DefMyPluginVersion		"v2.2"
+#define DefMyPluginVersionDate	"Dec 7, 2022"
 
 #define DefMyPluginLabel		DefMyPluginName ## " " ## DefMyPluginVersion
 
