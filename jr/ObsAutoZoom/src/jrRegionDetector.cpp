@@ -2,7 +2,25 @@
 #include "jrRegionDetector.h"
 #include "obsHelpers.h"
 #include "jrPluginDefs.h"
+//
+#include <cmath>
+#include <algorithm>
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+#ifdef max
+#undef max
+#endif
+#define max(val, high) (val > high ? val : high)
+#ifdef min
+#undef min
+#endif
+#define min(val, low) (val < low ? val : low)
+//---------------------------------------------------------------------------
+
+
 
 
 
@@ -20,8 +38,6 @@ int JrRegionDetector::CompRgbaByteOffset(int x, int y, int linesize) {
 	return y * linesize + x * 4;
 };
 */
-
-
 
 
 
@@ -240,6 +256,8 @@ int JrRegionDetector::fillFromStagingMemory(DefPixelRgbaType* internalObsRgbADat
 
 //---------------------------------------------------------------------------
 // see https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.58.3213&rep=rep1&type=pdf
+// // https://www.sciencedirect.com/science/article/abs/pii/S1077314203001401
+// https://www.iis.sinica.edu.tw/~fchang/paper/component_labeling_cviu.pdf
 // see https://github.com/BlockoS/blob
 
 /* Extract blob contour (external or internal). */
@@ -377,6 +395,7 @@ bool JrRegionDetector::doContourTrace(uint8_t external, DefLabelType currentLabe
                     break;
                 }
                 else {
+		    // what is this about? see paper p.8 we need to mark surrounding background
                     labels[offset] = DefRegLabelMarked;
                 }
             }
@@ -496,6 +515,7 @@ void JrRegionDetector::updateRegionDataOnForegroundPixel(DefLabelType labelIndex
 
 
 bool JrRegionDetector::isPixelEnumConsideredForeground(DefPixelEnumType pixelEnum, bool contextWalkingOutside) {
+    // i dont think we ever user this function
     if (contextWalkingOutside) {
         if (pixelEnum == DefRdPixelEnumColor1) {
             return true;
@@ -524,91 +544,114 @@ int JrRegionDetector::doConnectedComponentLabeling() {
 
     initializeRegionData(currentLabel);
 
-	// walk pixels top to bottom, then left to right
-	for (int j = 0; j < height; j++)
-	{
-		for (int i = 0; i < width; i++)
-		{
-            pixelEnum = pixels[CompPointOffset(i, j)];
+    // walk pixels top to bottom, then left to right
+    for (int j = 0; j < height; j++) {
+	for (int i = 0; i < width; i++) {
+	    pixelEnum = pixels[CompPointOffset(i, j)];
 
-            // pure background we can skip
-            if (DefRdPixelEnumColorBackground == pixelEnum) {
-                continue;
-            }
-            bool isPreferredColor = (DefRdPixelEnumColor1 == pixelEnum || DefRdPixelEnumColor3 == pixelEnum);
+	    // pure background we can skip
+	    if (DefRdPixelEnumColorBackground == pixelEnum) {
+		continue;
+	    }
+	    bool isPreferredColor = (DefRdPixelEnumColor1 == pixelEnum ||
+				     DefRdPixelEnumColor3 == pixelEnum);
 
+	    //mydebug("Pixel value at %dx%d is %d", i, j, pixelEnum);
 
-            //mydebug("Pixel value at %dx%d is %d", i, j, pixelEnum);
+	    // ok so from here down we know we are on a colored foreground pixel
 
-            // ok so from here down we know we are on a colored foreground pixel
+	    const DefPixelEnumType abovePixel =
+		    (j > 0) ? pixels[CompPointOffset(i, j - 1)]
+			    : DefRdPixelEnumColorBackground;
+	    const DefPixelEnumType belowPixel =
+		    (j < height - 1) ? pixels[CompPointOffset(i, j + 1)]
+				     : DefRdPixelEnumColorBackground;
+	    const DefLabelType belowLabel =
+		    (j < height - 1) ? labels[CompPointOffset(i, j + 1)]
+				     : DefRegLabelMarked;
 
-            const DefPixelEnumType abovePixel = (j > 0) ? pixels[CompPointOffset(i, j - 1)] : DefRdPixelEnumColorBackground;
-			const DefPixelEnumType belowPixel = (j < height-1) ? pixels[CompPointOffset(i, j + 1)] : DefRdPixelEnumColorBackground;
-            const DefLabelType belowLabel = (j < height-1) ? labels[CompPointOffset(i, j + 1)] : DefRegLabelMarked;
+	    const DefLabelType label = labels[CompPointOffset(i, j)];
 
-			const DefLabelType label = labels[CompPointOffset(i, j)];
-
-            /* 1. new external countour */
-//            if ((DefRegLabelUnset == label) && (DefRdPixelEnumColorBackground == abovePixel)) {
-            if (isPreferredColor && (DefRegLabelUnset == label) && (DefRdPixelEnumColor1 != abovePixel && DefRdPixelEnumColor3 != abovePixel)) {
-                // main work done here
-				// a new region exterior border
-                // trace around it and label exterior border
-                abort |= !doContourTrace(1, currentLabel, i, j);
-				// advance blob label
-                ++currentLabel;
-                // initialize new region data
-                initializeRegionData(currentLabel);
-                //mydebug("regiondata currentLabel = %d.", currentLabel);
-                if (currentLabel > DefMaxRegionsAbort) {
-                    // aborting because there are just too many
-                    //regiondebug("ATTN: aborting doConnectedComponentLabeling due to too many regions found.");
-                    abort = true;
-                    break;
-                }
-            }
-            /* 2. new internal countour */
-//            else if ((DefRdPixelEnumColorBackground == belowPixel) && (DefRegLabelUnset == belowLabel))
-            else if (isPreferredColor && (DefRdPixelEnumColor1 != belowPixel && DefRdPixelEnumColor3 != belowPixel) && (DefRegLabelUnset == belowLabel))
-            {
-                // sanity test
-                // is this branch responsible for a problem passing a 0 label?
-                // ATTN: can we use this to count HOLES in the region and record that for use in filtering valid regions (ie rejecting regions with large holes)
-				DefLabelType workingPointLabel = (label != DefRegLabelUnset) ? label : labels[CompPointOffset(i-1, j)];
-
-                if (workingPointLabel <= 0) {
-                    // ATTN: this should not happen in original code..
-                    //mydebug("WARNING: UNEXPECTEDLY hit workingPointLabel = %d (label = %d) at location %d,%d (wxh = %d x %d).", workingPointLabel, label, i,j, width, height);
-                    // let's try using 3. internal element code from below
-                    if (true) {
-                        // label interior element
-                        const DefLabelType interiorLabel = (i > 0) ? labels[CompPointOffset(i - 1, j)] : DefRegLabelUnset;
-                        labels[CompPointOffset(i, j)] = interiorLabel;
-                        if (interiorLabel != DefRegLabelUnset) {
-                            updateRegionDataOnForegroundPixel(interiorLabel, i, j, false, pixelEnum);
-                        }
-                    }
-                } else {
-                    /* add a new internal contour to the corresponding blob. */
-                    abort |= !doContourTrace(0, workingPointLabel, i, j);
-                }
-            }
-            /* 3. internal element */
-            else if (DefRegLabelUnset == label) {
-                // label interior element -- we do this on ANY color other than background
-                const DefLabelType interiorLabel = (i > 0) ? labels[CompPointOffset(i - 1, j)] : DefRegLabelUnset;
-                labels[CompPointOffset(i, j)] = interiorLabel;
-                if (interiorLabel != DefRegLabelUnset) {
-                    updateRegionDataOnForegroundPixel(interiorLabel, i, j, false, pixelEnum);
-                }
-            }
-            if (abort) {
-                break;
-            }
+	    /* 1. new external countour */
+	    //            if ((DefRegLabelUnset == label) && (DefRdPixelEnumColorBackground == abovePixel)) {
+	    if (isPreferredColor && (DefRegLabelUnset == label) &&
+		(DefRdPixelEnumColor1 != abovePixel &&
+		 DefRdPixelEnumColor3 != abovePixel)) {
+		// main work done here
+		// a new region exterior border
+		// trace around it and label exterior border
+		abort |= !doContourTrace(1, currentLabel, i, j);
+		// advance blob label
+		++currentLabel;
+		// initialize new region data
+		initializeRegionData(currentLabel);
+		//mydebug("regiondata currentLabel = %d.", currentLabel);
+		if (currentLabel > DefMaxRegionsAbort) {
+		    // aborting because there are just too many
+		    //regiondebug("ATTN: aborting doConnectedComponentLabeling due to too many regions found.");
+		    abort = true;
+		    break;
 		}
-        if (abort) {
-            break;
-        }
+	    }
+	    /* 2. new internal countour */
+	    //            else if ((DefRdPixelEnumColorBackground == belowPixel) && (DefRegLabelUnset == belowLabel))
+	    else if (isPreferredColor &&
+		     (DefRdPixelEnumColor1 != belowPixel &&
+		      DefRdPixelEnumColor3 != belowPixel) &&
+		     (DefRegLabelUnset == belowLabel)) {
+		// sanity test
+		// is this branch responsible for a problem passing a 0 label?
+		// ATTN: can we use this to count HOLES in the region and record that for use in filtering valid regions (ie rejecting regions with large holes)
+		DefLabelType workingPointLabel =
+			(label != DefRegLabelUnset)
+				? label
+				: labels[CompPointOffset(i - 1, j)];
+
+		if (workingPointLabel <= 0) {
+		    // ATTN: this should not happen in original code i think..
+		    //mydebug("WARNING: UNEXPECTEDLY hit workingPointLabel = %d (label = %d) at location %d,%d (wxh = %d x %d).", workingPointLabel, label, i,j, width, height);
+		    // let's try using 3. internal element code from below
+		    if (true) {
+			// label interior element
+			const DefLabelType interiorLabel =
+				(i > 0) ? labels[CompPointOffset(i - 1, j)]
+					: DefRegLabelUnset;
+			labels[CompPointOffset(i, j)] = interiorLabel;
+			if (interiorLabel != DefRegLabelUnset) {
+			    updateRegionDataOnForegroundPixel(
+				    interiorLabel, i, j, false, pixelEnum);
+			}
+		    }
+		} else {
+		    /* add a new internal contour to the corresponding blob. */
+		    abort |= !doContourTrace(0, workingPointLabel, i, j);
+		}
+	    }
+	    /* 3. internal element */
+	    //else if (DefRegLabelUnset == label) {
+	    // new 12/2/22 test now includes MARKED color2 pixels
+	    else if (DefRegLabelUnset == label || DefRegLabelMarked == label) {
+		// label interior element -- we do this on ANY color other than background
+		const DefLabelType interiorLabel =
+			(i > 0) ? labels[CompPointOffset(i - 1, j)]
+				: DefRegLabelUnset;
+		labels[CompPointOffset(i, j)] = interiorLabel;
+		if (interiorLabel != DefRegLabelUnset) {
+		    updateRegionDataOnForegroundPixel(interiorLabel, i, j, false, pixelEnum);
+		    /*
+		    if (pixelEnum == DefRdPixelEnumColor2) {
+			    mydebug("ATTN: Found color2 pixel in region %d at loc %d,%d.", interiorLabel, i, j);
+		    }
+		    */
+		}
+	    }
+	    if (abort) {
+		break;
+	    }
+	}
+	if (abort) {
+	    break;
+	}
     }
 
     // post process
@@ -694,7 +737,7 @@ void JrRegionDetector::calibrateScanRegion(JrRegionSummary* regionp, unsigned lo
 
 
 //---------------------------------------------------------------------------
-void JrRegionDetector::doRenderToInternalMemoryPostProcessing(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int optionGapFillSize) {
+void JrRegionDetector::doRenderToInternalMemoryPostProcessing_DualColorGapFill(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int optionGapFillSize) {
     // ATTN: we could try doing a dilation blur type operation using a filter instead of this hand code
     bool flagDilateIntoGreenAlso = true;
 
@@ -835,6 +878,177 @@ void JrRegionDetector::doRenderToInternalMemoryPostProcessing(DefPixelRgbaType* 
         }
     }
 
-    //mydebug("Finished doRenderToInternalMemoryPostProcessing with %lu and %lu.", hitTargetCount, hitDilateCount);
+    //mydebug("Finished doRenderToInternalMemoryPostProcessing_DualColorGapFill with %lu and %lu.", hitTargetCount, hitDilateCount);
 }
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrRegionDetector::doRenderToInternalMemoryPostProcessing_Dilate(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int dilateGreenSteps, int dilateRedSteps) {
+	if (DefDilateImplementationCpp) {
+		//
+		doRenderToInternalMemoryPostProcessing_Dilate_Cpp(internalObsRgbAData, linesize, dilateGreenSteps, dilateRedSteps);
+	}
+	else {
+		// dilation using effect is done in TrackedSource::findTrackingMarkerRegionInSource
+	}
+}
+
+
+void JrRegionDetector::doRenderToInternalMemoryPostProcessing_Dilate_Cpp(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int dilateGreenSteps, int dilateRedSteps) {
+    DefPixelRgbaType pixelVal;
+    DefPixelRgbaType pixelVald = 0;
+    //
+    unsigned long offset;
+    unsigned long hitTargetCount = 0;
+    unsigned long hitDilateCount = 0;
+
+    // we start in and end early just for efficiency since we shouldnt need to mess with pixels on border
+    int sy = 0;
+    int sx = 0;
+    int ex = width;
+    int ey = height;
+    //
+    int maxDilations = max(dilateGreenSteps, dilateRedSteps);
+
+    //
+    for (int dstep = 0; dstep < maxDilations; ++dstep) {
+	int dilationsDoneThisRound = 0;
+	for (int iy = sy; iy < ey; ++iy) {
+	    for (int ix = sx; ix < ex; ++ix) {
+		// we only care about background pixels
+		offset = CompPointOffset(ix, iy);
+		pixelVal = internalObsRgbAData[offset];
+		if (!pixelVal == DefRdPixelRgbaColorBackground) {
+		    continue;
+		}
+		// ok its a background pixel, now we will walk around it and see if there are any green or red pixels to dilate into us
+		int isx = max(0, ix - 1);
+		int isy = max(0, iy - 1);
+		int iex = min(ex, ix + 2);
+		int iey = min(ey, iy + 2);
+		int greenNeighbors = 0;
+		int redNeighbors = 0;
+		// count how many red and green neighbors
+		for (int iiy = isy; iiy < iey; ++iiy) {
+			for (int iix = isx; iix < iex; ++iix) {
+				pixelVal = internalObsRgbAData[CompPointOffset(iix, iiy)];
+				if (pixelVal == DefRdPixelRgbaColor1) {
+					++greenNeighbors;
+				} else if (pixelVal == DefRdPixelRgbaColor2) {
+					++redNeighbors;
+				} 
+			}
+		}
+		// prefer red?
+		if (dstep < dilateRedSteps && redNeighbors>0) {
+			// make us red
+			internalObsRgbAData[offset] = DefRdPixelRgbaColor2Temp;
+			++dilationsDoneThisRound;
+		} else if (dstep < dilateGreenSteps && greenNeighbors>0) {
+			// make us green
+			internalObsRgbAData[offset] = DefRdPixelRgbaColor1Temp;
+			++dilationsDoneThisRound;
+		} 
+	    }
+	}
+	if (dilationsDoneThisRound == 0) {
+		break;
+	}
+
+	// change temps to real
+	for (int iy = sy; iy < ey; ++iy) {
+		for (int ix = sx; ix < ex; ++ix) {
+			// we only care about background pixels
+			offset = CompPointOffset(ix, iy);
+			    pixelVal = internalObsRgbAData[offset];
+			if (pixelVal == DefRdPixelRgbaColor1Temp) {
+				internalObsRgbAData[offset] = DefRdPixelRgbaColor1;
+			} else if (pixelVal == DefRdPixelRgbaColor2Temp) {
+				internalObsRgbAData[offset] = DefRdPixelRgbaColor2;
+			} 
+		}
+	}
+
+    }
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+/*
+gs_texrender_t* TrackedSource::doPipeLineOutputEffect_Blur(gs_texrender_t* inputTexRender, int owidth, int oheight) {
+	gs_texrender_t* outputTextRenderLastOut = inputTexRender;
+	gs_texrender_t* outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
+	bool flagNeedsMergedOriginal = false;
+	bool flagChangedSize = false;
+
+	if (false) {
+		// test -- just render from input to output texture without running any effect
+		jrRenderTextureIntoTexture(outputTextRenderNextOut, outputTextRenderLastOut, owidth, oheight, jrBlendClearOverwite);
+		outputTextRenderLastOut = outputTextRenderNextOut;
+		outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
+	} else {
+		// blur
+		int numpasses = plugin->ep_optBlurPasses;
+		float downRatio = plugin->ep_optBlurSizeReduction;
+		//
+		if (downRatio>1.0f) {
+			flagChangedSize = true;
+		}
+		//
+		for (int i=0;i<numpasses;++i) {
+			plugin->setEffectParamsOutput(this, owidth, oheight, i, NULL);
+			// run effect
+			jrRenderEffectIntoTexture(outputTextRenderNextOut, plugin->effectOutput, outputTextRenderLastOut, (int)(owidth/downRatio), (int)(oheight/downRatio), jrBlendClearOverwite, "Blur");
+			// advance for next pass
+			outputTextRenderLastOut = outputTextRenderNextOut;
+			outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
+		}
+		if (downRatio > 0) {
+			flagNeedsMergedOriginal = true;
+		}
+	}
+
+	if (flagNeedsMergedOriginal) {
+		// we have done things that have corrupted our interior softcrop region, so we need to overwrite it
+		if (true) {
+			// render at full scale -- we could skip this if we thought it was already at full scale (check texture size)
+			jrRenderTextureIntoTexture(outputTextRenderNextOut, outputTextRenderLastOut, owidth, oheight, jrBlendClearOverwite);
+			// advance for next pass
+			outputTextRenderLastOut = outputTextRenderNextOut;
+			outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
+		}
+
+		if (flagChangedSize) {
+			// now override softcrop area with original
+			plugin->setEffectParamsOutput(this, owidth, oheight, 0, outputTextRenderLastOut);
+			// run effect on original input
+			if (outputTextRenderNextOut == inputTexRender) {
+				mydebug("ERROR trying to blur effect from and to same texture.");
+				return outputTextRenderLastOut;
+			}
+			jrRenderEffectIntoTexture(outputTextRenderNextOut, plugin->effectOutput, inputTexRender, owidth, oheight, jrBlendClearOverwite, "DrawInteriorExterior");
+			// advance for next pass
+			outputTextRenderLastOut = outputTextRenderNextOut;
+			outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
+		}
+	}
+
+	// and return output texture
+	return outputTextRenderLastOut;
+}
+*/
 //---------------------------------------------------------------------------

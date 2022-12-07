@@ -297,7 +297,7 @@ void TrackedSource::setStickyTargetToMarkers() {
 //---------------------------------------------------------------------------
 
 
-
+#define DefFindOccludedMarkerAmongLimit	2
 
 //---------------------------------------------------------------------------
 bool TrackedSource::isOneValidRegionAtUnchangedLocation() {
@@ -305,10 +305,14 @@ bool TrackedSource::isOneValidRegionAtUnchangedLocation() {
 	// return true if we found one region at same location as prior tracking box
 	JrRegionDetector* rd = &regionDetector;
 
+	//mydebug("ATTN: in isOneValidRegionAtUnchangedLocation.");
+
 	if (!stickyBoxReady) {
+		//mydebug("ATTN: in isOneValidRegionAtUnchangedLocation, false A.");
 		return false;
 	}
-	if (rd->foundRegionsValid != 1) {
+	if (rd->foundRegionsValid == 0 || rd->foundRegionsValid > plugin->opt_zcValidMarkersToTestForOcclusion) {
+		//mydebug("ATTN: in isOneValidRegionAtUnchangedLocation, false B (%d).", rd->foundRegionsValid);
 		return false;
 	}
 
@@ -326,9 +330,11 @@ bool TrackedSource::isOneValidRegionAtUnchangedLocation() {
 				occludedCornerIndex = 1;
 				return true;
 			}
-			break;
+			// we used to break here only allowing one valid marker to be found, now we check if any valid markers match one
+			// break
 		}
 	}
+	//mydebug("ATTN: in isOneValidRegionAtUnchangedLocation, false C.");
 	return false;
 }
 
@@ -373,7 +379,7 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 	JrRegionSummary* region1;
 	JrRegionSummary* region2;
 
-	//mydebug("Number valid regions found: %d and total found: %d.", rd->foundRegionsValid, rd->foundRegions);
+	//mydebug("ATTN: Number valid regions found: %d and total found: %d.", rd->foundRegionsValid, rd->foundRegions);
 
 	// abort if not at least 2 regions
 	if (rd->foundRegionsValid != 2) {
@@ -742,7 +748,7 @@ void TrackedSource::touchRefreshDuringRenderCycle() {
 
 	// both of these seem necesary in order to ensure that we have fresh data reloaded for the source when we need it
 	// why would both be needed??
-	doRenderWorkFromEffectToStageTexRender(plugin->effectChroma, osp);
+	doRenderWorkFromEffectToStageTexRender(osp);
 	bool bretv = doRenderWorkFromStageToInternalMemory();
 	if (bretv && (plugin->opt_debugChroma || plugin->opt_debugRegions)) {
 		// ATTN: IMPORTANT -- whatever you do here you may have to do in the findTrackingMarkerRegionInSource function
@@ -828,8 +834,9 @@ void TrackedSource::travelToTrackedSourceMarkerless(JrMarkerlessEntry *entryp, b
 
 	// independent from whether there is an instant set of our looking location, if we are on a different source we may fade
 	// ok now transition fade or move?
-	if (sourceTrackerp->getViewSourceIndex() == index || !plugin->opt_enableMarkerlessUse) {
+	if (sourceTrackerp->getViewSourceIndex() == index || plugin->getMarkerlessModeIsDisabled()) {
 		// we are already the view source, so we just need to set target locations, not switch over to this source; we will graduall move to the lasttarget locations set above
+		// ATTN: not sure we really want to check for getMarkerlessModeIsDisabled() here..
 	} else {
 		// ATTN: TODO there are times in our old code when we did NOT fade if pushing in -- we are missing that here
 		sourceTrackerp->setViewSourceIndex(index,useFade);
@@ -859,7 +866,7 @@ void TrackedSource::setMarkerCoordsToBoundaries() {
 void TrackedSource::setMarkerCoordsFromMarklessEntry(JrMarkerlessEntry* entryp) {
 	JrPlugin* plugin = getPluginp();
 	// sanity check
-	if (entryp == NULL || sourceWidth <= 0 || sourceHeight <= 0 || !plugin->opt_enableMarkerlessUse) {
+	if (entryp == NULL || sourceWidth <= 0 || sourceHeight <= 0 || plugin->getMarkerlessModeIsDisabled()) {
 		setMarkerCoordsToBoundaries();
 		return;
 	}
@@ -897,4 +904,11 @@ void TrackedSource::setMarkerCoordsFromMarklessEntry(JrMarkerlessEntry* entryp) 
 	}
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
 

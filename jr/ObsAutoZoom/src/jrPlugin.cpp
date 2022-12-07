@@ -42,35 +42,63 @@ extern "C" {
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-bool OnPropertyKeyTypeChangeCallback(obs_properties_t *props, obs_property_t *p, obs_data_t *settings) {
+bool OnPropertyChangeCallback(obs_properties_t *props, obs_property_t *p, obs_data_t *settings) {
 	UNUSED_PARAMETER(p);
 
-	int markerChromaMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerChromaMode), (const char**)SETTING_markerChromaMode_choices, 0);
-	bool showColor1 = (markerChromaMode != 1);
-	bool showColor2 = (markerChromaMode != 0);
-	bool showColorDual = (markerChromaMode > 1);
+	int keyColorMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_keyMode), (const char**)SETTING_zcKeyMode_choices, 0);
+	obs_property_set_visible(obs_properties_get(props, "groupColorKeyingChroma"), (keyColorMode == 0));
+	obs_property_set_visible(obs_properties_get(props, "groupColorKeyingHsv"), (keyColorMode != 0));	
 
-	obs_property_set_visible(obs_properties_get(props, SETTING_COLOR_TYPE1), showColor1);
-	obs_property_set_visible(obs_properties_get(props, SETTING_KEY_COLOR1), showColor1);
+	int markerMultiColorMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerMultiColorMode), (const char**)SETTING_markerMultiColorMode_choices, 0);
+	bool showColor1 = (markerMultiColorMode != 1);
+	bool showColor2 = (markerMultiColorMode != 0);
+	bool showColorDual = (markerMultiColorMode > 1);
+
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR_TYPE1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR1), showColor1);
 	obs_property_set_visible(obs_properties_get(props, SETTING_SIMILARITY1), showColor1);
 	obs_property_set_visible(obs_properties_get(props, SETTING_SMOOTHNESS1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR_TYPE1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_hueThreshold1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_saturationThreshold1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_valueThreshold1), showColor1);
 
-	obs_property_set_visible(obs_properties_get(props, SETTING_COLOR_TYPE2), showColor2);
-	obs_property_set_visible(obs_properties_get(props, SETTING_KEY_COLOR2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR_TYPE2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR2), showColor2);
 	obs_property_set_visible(obs_properties_get(props, SETTING_SIMILARITY2), showColor2);
 	obs_property_set_visible(obs_properties_get(props, SETTING_SMOOTHNESS2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR_TYPE2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_hueThreshold2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_saturationThreshold2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_valueThreshold2), showColor2);
 
-	obs_property_set_visible(obs_properties_get(props, SETTING_DualColorGapFill), showColorDual);
+	//obs_property_set_visible(obs_properties_get(props, SETTING_DualColorGapFill), showColorDual);
 
-	const char *type = obs_data_get_string(settings, SETTING_COLOR_TYPE1);
-	bool custom = strcmp(type, "custom") == 0;
-	obs_property_set_visible(obs_properties_get(props, SETTING_KEY_COLOR1), custom);
+	const char *type = obs_data_get_string(settings, SETTING_CHROMA_COLOR_TYPE1);
+	bool custom = showColor1 && strcmp(type, "custom") == 0;
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR1), custom);
+	//
+	type = obs_data_get_string(settings, SETTING_CHROMA_COLOR_TYPE2);
+	custom = showColor2 && strcmp(type, "custom") == 0;
+	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR2), custom);
 
-	type = obs_data_get_string(settings, SETTING_COLOR_TYPE2);
-	custom = strcmp(type, "custom") == 0;
-	obs_property_set_visible(obs_properties_get(props, SETTING_KEY_COLOR2), custom);
+	type = obs_data_get_string(settings, SETTING_HSV_COLOR_TYPE1);
+	custom = showColor1 && strcmp(type, "custom") == 0;
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR1), custom);
+	//
+	type = obs_data_get_string(settings, SETTING_HSV_COLOR_TYPE2);
+	custom = showColor2 && strcmp(type, "custom") == 0;
+	obs_property_set_visible(obs_properties_get(props, SETTING_HSV_COLOR2), custom);
 
+	//
+	obs_property_set_visible(obs_properties_get(props, SETTING_dilateGreen), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_dilateRed), showColor2);
 
+	int markerlessMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerlessMode), (const char**)SETTING_zcMarkerlessMode_choices, 0);
+	obs_property_set_visible(obs_properties_get(props, "groupMarkerlessManualZoom"), (markerlessMode == 0));
+	obs_property_set_visible(obs_properties_get(props, "groupMarkerlessPresets"), (markerlessMode == 1));	
 
 	return true;
 }

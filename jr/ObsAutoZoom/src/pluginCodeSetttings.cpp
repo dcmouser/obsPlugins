@@ -2,6 +2,7 @@
 #include <cstdio>
 //
 #include "jrPlugin.h"
+#include "jrazcolorhelpers.h"
 //---------------------------------------------------------------------------
 
 
@@ -12,7 +13,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-	bool OnPropertyKeyTypeChangeCallback(obs_properties_t* props, obs_property_t* p, obs_data_t* settings);
+	bool OnPropertyChangeCallback(obs_properties_t* props, obs_property_t* p, obs_data_t* settings);
 	bool OnPropertyNSrcModifiedCallback(obs_properties_t* props, obs_property_t* property, obs_data_t* settings);
 	void onHotkeyCallback(void* data, obs_hotkey_id id, obs_hotkey_t* key, bool pressed);
 	bool OnPropertyButtonClickTrackOnAllSources(obs_properties_t *props, obs_property_t *property, void *data);
@@ -31,12 +32,17 @@ char* SETTING_zcAlignment_choices[] =			{ "topLeft", "topCenter", "topRight", "m
 char* SETTING_zcMode_choices[] =				{ "zoom and crop", "only crop", "only zoom", NULL };
 char* SETTING_zcEasing_choices[] = 				{ "nstant","eased", NULL };
 char* SETTING_fadeMode_choices[] = 				{ "none","normal", NULL };
-char* SETTING_markerChromaMode_choices[] = 		{ "color 1", "color 2", "dual color", NULL};
 char* SETTING_zcCropStyle_choices[] = 			{ "black bars", "blur", NULL};
+//
+char* SETTING_zcKeyMode_choices[] = 			{ "chroma", "hsv", NULL};
+char* SETTING_markerMultiColorMode_choices[] = 		{ "color 1", "color 2", "dual color", NULL};
+char* SETTING_zcKeyColor_choicesReduced[] =		{ "green", "magenta", NULL};
+char* SETTING_zcKeyColor_choicesFull[] =		{ "green", "blue", "magenta", "custom", NULL};
+char* SETTING_zcMarkerlessMode_choices[] =		{ "manualZoom", "presetZooms", "none", NULL};
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-char* markerChromaModeRenderTechniques[] = {"DrawColor1", "DrawColor2", "DrawDualSep", NULL};
+char* markerMultiColorModeRenderTechniques[] = {"DrawColor1", "DrawColor2", "DrawDualSep", NULL};
 //---------------------------------------------------------------------------
 
 
@@ -87,51 +93,91 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	obs_properties_add_group(props, "groupBehavior", "Behavior options", OBS_GROUP_NORMAL, propgroup);
 	//
 	obs_properties_add_bool(propgroup, SETTING_ignoreMarkers, TEXT_ignoreMarkers);
-	obs_properties_add_bool(propgroup, SETTING_enableAutoSourceHunting, TEXT_enableAutoSourceHunting);
 	obs_properties_add_bool(propgroup, SETTING_enableAutoUpdate, TEXT_enableAutoUpdate);
 	obs_properties_add_int_slider(propgroup, SETTING_updateRate, TEXT_updateRate, 1, 120, 1);
+	obs_properties_add_bool(propgroup, SETTING_enableAutoSourceHunting, TEXT_enableAutoSourceHunting);
 	//
 	comboString = obs_properties_add_list(propgroup, SETTING_zcEasing, TEXT_zcEasing, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcEasing_choices);
 	//
 	comboString = obs_properties_add_list(propgroup, SETTING_fadeMode, TEXT_fadeMode, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_fadeMode_choices);
-	obs_properties_add_int_slider(propgroup, SETTING_zcBoxMoveSpeed, TEXT_zcBoxMoveSpeed, 0, 100, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_zcReactionDistance, TEXT_zcReactionDistance, 1, 200, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_zcBoxMoveSpeed, TEXT_zcBoxMoveSpeed, 0, 100, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_zcBoxMoveDelay, TEXT_zcBoxMoveDelay, 1, 50, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_missingMarkerPulloutTimeout, TEXT_missingMarkerPulloutTimeout, 5, 200, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_validMarkersToCheckForOcclusion, TEXT_validMarkersToCheckForOcclusion, 0, 100, 1);
 
-
-
-	// chroma green screen stuff
+	// hsv and chroma keying - green screen stuff
 	propgroup = obs_properties_create();
-	obs_properties_add_group(props, "groupChroma", "ChromaKey options", OBS_GROUP_NORMAL, propgroup);
+	obs_properties_add_group(props, "groupColorKeying", "Chroma and HSV Color Keying options", OBS_GROUP_NORMAL, propgroup);
 	//
-	comboString = obs_properties_add_list(propgroup, SETTING_markerChromaMode, TEXT_markerChromaMode, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	jrAddPropertListChoices(comboString, (const char**)SETTING_markerChromaMode_choices);
-	obs_property_set_modified_callback(comboString, OnPropertyKeyTypeChangeCallback);
+	comboString = obs_properties_add_list(propgroup, SETTING_keyMode, TEXT_keyMode, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyMode_choices);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
 	//
-	p = obs_properties_add_list(propgroup, SETTING_COLOR_TYPE1, TEXT_COLOR_TYPE1, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(p, obs_module_text("Green"), "green");
-	obs_property_list_add_string(p, obs_module_text("Blue"), "blue");
-	obs_property_list_add_string(p, obs_module_text("Magenta"), "magenta");
-	obs_property_list_add_string(p, obs_module_text("Custom"), "custom");
-	obs_property_set_modified_callback(p, OnPropertyKeyTypeChangeCallback);
-	obs_properties_add_color(propgroup, SETTING_KEY_COLOR1, TEXT_KEY_COLOR1);
+	comboString = obs_properties_add_list(propgroup, SETTING_markerMultiColorMode, TEXT_markerMultiColorMode, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_markerMultiColorMode_choices);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+
+
+	
+
+
+
+	// hsv and chroma keying - green screen stuff
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupColorKeyingChroma", "Chroma Keying options", OBS_GROUP_NORMAL, propgroup);
+	//
+	comboString = obs_properties_add_list(propgroup, SETTING_CHROMA_COLOR_TYPE1, TEXT_CHROMA_COLOR_TYPE1, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+	obs_properties_add_color(propgroup, SETTING_CHROMA_COLOR1, TEXT_CHROMA_COLOR1);
 	obs_properties_add_int_slider(propgroup, SETTING_SIMILARITY1, TEXT_SIMILARITY1, 1, 1000, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_SMOOTHNESS1, TEXT_SMOOTHNESS1, 1, 1000, 1);
 	//
-	p = obs_properties_add_list(propgroup, SETTING_COLOR_TYPE2, TEXT_COLOR_TYPE2, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(p, obs_module_text("Green"), "green");
-	obs_property_list_add_string(p, obs_module_text("Blue"), "blue");
-	obs_property_list_add_string(p, obs_module_text("Magenta"), "magenta");
-	obs_property_list_add_string(p, obs_module_text("Custom"), "custom");
-	obs_property_set_modified_callback(p, OnPropertyKeyTypeChangeCallback);
-	obs_properties_add_color(propgroup, SETTING_KEY_COLOR2, TEXT_KEY_COLOR2);
+	comboString = obs_properties_add_list(propgroup, SETTING_CHROMA_COLOR_TYPE2, TEXT_CHROMA_COLOR_TYPE2, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+	obs_properties_add_color(propgroup, SETTING_CHROMA_COLOR2, TEXT_CHROMA_COLOR2);
 	obs_properties_add_int_slider(propgroup, SETTING_SIMILARITY2, TEXT_SIMILARITY2, 1, 1000, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_SMOOTHNESS2, TEXT_SMOOTHNESS2, 1, 1000, 1);
 	//
-	obs_properties_add_int_slider(propgroup, SETTING_ChromaThreshold, TEXT_ChromaThreshold, 1, 1000, 1);
-	obs_properties_add_int_slider(propgroup, SETTING_DualColorGapFill, TEXT_DualColorGapFill, 0, 5, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_testThreshold, TEXT_testThreshold, 0, 1000, 1);
+
+	// HSV keying
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupColorKeyingHsv", "HSV Color Keying options", OBS_GROUP_NORMAL, propgroup);
+	//
+	comboString = obs_properties_add_list(propgroup, SETTING_HSV_COLOR_TYPE1, TEXT_HSV_COLOR_TYPE1, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+	obs_properties_add_color(propgroup, SETTING_HSV_COLOR1, TEXT_HSV_COLOR1);
+	//
+	obs_properties_add_int_slider(propgroup, SETTING_hueThreshold1, TEXT_hueThreshold1, 0, 1000, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_saturationThreshold1, TEXT_saturationThreshold1, 0, 1000, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_valueThreshold1, TEXT_valueThreshold1, 0, 1000, 1);
+
+	comboString = obs_properties_add_list(propgroup, SETTING_HSV_COLOR_TYPE2, TEXT_HSV_COLOR_TYPE2, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+	obs_properties_add_color(propgroup, SETTING_HSV_COLOR2, TEXT_HSV_COLOR2);
+	//
+	obs_properties_add_int_slider(propgroup, SETTING_hueThreshold2, TEXT_hueThreshold2, 0, 1000, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_saturationThreshold2, TEXT_saturationThreshold2, 0, 1000, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_valueThreshold2, TEXT_valueThreshold2, 0, 1000, 1);
+	//
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupMoreKeying", "More Chroma and HSV Color Keying options", OBS_GROUP_NORMAL, propgroup);
+	obs_properties_add_int_slider(propgroup, SETTING_dilateGreen, TEXT_dilateGreen, 0, 20, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_dilateRed, TEXT_dilateRed, 0, 20, 1);
+	//obs_properties_add_int_slider(propgroup, SETTING_DualColorGapFill, TEXT_DualColorGapFill, 0, 5, 1);
+
+	//	obs_properties_add_int_slider(propgroup, SETTING_hsvTestThreshold1, TEXT_hsvTestThreshold1, 0, 1000, 1);
+//	obs_properties_add_int_slider(propgroup, SETTING_hsvTestThreshold2, TEXT_hsvTestThreshold2, 0, 1000, 1);
+
+
+
 
 	// calibrate
 
@@ -184,16 +230,40 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	obs_properties_add_button(propgroup, "UpdateAllSources2", "1. FIRST: Update all source tracking", OnPropertyButtonClickTrackOnAllSources);
 	obs_properties_add_button(propgroup, "CalibrateZoomScales", "THEN: Auto-calibrate other sources based on source 0", OnPropertyButtonClickCalibrateZoomScaleCallback);
 
+
+
+	// markerless stuff
+
+
 	propgroup = obs_properties_create();
 	obs_properties_add_group(props, "groupMarkerless", "Markerless options", OBS_GROUP_NORMAL, propgroup);
+	comboString = obs_properties_add_list(propgroup, SETTING_markerlessMode, TEXT_markerlessMode, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcMarkerlessMode_choices);
+	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
+
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupMarkerlessPresets", "Markerless options - Cycle Preset Zoom Levels", OBS_GROUP_NORMAL, propgroup);
 	//
-	obs_properties_add_bool(propgroup, SETTING_enableMarkerlessCoordinates, TEXT_enableMarkerlessCoordinates);
+	//obs_properties_add_bool(propgroup, SETTING_enableMarkerlessCoordinates, TEXT_enableMarkerlessCoordinates);
 	obs_properties_add_text(propgroup, SETTING_zcMarkerlessCycleList, TEXT_zcMarkerlessCycleList, OBS_TEXT_DEFAULT);
 	obs_properties_add_int(propgroup, SETTING_markerlessCycleIndex, TEXT_markerlessCycleIndex, 0, 100, 1);
 	//
 	obs_properties_add_int(propgroup, SETTING_manualViewSourceIndex, TEXT_manualViewSourceIndex, 0, 10, 1);
 
+	// new manual zoom settings
+	// this is a new alternative to the markelerss prests, which allow user to use hotkeys to zoom in and out
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupMarkerlessManualZoom", "Markerless options - Manual Zooming In and Out", OBS_GROUP_NORMAL, propgroup);
+	//
+	//obs_properties_add_bool(propgroup, SETTING_manualZoomEnableMarkerless, TEXT_manualZoomEnableMarkerless);
+	obs_properties_add_int(propgroup, SETTING_manualZoomSourceIndex, TEXT_manualZoomSourceIndex, 0, DefMaxSources-1, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_manualZoomSourceScale, TEXT_manualZoomSourceScale, 1, 1000, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_manualZoomStepSize, TEXT_manualZoomStepSize, 0, 100, 1);
+	obs_properties_add_text(propgroup, SETTING_manualZoomSourceTransitionList, TEXT_manualZoomSourceTransitionList, OBS_TEXT_DEFAULT);
+	obs_properties_add_int_slider(propgroup, SETTING_manualZoomMinZoom, TEXT_manualZoomMinZoom, 10, 100, 1);
 
+	comboString = obs_properties_add_list(propgroup, SETTING_manualZoomAlignment, TEXT_manualZoomAlignment, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	jrAddPropertListChoices(comboString, (const char**)SETTING_zcAlignment_choices);
 
 	return props;
 }
@@ -205,17 +275,32 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 //---------------------------------------------------------------------------
 void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	//
-	obs_data_set_default_string(settings, SETTING_markerChromaMode, SETTING_Def_markerChromaMode);
-	obs_data_set_default_int(settings, SETTING_KEY_COLOR1, SETTING_Def_KEY_COLOR);
-	obs_data_set_default_string(settings, SETTING_COLOR_TYPE1, SETTING_Def_COLOR_TYPE);
-	obs_data_set_default_int(settings, SETTING_KEY_COLOR2, SETTING_Def_KEY_COLOR);
-	obs_data_set_default_string(settings, SETTING_COLOR_TYPE2, SETTING_Def_COLOR_TYPE);
+	obs_data_set_default_string(settings, SETTING_keyMode, SETTING_Def_keyMode);
+	obs_data_set_default_string(settings, SETTING_markerMultiColorMode, SETTING_Def_markerMultiColorMode);
+	obs_data_set_default_int(settings, SETTING_CHROMA_COLOR1, SETTING_Def_CHROMA_COLOR1);
+	obs_data_set_default_string(settings, SETTING_CHROMA_COLOR_TYPE1, SETTING_Def_CHROMA_COLOR_TYPE1);
+	obs_data_set_default_int(settings, SETTING_CHROMA_COLOR2, SETTING_Def_CHROMA_COLOR2);
+	obs_data_set_default_string(settings, SETTING_CHROMA_COLOR_TYPE2, SETTING_Def_CHROMA_COLOR_TYPE2);
 	obs_data_set_default_int(settings, SETTING_SIMILARITY1, SETTING_Def_SIMILARITY);
 	obs_data_set_default_int(settings, SETTING_SMOOTHNESS1, SETTING_Def_SMOOTHNESS);
 	obs_data_set_default_int(settings, SETTING_SIMILARITY2, SETTING_Def_SIMILARITY);
 	obs_data_set_default_int(settings, SETTING_SMOOTHNESS2, SETTING_Def_SMOOTHNESS);
-	obs_data_set_default_int(settings, SETTING_ChromaThreshold, SETTING_Def_ChromaThreshold);
-	obs_data_set_default_int(settings, SETTING_DualColorGapFill, SETTING_Def_DualColorGapFill);
+	//obs_data_set_default_int(settings, SETTING_DualColorGapFill, SETTING_Def_DualColorGapFill);
+	obs_data_set_default_int(settings, SETTING_testThreshold, SETTING_Def_testThreshold);
+	//
+	obs_data_set_default_int(settings, SETTING_hueThreshold1, SETTING_Def_hueThreshold1);
+	obs_data_set_default_int(settings, SETTING_saturationThreshold1, SETTING_Def_saturationThreshold1);
+	obs_data_set_default_int(settings, SETTING_valueThreshold1, SETTING_Def_valueThreshold1);
+	obs_data_set_default_int(settings, SETTING_hueThreshold2, SETTING_Def_hueThreshold2);
+	obs_data_set_default_int(settings, SETTING_saturationThreshold2, SETTING_Def_saturationThreshold2);
+	obs_data_set_default_int(settings, SETTING_valueThreshold2, SETTING_Def_valueThreshold2);
+	//
+	obs_data_set_default_int(settings, SETTING_dilateGreen, SETTING_Def_dilateGreen);
+	obs_data_set_default_int(settings, SETTING_dilateRed, SETTING_Def_dilateRed);
+
+
+//	obs_data_set_default_int(settings, SETTING_hsvTestThreshold1, SETTING_Def_hsvTestThreshold1);
+//	obs_data_set_default_int(settings, SETTING_hsvTestThreshold2, SETTING_Def_hsvTestThreshold2);
 	//
 	obs_data_set_default_bool(settings, SETTING_ignoreMarkers, false);
 
@@ -232,6 +317,8 @@ void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	obs_data_set_default_int(settings, SETTING_zcBoxMoveSpeed, SETTING_Def_zcBoxMoveSpeed);
 	obs_data_set_default_int(settings, SETTING_zcReactionDistance, SETTING_Def_zcReactionDistance);
 	obs_data_set_default_int(settings, SETTING_zcBoxMoveDelay, SETTING_Def_zcBoxMoveDelay);
+	obs_data_set_default_int(settings, SETTING_missingMarkerPulloutTimeout, SETTING_Def_missingMarkerPulloutTimeout);
+	obs_data_set_default_int(settings, SETTING_validMarkersToCheckForOcclusion, SETTING_Def_validMarkersToCheckForOcclusion);
 	//
 	obs_data_set_default_string(settings, SETTING_zcEasing, SETTING_Def_zcEasing);
 	obs_data_set_default_string(settings, SETTING_fadeMode, SETTING_Def_fadeMode);
@@ -257,11 +344,27 @@ void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	obs_data_set_default_string(settings, SETTING_zcOutputSize, SETTING_Def_zcOutputSize);
 	//obs_data_set_default_bool(settings, SETTING_resizeOutput, SETTING_Def_resizeOutput);
 	//
+
+
+	// markerless
+	obs_data_set_default_string(settings, SETTING_markerlessMode, SETTING_Def_markerlessMode);
+	//
 	obs_data_set_default_int(settings, 	SETTING_manualViewSourceIndex, SETTING_DEF_manualViewSourceIndex);
 	obs_data_set_default_bool(settings, SETTING_enableAutoSourceHunting, SETTING_Def_enableAutoSourceHunting);
-	obs_data_set_default_bool(settings, SETTING_enableMarkerlessCoordinates, SETTING_Def_enableMarkerlessCoordinates);
+	//obs_data_set_default_bool(settings, SETTING_enableMarkerlessCoordinates, SETTING_Def_enableMarkerlessCoordinates);
 	obs_data_set_default_string(settings, SETTING_zcMarkerlessCycleList, SETTING_Def_zcMarkerlessCycleList);
 	obs_data_set_default_int(settings, SETTING_markerlessCycleIndex, SETTING_Def_markerlessCycleIndex);
+
+	// manual zoom
+	//obs_data_set_default_bool(settings, SETTING_manualZoomEnableMarkerless, SETTING_Def_manualZoomEnableMarkerless);
+	obs_data_set_default_int(settings, SETTING_manualZoomSourceIndex, SETTING_Def_manualZoomSourceIndex);
+	obs_data_set_default_int(settings, SETTING_manualZoomSourceScale, SETTING_Def_manualZoomSourceScale);
+	obs_data_set_default_int(settings, SETTING_manualZoomStepSize, SETTING_Def_manualZoomStepSize);
+	obs_data_set_default_string(settings, SETTING_manualZoomSourceTransitionList, SETTING_Def_manualZoomSourceTransitionList);
+	obs_data_set_default_string(settings, SETTING_manualZoomAlignment, SETTING_Def_manualZoomAlignment);
+	obs_data_set_default_int(settings, SETTING_manualZoomMinZoom, SETTING_Def_manualZoomMinZoom);
+
+
 	//
 	obs_data_set_default_int(settings, SETTING_srcN, SETTING_Def_srcN);
 
@@ -300,7 +403,7 @@ void JrPlugin::reRegisterHotkeys() {
 	if (hotkeyId_CycleViewForward==-1) hotkeyId_CycleViewForward = obs_hotkey_register_source(target, "autoZoom.cycleViewForward", "6a autoZoom - Cycle view forward (markerless index or source if disabled)", onHotkeyCallback, this);
 	if (hotkeyId_CycleViewBack==-1) hotkeyId_CycleViewBack = obs_hotkey_register_source(target, "autoZoom.cycleViewBack", "6b autoZoom - Cycle view backwards (markerless index or source if disabled)", onHotkeyCallback, this);
 	//
-	if (hotkeyId_toggleEnableMarkerlessUse==-1) hotkeyId_toggleEnableMarkerlessUse = obs_hotkey_register_source(target, "autoZoom.toggleEnableMarkerlessUse", "8 autoZoom - Toggle markerless use", onHotkeyCallback, this);
+
 	if (hotkeyId_ToggleDebugDisplay==-1) hotkeyId_ToggleDebugDisplay = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleDebugDisplay", "9 autoZoom - Toggle Debug Display", onHotkeyCallback, this);
 	//
 	if (hotkeyId_ToggleAutoUpdate == -1) {
@@ -350,40 +453,41 @@ void JrPlugin::reRegisterHotkeys() {
 void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	//mydebug("In updateSettingsOnChange.");
 
-	opt_markerChromaMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerChromaMode), (const char**)SETTING_markerChromaMode_choices, 0);
-	opt_key_color1 = (uint32_t)obs_data_get_int(settings, SETTING_KEY_COLOR1);
-	int64_t similarity1 = obs_data_get_int(settings, SETTING_SIMILARITY1);
-	int64_t smoothness1 = obs_data_get_int(settings, SETTING_SMOOTHNESS1);
-	opt_key_color2 = (uint32_t)obs_data_get_int(settings, SETTING_KEY_COLOR2);
-	int64_t similarity2 = obs_data_get_int(settings, SETTING_SIMILARITY2);
-	int64_t smoothness2 = obs_data_get_int(settings, SETTING_SMOOTHNESS2);
+	opt_enableAutoSourceHunting = obs_data_get_bool(settings, SETTING_enableAutoSourceHunting);
 
-	const char *key_type1 = obs_data_get_string(settings, SETTING_COLOR_TYPE1);
-	const char *key_type2 = obs_data_get_string(settings, SETTING_COLOR_TYPE2);
+	opt_markerMultiColorMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerMultiColorMode), (const char**)SETTING_markerMultiColorMode_choices, 0);
+	opt_keyMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_keyMode), (const char**)SETTING_zcKeyMode_choices, 0);
+
+
+	// chroma stuff
+	opt_chroma_color1 = (uint32_t)obs_data_get_int(settings, SETTING_CHROMA_COLOR1);
+	opt_chroma_color2 = (uint32_t)obs_data_get_int(settings, SETTING_CHROMA_COLOR2);
+	const char *key_type1 = obs_data_get_string(settings, SETTING_CHROMA_COLOR_TYPE1);
+	const char *key_type2 = obs_data_get_string(settings, SETTING_CHROMA_COLOR_TYPE2);
 	//
 	struct vec4 key_rgb;
 	struct vec4 cb_v4;
 	struct vec4 cr_v4;
 	//
-	uint32_t key_color1 = opt_key_color1;
-	if (strcmp(key_type1, "green") == 0)
-		key_color1 = 0x00FF00;
-	else if (strcmp(key_type1, "blue") == 0)
-		key_color1 = 0xFF9900;
-	else if (strcmp(key_type1, "magenta") == 0)
-		key_color1 = 0xFF00FF;
 
-	uint32_t key_color2 = opt_key_color2;
-	if (strcmp(key_type2, "green") == 0)
-		key_color2 = 0x00FF00;
-	else if (strcmp(key_type2, "blue") == 0)
-		key_color2 = 0xFF9900;
-	else if (strcmp(key_type2, "magenta") == 0)
-		key_color2 = 0xFF00FF;
+	uint32_t chroma_color1 = opt_chroma_color1;
+	if (strcmp(key_type1, "green") == 0)
+		chroma_color1 = 0x00FF00;
+	else if (strcmp(key_type1, "blue") == 0)
+		chroma_color1 = 0xFF9900;
+	else if (strcmp(key_type1, "magenta") == 0)
+		chroma_color1 = 0xFF00FF;
 	//
-	// chroma stuff
+	uint32_t chroma_color2 = opt_chroma_color2;
+	if (strcmp(key_type2, "green") == 0)
+		chroma_color2 = 0x00FF00;
+	else if (strcmp(key_type2, "blue") == 0)
+		chroma_color2 = 0xFF9900;
+	else if (strcmp(key_type2, "magenta") == 0)
+		chroma_color2 = 0xFF00FF;
+	//
 	if (true) {
-		vec4_from_rgba(&key_rgb, key_color1 | 0xFF000000);
+		vec4_from_rgba(&key_rgb, chroma_color1 | 0xFF000000);
 		static const float cb_vec[] = { -0.100644f, -0.338572f, 0.439216f, 0.501961f };
 		static const float cr_vec[] = { 0.439216f, -0.398942f, -0.040274f, 0.501961f };
 		memcpy(&cb_v4, cb_vec, sizeof(cb_v4));
@@ -391,11 +495,13 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 		opt_chroma1.x = vec4_dot(&key_rgb, &cb_v4);
 		opt_chroma1.y = vec4_dot(&key_rgb, &cr_v4);
 	}
+	int64_t similarity1 = obs_data_get_int(settings, SETTING_SIMILARITY1);
+	int64_t smoothness1 = obs_data_get_int(settings, SETTING_SMOOTHNESS1);
 	opt_similarity1 = (float)similarity1 / 1000.0f;
 	opt_smoothness1 = (float)smoothness1 / 1000.0f;
 	//
 	if (true) {
-		vec4_from_rgba(&key_rgb, key_color2 | 0xFF000000);
+		vec4_from_rgba(&key_rgb, chroma_color2 | 0xFF000000);
 		static const float cb_vec[] = { -0.100644f, -0.338572f, 0.439216f, 0.501961f };
 		static const float cr_vec[] = { 0.439216f, -0.398942f, -0.040274f, 0.501961f };
 		memcpy(&cb_v4, cb_vec, sizeof(cb_v4));
@@ -403,12 +509,43 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 		opt_chroma2.x = vec4_dot(&key_rgb, &cb_v4);
 		opt_chroma2.y = vec4_dot(&key_rgb, &cr_v4);
 	}
+	int64_t similarity2 = obs_data_get_int(settings, SETTING_SIMILARITY2);
+	int64_t smoothness2 = obs_data_get_int(settings, SETTING_SMOOTHNESS2);
 	opt_similarity2 = (float)similarity2 / 1000.0f;
 	opt_smoothness2 = (float)smoothness2 / 1000.0f;
+	//
+	opt_testThreshold = (float)obs_data_get_int(settings, SETTING_testThreshold) / 1000.0f;
 
 
-	opt_chromaThreshold = (float)obs_data_get_int(settings, SETTING_ChromaThreshold) / 1000.0f;
-	opt_chromaDualColorGapFill = (int)obs_data_get_int(settings, SETTING_DualColorGapFill);
+	// HSV color system
+	opt_hsv_color1 = (uint32_t)obs_data_get_int(settings, SETTING_HSV_COLOR1);
+	opt_hsv_color2 = (uint32_t)obs_data_get_int(settings, SETTING_HSV_COLOR2);
+	key_type1 = obs_data_get_string(settings, SETTING_HSV_COLOR_TYPE1);
+	key_type2 = obs_data_get_string(settings, SETTING_HSV_COLOR_TYPE2);
+	uint32_t hsv_color1 = opt_hsv_color1;
+	if (strcmp(key_type1, "green") == 0)
+		hsv_color1 = 0x00FF00;
+	else if (strcmp(key_type1, "blue") == 0)
+		hsv_color1 = 0xFF9900;
+	else if (strcmp(key_type1, "magenta") == 0)
+		hsv_color1 = 0xFF00FF;
+	//
+	uint32_t hsv_color2 = opt_hsv_color2;
+	if (strcmp(key_type2, "green") == 0)
+		hsv_color2 = 0x00FF00;
+	else if (strcmp(key_type2, "blue") == 0)
+		hsv_color2 = 0xFF9900;
+	else if (strcmp(key_type2, "magenta") == 0)
+		hsv_color2 = 0xFF00FF;
+	//
+
+	// hsv colors to 3vecs
+	jrazUint32ToHsvVec(hsv_color1, color1AsHsv);
+	jrazUint32ToHsvVec(hsv_color2, color2AsHsv);
+
+	// no longer used
+	// opt_chromaDualColorGapFill = (int)obs_data_get_int(settings, SETTING_DualColorGapFill);
+	opt_chromaDualColorGapFill = 0;
 
 	// debugging
 	opt_debugRegions = obs_data_get_bool(settings, SETTING_debugRegions);
@@ -437,9 +574,12 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_zcBoxMargin = (int)obs_data_get_int(settings, SETTING_zcBoxMargin);
 	opt_zcBoxMoveSpeed = (int)obs_data_get_int(settings, SETTING_zcBoxMoveSpeed);
 	opt_zcReactionDistance = (int)obs_data_get_int(settings, SETTING_zcReactionDistance);
+
 	opt_zcBoxMoveDelay = (int)obs_data_get_int(settings, SETTING_zcBoxMoveDelay);
 	opt_zcEasing = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_zcEasing), (const char**)SETTING_zcEasing_choices,0);
 	opt_fadeMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_fadeMode), (const char**)SETTING_fadeMode_choices,0);
+	opt_zcMissingMarkerTimeout = (int)obs_data_get_int(settings, SETTING_missingMarkerPulloutTimeout);
+	opt_zcValidMarkersToTestForOcclusion = (int)obs_data_get_int(settings, SETTING_validMarkersToCheckForOcclusion);
 	//
 	opt_zcAlign = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_zcAlignment), (const char**)SETTING_zcAlignment_choices,0);
 	//
@@ -449,15 +589,39 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_zcMaxZoom = (float)obs_data_get_int(settings, SETTING_zcMaxZoom) / 33.3f;
 	//
 	strncpy(opt_OutputSizeBuf, obs_data_get_string(settings, SETTING_zcOutputSize), 79);
-	
-	// markerless stuff
-	opt_enableMarkerlessUse = obs_data_get_bool(settings, SETTING_enableMarkerlessCoordinates);
 
+
+	// markerless stuff
+	opt_markerlessMode =  jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerlessMode), (const char**)SETTING_zcMarkerlessMode_choices,0);
 	opt_manualViewSourceIndex = (int)obs_data_get_int(settings, SETTING_manualViewSourceIndex);
-	opt_enableAutoSourceHunting = obs_data_get_bool(settings, SETTING_enableAutoSourceHunting);
-	//
+
+	// markerless presets
 	strncpy(opt_markerlessCycleListBuf, obs_data_get_string(settings, SETTING_zcMarkerlessCycleList), DefMarkerlessCycleListBufMaxSize);
 	opt_markerlessCycleIndex = (int)obs_data_get_int(settings, SETTING_markerlessCycleIndex);
+
+	// markerless - manual zoom
+	opt_manualZoomSourceIndex = (int)obs_data_get_int(settings, SETTING_manualZoomSourceIndex);
+	opt_manualZoomSourceScale = (float)obs_data_get_int(settings, SETTING_manualZoomSourceScale) / 100.0f;
+	opt_manualZoomStepSize = (float)obs_data_get_int(settings, SETTING_manualZoomStepSize) / 100.0f;
+	opt_manualZoomAlignment = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_manualZoomAlignment), (const char**)SETTING_zcAlignment_choices,0);
+	strncpy(opt_manualZoomTransitionsString, obs_data_get_string(settings, SETTING_manualZoomSourceTransitionList), 79);
+	fillFloatListFromString(opt_manualZoomTransitionsString, opt_manualZoomTransitions, DefMaxSources);
+	opt_manualZoomMinZoom = (float)obs_data_get_int(settings, SETTING_manualZoomMinZoom) / 100.0f;
+
+
+
+
+	opt_hueThreshold1 = (float)obs_data_get_int(settings, SETTING_hueThreshold1) / 1000.0f;
+	opt_saturationThreshold1 = (float)obs_data_get_int(settings, SETTING_saturationThreshold1) / 1000.0f;
+	opt_valueThreshold1 = (float)obs_data_get_int(settings, SETTING_valueThreshold1) / 1000.0f;
+	opt_hueThreshold2 = (float)obs_data_get_int(settings, SETTING_hueThreshold2) / 1000.0f;
+	opt_saturationThreshold2 = (float)obs_data_get_int(settings, SETTING_saturationThreshold2) / 1000.0f;
+	opt_valueThreshold2 = (float)obs_data_get_int(settings, SETTING_valueThreshold2) / 1000.0f;
+
+	//opt_hsvTestThreshold1 = (float)obs_data_get_int(settings, SETTING_hsvTestThreshold1) / 1000.0f;
+	//opt_hsvTestThreshold2 = (float)obs_data_get_int(settings, SETTING_hsvTestThreshold2) / 1000.0f;
+	opt_dilateGreenSteps = (int)obs_data_get_int(settings, SETTING_dilateGreen);
+	opt_dilateRedSteps = (int)obs_data_get_int(settings, SETTING_dilateRed);
 
 	// sources
 	// here we parse the names of the sources the user has specified in the options, and record the names of these source; we will retrieve the source details and pointers later
@@ -513,6 +677,10 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_filterBypass = false;
 	ep_optBlurPasses = 6;
 	ep_optBlurSizeReduction = 12;
+	//
+	// doesn't seem to have any effect
+	//opt_avoidTrackingInTransitions = true;
+	opt_avoidTrackingInTransitions = false;
 
 
 	// and now make changes based on options changing
@@ -559,7 +727,7 @@ void JrPlugin::saveVolatileSettings() {
 	obs_data_set_bool(settings, SETTING_debugRegions, opt_debugRegions);
 	obs_data_set_bool(settings, SETTING_ignoreMarkers, opt_ignoreMarkers);
 	//
-	obs_data_set_bool(settings, SETTING_enableMarkerlessCoordinates, opt_enableMarkerlessUse);
+	//obs_data_set_bool(settings, SETTING_enableMarkerlessCoordinates, opt_enableMarkerlessUse);
 	obs_data_set_bool(settings, SETTING_enableAutoSourceHunting, opt_enableAutoSourceHunting);
 	obs_data_set_int(settings, SETTING_markerlessCycleIndex, opt_markerlessCycleIndex);
 	obs_data_set_string(settings, SETTING_zcMode, jrStringFromListChoice(opt_zcMode,(const char**)SETTING_zcMode_choices));
@@ -568,7 +736,10 @@ void JrPlugin::saveVolatileSettings() {
 	// make sure this one is up to date
 	opt_manualViewSourceIndex = stracker.getViewSourceIndex();
 	obs_data_set_int(settings, SETTING_manualViewSourceIndex, opt_manualViewSourceIndex);
-	
+
+	// new manual zoom stuff volatiles that could change by hotkey
+	obs_data_set_int(settings, SETTING_manualZoomSourceIndex, opt_manualZoomSourceIndex);
+	obs_data_set_int(settings, SETTING_manualZoomSourceScale, (int)(opt_manualZoomSourceScale * 100.0));
 
 	// now push the saved properties
 	obs_properties_t* props = obs_source_properties(getThisPluginSource());
@@ -600,10 +771,10 @@ void JrPlugin::saveVolatileMarkerZoomScaleSettings(bool isCustomColor) {
 	obs_data_set_int(settings, SETTING_rmTooCloseDist, (int)opt_rmTooCloseDist);
 
 	if (isCustomColor) {
-		obs_data_set_string(settings, SETTING_COLOR_TYPE1, "custom");
-		obs_data_set_int(settings, SETTING_KEY_COLOR1, opt_key_color1);
-		obs_data_set_string(settings, SETTING_COLOR_TYPE2, "custom");
-		obs_data_set_int(settings, SETTING_KEY_COLOR2, opt_key_color2);	
+		obs_data_set_string(settings, SETTING_CHROMA_COLOR_TYPE1, "custom");
+		obs_data_set_int(settings, SETTING_CHROMA_COLOR1, opt_chroma_color1);
+		obs_data_set_string(settings, SETTING_CHROMA_COLOR_TYPE2, "custom");
+		obs_data_set_int(settings, SETTING_CHROMA_COLOR2, opt_chroma_color2);	
 	}
 	
 	//
@@ -621,7 +792,5 @@ void JrPlugin::saveVolatileMarkerZoomScaleSettings(bool isCustomColor) {
 	obs_data_release(settings);
 }
 //---------------------------------------------------------------------------
-
-
 
 

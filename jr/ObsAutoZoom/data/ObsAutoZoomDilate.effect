@@ -1,0 +1,167 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 pixel_size;
+//
+uniform float4 dilateColorFromRgba;
+uniform float4 dilateColorToRgba;
+uniform float4 dilateBackgroundRgba;
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+struct VertData {
+	float2 uv  : TEXCOORD0;
+	float4 pos : POSITION;
+};
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+bool colorSame(float4 rgb1, float4 rgb2) {
+	return (abs(rgb1.x-rgb2.x)< .001 && abs(rgb1.y-rgb2.y)< .001 && abs(rgb1.z-rgb2.z)< .001 && abs(rgb1.a-rgb2.a)< .001);
+
+}
+
+
+
+float4 PSDilateStage1Process(VertData v_in)
+{
+	// decides if this cell should go from a NON-BACKGROUND to color dilateColorToRgba, based on finding at least one dilateColorFromRgba neighbor
+	// should only be called on background color cells
+
+/*
+	bool ul = (image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, -1*pixel_size.y)) == dilateColorFromRgba);
+	bool uc = (image.Sample(textureSampler, v_in.uv + float2(0*pixel_size.x, -1*pixel_size.y)) == dilateColorFromRgba);
+	bool ur = (image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, -1*pixel_size.y)) == dilateColorFromRgba);
+
+	bool l = (image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, 0*pixel_size.y)) == dilateColorFromRgba);
+	bool r = (image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, 0*pixel_size.y)) == dilateColorFromRgba);
+	
+	bool ll = (image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, 1*pixel_size.y)) == dilateColorFromRgba);
+	bool lc = (image.Sample(textureSampler, v_in.uv + float2(0*pixel_size.x, 1*pixel_size.y)) == dilateColorFromRgba);
+	bool lr = (image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, 1*pixel_size.y)) == dilateColorFromRgba);
+
+	return (ul || uc || ur || l || r || ll || lc || lr) ? dilateColorToRgba : dilateBackgroundRgba;
+*/
+
+	bool ul = colorSame(image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, -1*pixel_size.y)) , dilateColorFromRgba);
+	bool uc = colorSame(image.Sample(textureSampler, v_in.uv + float2(0*pixel_size.x, -1*pixel_size.y)) , dilateColorFromRgba);
+	bool ur = colorSame(image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, -1*pixel_size.y)) , dilateColorFromRgba);
+
+	bool l = colorSame(image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, 0*pixel_size.y)) , dilateColorFromRgba);
+	bool r = colorSame(image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, 0*pixel_size.y)) , dilateColorFromRgba);
+	
+	bool ll = colorSame(image.Sample(textureSampler, v_in.uv + float2(-1*pixel_size.x, 1*pixel_size.y)) , dilateColorFromRgba);
+	bool lc = colorSame(image.Sample(textureSampler, v_in.uv + float2(0*pixel_size.x, 1*pixel_size.y)) , dilateColorFromRgba);
+	bool lr = colorSame(image.Sample(textureSampler, v_in.uv + float2(1*pixel_size.x, 1*pixel_size.y)) , dilateColorFromRgba);
+
+	return (ul || uc || ur || l || r || ll || lc || lr) ? dilateColorToRgba : dilateBackgroundRgba;
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+float4 PSDilateStage2Process(float4 rgba)
+{
+	//return (rgba == dilateColorToRgba) ? dilateColorFromRgba : rgba;
+	return colorSame(rgba, dilateColorToRgba) ? dilateColorFromRgba : rgba;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSDilateStage1(VertData v_in) : TARGET
+{
+//	float4 rgba = image.Sample(textureSampler, v_in.uv);
+//	return (rgba == dilateBackgroundRgba) ? PSDilateStage1Process(v_in) : rgba;
+//	return (image.Sample(textureSampler, v_in.uv) == dilateBackgroundRgba) ? PSDilateStage1Process(v_in) : image.Sample(textureSampler, v_in.uv);
+	return colorSame(image.Sample(textureSampler, v_in.uv), dilateBackgroundRgba) ? PSDilateStage1Process(v_in) : image.Sample(textureSampler, v_in.uv);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSDilateStage2(VertData v_in) : TARGET
+{
+	// just make permanent the dilations in step 1
+	return PSDilateStage2Process(image.Sample(textureSampler, v_in.uv));
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+float4 PSDilateStageTest(VertData v_in) : TARGET
+{
+	// just make permanent the dilations in step 1
+	return image.Sample(textureSampler, v_in.uv);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique DilateStage1
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader = PSDilateStage1(v_in);
+		//pixel_shader = PSDilateStageTest(v_in);
+	}
+}
+
+technique DilateStage2
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader = PSDilateStage2(v_in);
+		//pixel_shader = PSDilateStageTest(v_in);
+	}
+}
+
+//---------------------------------------------------------------------------
+
+

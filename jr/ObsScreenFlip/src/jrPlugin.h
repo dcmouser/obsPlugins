@@ -82,7 +82,7 @@ public:
 	void saveVolatileSettings();
 public:
 	void forceUpdatePluginSettingsOnOptionChange() { ; };
-	void doTick() {;};
+	void doTick() { ; };
 	void doRender();
 	void handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t* key) {;};
 public:

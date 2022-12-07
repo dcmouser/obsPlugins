@@ -149,7 +149,7 @@ public:
 	void analyzeSceneFindComponentMarkers(uint8_t *data, uint32_t dlinesize);
 	void setStageSize(int instageWidth, int instageHeight);
 	//
-	void doRenderWorkFromEffectToStageTexRender(gs_effect_t* effectChroma, obs_source_t* source);
+	void doRenderWorkFromEffectToStageTexRender(obs_source_t* source);
 	bool doRenderWorkFromStageToInternalMemory();
 	void overlayDebugInfoOnInternalDataBuffer();
 	void findTrackingMarkerRegionInSource(obs_source_t* source, bool shouldUpdateTrackingBox, bool isHunting, bool debugPreviewOnly);
@@ -196,8 +196,12 @@ public:
 	void doRenderSourceWithInternalMemoryToFilterOutput(int outx1, int outy1, int outWidth, int outHeight, bool optionShowOnTopOfSource);
 //
 	gs_texrender_t* doPipeLineOutputEffect_Blur(gs_texrender_t* inputTexRender, int owidth, int oheight);
+public:
+	void resetMarkerLessCounters();
+public:
+	void doRender_Dilate_Effect_OnStagingTexrender(int dilateGreenSteps, int dilateRedSteps);
+	void doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(vec4& colorFrom, vec4& colorTo);
 };
-
 
 
 

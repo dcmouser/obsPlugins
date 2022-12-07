@@ -29,7 +29,7 @@
 
 //---------------------------------------------------------------------------
 enum EnumJrPluginType {EnumJrPluginTypeUnknown, EnumJrPluginTypeSource, EnumJrPluginTypeFilter};
-extern char* markerChromaModeRenderTechniques[];
+extern char* markerMultiColorModeRenderTechniques[];
 //---------------------------------------------------------------------------
 
 
@@ -41,9 +41,12 @@ extern char* SETTING_zcMode_choices[];
 extern char* SETTING_zcCropStyle_choices[];
 extern char* SETTING_zcEasing_choices[];
 extern char* SETTING_fadeMode_choices[];
-extern char* SETTING_markerChromaMode_choices[];
+extern char* SETTING_markerMultiColorMode_choices[];
+extern char* SETTING_zcKeyMode_choices[];
+extern char* SETTING_zcKeyColor_choicesFull[];
+extern char* SETTING_zcKeyColor_choicesReduced[];
+extern char* SETTING_zcMarkerlessMode_choices[];
 //---------------------------------------------------------------------------
-
 
 
 
@@ -73,7 +76,7 @@ public:
 	gs_texrender_t* fadeTexRenderB;
 public:
 	// modified chroma effect
-	gs_effect_t *effectChroma;
+	gs_effect_t *effectChromaKey;
 	// chroma effect params
 	gs_eparam_t *chroma_pixel_size_param;
 	//
@@ -85,15 +88,44 @@ public:
 	gs_eparam_t *similarity2_param;
 	gs_eparam_t *smoothness2_param;
 	//
-	gs_eparam_t *chromaThreshold_param;
+	gs_eparam_t *testThreshold_param;
+public:
+	// modified chroma effect
+	gs_effect_t *effectHsvKey;
+	// chroma effect params
+	gs_eparam_t *hsv_pixel_size_param;
+	//
+	gs_eparam_t* color1hsv_param;
+	gs_eparam_t* color2hsv_param;
+	gs_eparam_t *hueThreshold1_param;
+	gs_eparam_t *saturationThreshold1_param;
+	gs_eparam_t *valueThreshold1_param;
+	gs_eparam_t *hueThreshold2_param;
+	gs_eparam_t *saturationThreshold2_param;
+	gs_eparam_t *valueThreshold2_param;
+public:
 	// internal params for chroma effect
-	int opt_markerChromaMode;
-	uint32_t opt_key_color1, opt_key_color2;
+	int opt_markerMultiColorMode;
+	uint32_t opt_chroma_color1, opt_chroma_color2;
 	struct vec2 opt_chroma1, opt_chroma2;
 	float opt_similarity1, opt_similarity2;
 	float opt_smoothness1, opt_smoothness2;
-	float opt_chromaThreshold;
+	//float opt_hsvTestThreshold1, opt_hsvTestThreshold2;
+	int opt_dilateGreenSteps, opt_dilateRedSteps;
+	float opt_testThreshold;
 	int opt_chromaDualColorGapFill;
+	//
+	uint32_t opt_hsv_color1, opt_hsv_color2;
+	float opt_hueThreshold1;
+	float opt_saturationThreshold1;
+	float opt_valueThreshold1;
+	float opt_hueThreshold2;
+	float opt_saturationThreshold2;
+	float opt_valueThreshold2;
+	//
+	struct vec3 color1AsHsv, color2AsHsv;
+	struct vec4 colorGreenAsRgbaVec, colorRedAsRgbaVec, colorBackgroundAsRgbaVec;
+	struct vec4 colorGreenTempAsRgbaVec, colorRedTempAsRgbaVec;
 public:
 	// zoomCrop effect
 	gs_effect_t *effectZoomCrop;
@@ -119,6 +151,13 @@ public:
 	gs_eparam_t* param_fade_b;
 	gs_eparam_t* param_fade_val;
 public:
+	// dilate effect
+	gs_effect_t* effectDilate;
+	gs_eparam_t* param_dilate_pixel_size;
+	gs_eparam_t *param_dilateColorFromRgba;
+	gs_eparam_t *param_dilateColorToRgba;
+	gs_eparam_t *param_dilateBackgroundRgba;
+public:
 	// output effects
 	gs_effect_t *effectOutput;
 	gs_eparam_t *param_output_pixel_size;
@@ -137,6 +176,7 @@ public:
 	float ep_optBlurExteriorDullness;
 	int ep_optBlurPasses;
 	float ep_optBlurSizeReduction;
+
 public:
 	// options
 	bool opt_zcPreserveAspectRatio;
@@ -146,6 +186,8 @@ public:
 	int opt_zcBoxMoveSpeed;
 	int opt_zcReactionDistance;
 	int opt_zcBoxMoveDelay;
+	int opt_zcMissingMarkerTimeout;
+	int opt_zcValidMarkersToTestForOcclusion;
 	//
 	// general configurable params
 	bool opt_filterBypass;
@@ -164,6 +206,7 @@ public:
 	int opt_rmSizeMin;
 	int opt_rmSizeMax;
 	//
+	int opt_keyMode;
 	float opt_rmMinColor2Percent;
 	float opt_rmMaxColor2Percent;
 	//
@@ -181,15 +224,27 @@ public:
 	int opt_zcCropStyle;
 	char cropZoomTechnique[16];
 
-	bool opt_enableMarkerlessUse;
+public:
+	// markerless stuff - for when we can't find markers, do we show entire view or some subset
+	int opt_markerlessMode = 0;
+	//
 	bool opt_enableAutoSourceHunting;
 	int opt_manualViewSourceIndex;
-
-	// markerless stuff - for when we can't find markers, do we show entire view or some subset
+	//
 	char opt_markerlessCycleListBuf[DefMarkerlessCycleListBufMaxSize];
 	int opt_markerlessCycleIndex;
-	float opt_fadeDuration;
+	int opt_manualZoomSourceIndex = 0;
+	float opt_manualZoomSourceScale = 1.0f;
+	float opt_manualZoomStepSize = 0.10f;
+	float opt_manualZoomTransitions[DefMaxSources];
+	int opt_manualZoomAlignment;
+	char opt_manualZoomTransitionsString[80];
+	float opt_manualZoomMinZoom = 0.5;
+public:
 	int kludgeTouchCounter;
+
+	bool opt_avoidTrackingInTransitions;
+	float opt_fadeDuration;
 
 	// size
 	uint32_t outputWidthAutomatic;
@@ -206,7 +261,6 @@ public:
 	obs_hotkey_id hotkeyId_ToggleIgnoreMarkers;
 	obs_hotkey_id hotkeyId_CycleSource, hotkeyId_CycleSourceBack;
 	obs_hotkey_id hotkeyId_CycleViewForward, hotkeyId_CycleViewBack;
-	obs_hotkey_id hotkeyId_toggleEnableMarkerlessUse;
 	obs_hotkey_id hotkeyId_toggleAutoSourceHunting;
 
 	// to keep tracking of update rate and one-shot adjustment
@@ -229,6 +283,8 @@ public:
 	float computedMinDistBetweenMarkersIsTooClose;
 	//
 	bool forceAllAnalyzeMarkersOnNextRender;
+	//
+	bool currentlyTransitioning = false;
 public:
 	int fadeStartingSourceIndex, fadeEndingSourceIndex;
 	float fadePosition;
@@ -258,8 +314,9 @@ public:
 	//
 	bool enableAutoSwitchingSources() { return (opt_enableAutoSourceHunting && !opt_filterBypass && !opt_ignoreMarkers); };
 	//
-	int getOptMarkerChromaMode() { return opt_markerChromaMode; };
-	char* getOptMarkerChromaModeStr() { return markerChromaModeRenderTechniques[opt_markerChromaMode]; };
+	int getOptMarkerMultiColorMode() { return opt_markerMultiColorMode; };
+	char* getOptMarkerMultiColorModeStr() { return markerMultiColorModeRenderTechniques[opt_markerMultiColorMode]; };
+	bool getOptKeyMode() { return opt_keyMode; }
 public:
 	obs_properties_t* doPluginAddProperties();
 	void updateSettingsOnChange(obs_data_t* settings);
@@ -285,10 +342,12 @@ public:
 	void reRegisterHotkeys();
 	void addPropertyForASourceOption(obs_properties_t* pp, const char* name, const char* desc);
 	//
-	void setEffectParamsChroma(uint32_t swidth, uint32_t sheight);
+	void setEffectParamsChromaKey(uint32_t swidth, uint32_t sheight);
+	void setEffectParamsHsvKey(uint32_t swidth, uint32_t sheight);
 	void setEffectParamsZoomCrop(uint32_t swidth, uint32_t sheight);
 	void setEffectParamsFade(uint32_t swidth, uint32_t sheight);
 	void setEffectParamsOutput(TrackedSource* tsourcep, uint32_t swidth, uint32_t sheight, int passNumber, gs_texrender_t* secondaryTexture);
+	void setEffectParamsDilate(uint32_t swidth, uint32_t sheight);
 	//
 	SourceTracker* getSourceTrackerp() { return &stracker; };
 	void multiSourceTargetLost();
@@ -321,6 +380,9 @@ public:
 	void gotoCurrentMarkerlessCoordinates();
 public:
 	bool updateMarkerlessSettings();
+	bool getMarkerlessModeIsPresets() { return opt_markerlessMode == 1; }
+	bool getMarkerlessModeIsManualZoom() { return opt_markerlessMode == 0; }
+	bool getMarkerlessModeIsDisabled() { return opt_markerlessMode == 2; }
 public:
 	void viewCycleAdvance(int delta);
 	void markerlessCycleListAdvance(int delta);
@@ -338,6 +400,11 @@ public:
 	bool calibrateSourceZoomScales();
 public:
 	void handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t* key);
+public:
+	bool checkIsTransitioning();
+public:
+	void doManualZoomInOutByPercent(float scalePercent);
+	void fillFloatListFromString(char* commaList, float* floatList, int max);
 };
 //---------------------------------------------------------------------------
 

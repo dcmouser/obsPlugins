@@ -13,7 +13,7 @@
 //---------------------------------------------------------------------------
 float TrackedSource::calcMinDistanceBetweenRegions(JrRegionSummary* region1, JrRegionSummary* region2) {
 	// we want some kind of heuristic distance between two regions
-	// woulc use midpoints, or min distance between any two corners
+	// could use midpoints, or min distance between any two corners
 	// inner distance (closet points distance)
 	// lets just do midpoints
 	int r1midx = (region1->x1 + region1->x2) / 2;
@@ -30,12 +30,14 @@ float TrackedSource::calcMinDistanceBetweenRegions(JrRegionSummary* region1, JrR
 bool TrackedSource::isRegionSimilarBounds(JrRegionSummary* regiona, JrRegionSummary* regionb) {
 	// to decide if region is in same location as before
 	JrPlugin* plugin = getPluginp();
-	// for distance treatd as similar we reuse the existing parameter for box move distance
+	// for distance treatd as similar we reuse the existing parameter for box move distance(?)
 	float distInStageSpace = calcWorstRegionPointDist(regiona, regionb);
 	if (distInStageSpace <= plugin->opt_zcReactionDistance * stageDistMultOpt) {
 		// close enough
+		//mydebug("ATTN: isRegionSimilarBounds GOOD with distance = %f < %f.", distInStageSpace, plugin->opt_zcReactionDistance * stageDistMultOpt);
 		return true;
 	}
+	//mydebug("ATTN: isRegionSimilarBounds BAD with distance = %f > %f.", distInStageSpace, plugin->opt_zcReactionDistance * stageDistMultOpt);
 	return false;
 }
 
@@ -74,7 +76,14 @@ void TrackedSource::findTrackingMarkerRegionInSource(obs_source_t* source,  bool
 	// part 1
 	//mydebug("findTrackingMarkerRegionInSource - part 1 [%d ishunting = %d]  [source showing = %d]",index,(int)isHunting,(int)obs_source_showing(source));
 	// Render to intermediate target texrender instead of output of plugin (screen)
-	doRenderWorkFromEffectToStageTexRender(plugin->effectChroma, source);
+	doRenderWorkFromEffectToStageTexRender(source);
+
+	if (DefDilateImplementationEffect) {
+		// do dilation after chroma
+		// from staging stagingTexrender to stagingTexrender
+		doRender_Dilate_Effect_OnStagingTexrender(plugin->opt_dilateGreenSteps, plugin->opt_dilateRedSteps);
+	}
+
 
 	// part 2
 	// ok now the output is in texrender texture where we can map it and copy it to private user memory
@@ -90,7 +99,7 @@ void TrackedSource::findTrackingMarkerRegionInSource(obs_source_t* source,  bool
 	// part 2b
 	if (bretv) {
 		// part 3
-		// update autotracking by doing machine vision on internal memory copy of effectChroma output
+		// update autotracking by doing machine vision on internal memory copy of effectChromaKey output
 		if (shouldUpdateTrackingBox) {
 			//mydebug("Doing part 3 stracker.analyzeSceneAndFindTrackingBox.");
 			//mydebug("findTrackingMarkerRegionInSource - part 3");
@@ -153,7 +162,7 @@ bool TrackedSource::calcIsValidmarkerRegion(JrRegionSummary* region) {
 	}
 
 	// dual color percentages
-	if (plugin->opt_markerChromaMode > 1 && region->pixelCountAll>0) {
+	if (plugin->opt_markerMultiColorMode > 1 && region->pixelCountAll>0) {
 
 		float percentageColor2;
 		if (flagCountOnlyInterirorRedWhite) {
@@ -162,6 +171,7 @@ bool TrackedSource::calcIsValidmarkerRegion(JrRegionSummary* region) {
 			percentageColor2 = (float)(region->pixelCountPerEnumColor[DefRdPixelEnumColor2] + region->pixelCountPerEnumColor[DefRdPixelEnumColor3]) / (float)region->pixelCountAll;
 		}
 		if (percentageColor2 < plugin->opt_rmMinColor2Percent || percentageColor2 > plugin->opt_rmMaxColor2Percent) {
+			//mydebug("Rejecting marker %d due to dual percentages of %f and %d / %d (%d) / %d with total %d (int=%d bord=%d).", region->label, percentageColor2, region->pixelCountPerEnumColor[DefRdPixelEnumColor1], region->pixelCountPerEnumColor[DefRdPixelEnumColor2], region->pixelCountInteriorPerEnumColor[DefRdPixelEnumColor2], region->pixelCountPerEnumColor[DefRdPixelEnumColor3], region->pixelCountAll, region->pixelCountInterior, region->pixelCountBorder);
 			return false;
 		}
 	}
@@ -214,7 +224,9 @@ void TrackedSource::analyzeSceneFindComponentMarkers(uint8_t *data, uint32_t dli
 
 	// step 1 build initial labels
 	if (!data) {
-		mydebug("Error data buffer for analyzeSceneFindComponentMarkers is null.");
+		//mydebug("Error data buffer for analyzeSceneFindComponentMarkers is null.");
+		rd->clearComputations();
+		return;
 	}
 
 	int foregroundPixelCount = rd->fillFromStagingMemory((uint32_t*) data, dlinesize);
@@ -236,10 +248,14 @@ void TrackedSource::analyzeSceneFindComponentMarkers(uint8_t *data, uint32_t dli
 
 //---------------------------------------------------------------------------
 void TrackedSource::doRenderToInternalMemoryPostProcessing() {
-	if (plugin->opt_chromaDualColorGapFill == 0 || plugin->opt_markerChromaMode <= 1) {
-		// nothing to do
-		return;
+	// dilate
+	if (plugin->opt_dilateGreenSteps > 0 || plugin->opt_dilateRedSteps > 0) {
+		regionDetector.doRenderToInternalMemoryPostProcessing_Dilate((uint32_t*)stagedData, stagedDataLineSize, plugin->opt_dilateGreenSteps, plugin->opt_dilateRedSteps);
 	}
-	regionDetector.doRenderToInternalMemoryPostProcessing((uint32_t*) stagedData, stagedDataLineSize, plugin->opt_chromaDualColorGapFill);
+
+	if (plugin->opt_chromaDualColorGapFill > 0 && (plugin->opt_markerMultiColorMode == 2 || plugin->opt_markerMultiColorMode == 5)) {
+		// add white pixels that span orthonogonal gaps between green and red to make them look like a single solid region to region extractor
+		regionDetector.doRenderToInternalMemoryPostProcessing_DualColorGapFill((uint32_t*)stagedData, stagedDataLineSize, plugin->opt_chromaDualColorGapFill);
+	}
 }
 //---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 //---------------------------------------------------------------------------
 #include "jrPlugin.h"
+#include "jrazcolorhelpers.h"
 //---------------------------------------------------------------------------
 
 
@@ -12,6 +13,14 @@ void JrPlugin::doTick() {
 	// ATTN: there is code in render() that could be placed here..
 	// ATTN: rebuild sources from multisource effect plugin code -- needed every tick?
 
+	// update this here in doTick to be safe
+	if (opt_avoidTrackingInTransitions) {
+		currentlyTransitioning = checkIsTransitioning();
+	} else {
+		currentlyTransitioning = false;
+	}
+
+	//
 	stracker.checkAndUpdateAllTrackingSources();
 	if (sourcesHaveChanged) {
 		onSourcesHaveChanged();
@@ -109,6 +118,10 @@ bool JrPlugin::updateComputeAutomaticOutputSize() {
 }
 
 bool JrPlugin::updateMarkerlessSettings() {
+
+	// manual zoom markerless
+	doManualZoomInOutByPercent(0.0);
+	// normal markerless
 	return stracker.parseSettingString(opt_markerlessCycleListBuf);
 }
 //---------------------------------------------------------------------------
@@ -123,22 +136,39 @@ bool JrPlugin::updateMarkerlessSettings() {
 bool JrPlugin::initFilterInGraphicsContext() {
 	// called once at creation startup
 
-	// chroma effect
-	char *effectChroma_path = obs_module_file("ObsAutoZoomChroma.effect");
-	effectChroma = gs_effect_create_from_file(effectChroma_path, NULL);
-	if (effectChroma) {
+	// chroma key effect
+	char *effectChromaKey_path = obs_module_file("ObsAutoZoomChromaKey.effect");
+	effectChromaKey = gs_effect_create_from_file(effectChromaKey_path, NULL);
+	if (effectChromaKey) {
 		// effect .effect file uniform parameters
-		chroma1_param = gs_effect_get_param_by_name(effectChroma, "chroma_key1");
-		similarity1_param = gs_effect_get_param_by_name(effectChroma, "similarity1");
-		smoothness1_param = gs_effect_get_param_by_name(effectChroma, "smoothness1");
-		chroma2_param = gs_effect_get_param_by_name(effectChroma, "chroma_key2");
-		similarity2_param = gs_effect_get_param_by_name(effectChroma, "similarity2");
-		smoothness2_param = gs_effect_get_param_by_name(effectChroma, "smoothness2");
-		//
-		chroma_pixel_size_param = gs_effect_get_param_by_name(effectChroma, "pixel_size");
-		chromaThreshold_param = gs_effect_get_param_by_name(effectChroma, "threshold");
+		chroma_pixel_size_param = gs_effect_get_param_by_name(effectChromaKey, "pixel_size");
+		chroma1_param = gs_effect_get_param_by_name(effectChromaKey, "chroma_key1");
+		similarity1_param = gs_effect_get_param_by_name(effectChromaKey, "similarity1");
+		smoothness1_param = gs_effect_get_param_by_name(effectChromaKey, "smoothness1");
+		chroma2_param = gs_effect_get_param_by_name(effectChromaKey, "chroma_key2");
+		similarity2_param = gs_effect_get_param_by_name(effectChromaKey, "similarity2");
+		smoothness2_param = gs_effect_get_param_by_name(effectChromaKey, "smoothness2");
+		testThreshold_param = gs_effect_get_param_by_name(effectChromaKey, "testThreshold");
 	}
-	bfree(effectChroma_path);
+	bfree(effectChromaKey_path);
+
+	// hsv key effect
+	char *effectHsvKey_path = obs_module_file("ObsAutoZoomHsvKey.effect");
+	effectHsvKey = gs_effect_create_from_file(effectHsvKey_path, NULL);
+	if (effectHsvKey) {
+		// effect .effect file uniform parameters
+		hsv_pixel_size_param = gs_effect_get_param_by_name(effectHsvKey, "pixel_size");
+		//
+		hueThreshold1_param = gs_effect_get_param_by_name(effectHsvKey, "hueThreshold1");
+		saturationThreshold1_param = gs_effect_get_param_by_name(effectHsvKey, "saturationThreshold1");
+		valueThreshold1_param = gs_effect_get_param_by_name(effectHsvKey, "valueThreshold1");
+		hueThreshold2_param = gs_effect_get_param_by_name(effectHsvKey, "hueThreshold2");
+		saturationThreshold2_param = gs_effect_get_param_by_name(effectHsvKey, "saturationThreshold2");
+		valueThreshold2_param = gs_effect_get_param_by_name(effectHsvKey, "valueThreshold2");
+		color1hsv_param = gs_effect_get_param_by_name(effectHsvKey, "color1hsv");
+		color2hsv_param = gs_effect_get_param_by_name(effectHsvKey, "color2hsv");
+	}
+	bfree(effectHsvKey_path);
 
 	// zoomCrop effect
 	char *effectZoomCrop_path = obs_module_file("ObsAutoZoomCrop.effect");
@@ -183,6 +213,19 @@ bool JrPlugin::initFilterInGraphicsContext() {
 	}
 	bfree(effectFade_path);
 
+	// dilate effect
+	char *effectDilate_path = obs_module_file("ObsAutoZoomDilate.effect");
+	effectDilate = gs_effect_create_from_file(effectDilate_path, NULL);
+	if (effectDilate) {
+		// effect .effect file uniform parameters - we get these each time currently
+		param_dilate_pixel_size = gs_effect_get_param_by_name(effectDilate, "pixel_size");
+		param_dilateColorFromRgba = gs_effect_get_param_by_name(effectDilate, "dilateColorFromRgba");
+		param_dilateColorToRgba = gs_effect_get_param_by_name(effectDilate, "dilateColorToRgba");
+		param_dilateBackgroundRgba = gs_effect_get_param_by_name(effectDilate, "dilateBackgroundRgba");
+	}
+	bfree(effectDilate_path);
+
+
 	// helper texrenders
 	outTexRenderBase = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
 	outTexRenderA = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
@@ -190,14 +233,23 @@ bool JrPlugin::initFilterInGraphicsContext() {
 	fadeTexRenderA = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
 	fadeTexRenderB = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
 
+	// Dilation vector constants, etc.
+	jrazFillRgbaVec(colorGreenAsRgbaVec, 0.0, 1.0, 0.0, 1.0);
+	jrazFillRgbaVec(colorRedAsRgbaVec, 1.0, 0.0, 0.0, 1.0);
+	jrazFillRgbaVec(colorBackgroundAsRgbaVec, 0.0, 0.0, 0.0, 0.0);
+	jrazFillRgbaVec(colorGreenTempAsRgbaVec, 0.0, 0.0, 1.0, 1.0);
+	jrazFillRgbaVec(colorRedTempAsRgbaVec, 0.0, 1.0, 1.0, 1.0);
+
 	// success?
-	if (!effectChroma || !effectZoomCrop || !effectFade) {
+	if (!effectChromaKey || !effectHsvKey || !effectZoomCrop || !effectFade || !effectDilate) {
 		return false;
 	}
 
 	// success
 	return true;
 }
+
+
 
 
 
@@ -215,7 +267,7 @@ bool JrPlugin::initFilterOutsideGraphicsContext() {
 
 	// hotkeys init
 	hotkeyId_ToggleAutoUpdate = hotkeyId_OneShotZoomCrop = hotkeyId_ToggleCropping = hotkeyId_ToggleDebugDisplay = hotkeyId_ToggleIgnoreMarkers = hotkeyId_CycleSource = -1;
-	hotkeyId_CycleSourceBack = hotkeyId_CycleViewForward = hotkeyId_CycleViewBack = hotkeyId_toggleEnableMarkerlessUse = hotkeyId_toggleAutoSourceHunting = -1;
+	hotkeyId_CycleSourceBack = hotkeyId_CycleViewForward = hotkeyId_CycleViewBack = hotkeyId_toggleAutoSourceHunting = -1;
 
 	//
 	mutex = CreateMutexA(NULL, FALSE, NULL);
@@ -239,9 +291,13 @@ bool JrPlugin::initFilterOutsideGraphicsContext() {
 
 //---------------------------------------------------------------------------
 void JrPlugin::freeBeforeReallocateEffects() {
-	if (effectChroma) {
-		gs_effect_destroy(effectChroma);
-		effectChroma = NULL;
+	if (effectChromaKey) {
+		gs_effect_destroy(effectChromaKey);
+		effectChromaKey = NULL;
+	}
+	if (effectHsvKey) {
+		gs_effect_destroy(effectHsvKey);
+		effectHsvKey = NULL;
 	}
 	if (effectZoomCrop) {
 		gs_effect_destroy(effectZoomCrop);
@@ -254,6 +310,10 @@ void JrPlugin::freeBeforeReallocateEffects() {
 	if (effectFade) {
 		gs_effect_destroy(effectFade);
 		effectFade = NULL;
+	}
+	if (effectDilate) {
+		gs_effect_destroy(effectDilate);
+		effectDilate = NULL;
 	}
 	if (outTexRenderBase != NULL) {
 		gs_texrender_destroy(outTexRenderBase);
@@ -323,19 +383,31 @@ void JrPlugin::computeStageSizeMaxed(int& width, int& height, int maxWidth, int 
 
 //---------------------------------------------------------------------------
 void JrPlugin::updateComputedOptions() {
+	// ATTN: TO DO - change some of these counters to be based on update rate
+	// ATTN: and do the distance ones need to scale based on 4k res?
+	// see jrPluginDefs.h for contstants
+	//
+	float distScale = 1.0f;
+	//float counterScale = 1.0f;
+	// test
+	float counterScale = 2.0f / (float)opt_updateRate;
+	// 
 	//mydebug("In updateComputedOptions.");
-	computedChangeMomentumDistanceThresholdMoving = DefChangeMomentumDistanceThresholdMoving;
-	computedChangeMomentumDistanceThresholdStabilized = DefChangeMomentumDistanceThresholdStabilized;
-	computedThresholdTargetStableDistance = DefThresholdTargetStableDistance;
-	computedThresholdTargetStableCount = (int)DefThresholdTargetStableCount;
-	computedChangeMomentumDistanceThresholdDontDrift = DefChangeMomentumDistanceThresholdDontDrift;
+	computedChangeMomentumDistanceThresholdMoving = DefChangeMomentumDistanceThresholdMoving * distScale;
+	computedChangeMomentumDistanceThresholdStabilized = DefChangeMomentumDistanceThresholdStabilized * distScale;
+	computedThresholdTargetStableDistance = DefThresholdTargetStableDistance * distScale;
+	computedChangeMomentumDistanceThresholdDontDrift = DefChangeMomentumDistanceThresholdDontDrift * distScale;
+	computedMinDistBetweenMarkersIsTooClose = (float)opt_rmTooCloseDist * distScale;
+	//
 	computedAverageSmoothingRateToCloseTarget = DefAverageSmoothingRateToCloseTarget;
 	computedIntegerizeStableAveragingLocation = DefIntegerizeStableAveragingLocation;
-	computedMomentumCounterTargetMissingMarkers = DefMomentumCounterTargetMissingMarkers;
-	computedMomentumCounterTargetNormal = DefMomentumCounterTargetNormal;
-	//computedMinDistBetweenMarkersIsTooClose = DefMinDistBetweenMarkersIsTooClose;
-	//computedMinDistBetweenMarkersIsTooClose = opt_rmSizeMax * DefMaxSizeToMarkerTooCloseScale;
-	computedMinDistBetweenMarkersIsTooClose = (float)opt_rmTooCloseDist;
+	//
+	// ATTN: should these scale with update rate, OR be based on clock time
+	computedThresholdTargetStableCount = (int)((float)DefThresholdTargetStableCount * counterScale);
+	computedMomentumCounterTargetMissingMarkers = (int)((float)DefMomentumCounterTargetMissingMarkers * counterScale);
+	computedMomentumCounterTargetNormal = (int)((float)DefMomentumCounterTargetNormal * counterScale);
+	//
+
 }
 //---------------------------------------------------------------------------
 
@@ -417,9 +489,6 @@ void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 		// ATTN: TODO - should we force ignore markers in this case?
 		viewCycleAdvance(-1);
 		saveVolatileSettings();
-	} else if (id == hotkeyId_toggleEnableMarkerlessUse) {
-		opt_enableMarkerlessUse = !opt_enableMarkerlessUse;
-		saveVolatileSettings();
 	} else if (id == hotkeyId_toggleAutoSourceHunting) {
 		saveCurrentViewedSourceAsManualViewOption();
 		opt_enableAutoSourceHunting = !opt_enableAutoSourceHunting;
@@ -437,3 +506,34 @@ void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 	//
 	ReleaseMutex(mutex);
 }
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+bool JrPlugin::checkIsTransitioning() {
+	// this code hangs obs for reasons unknown to me
+	bool isTransitioning = false;
+	obs_source_t* transition = obs_get_output_source(0);
+	if (transition) {
+		float t = obs_transition_get_time(transition);
+		isTransitioning = t < 1.0f && t > 0.0f;
+		if (isTransitioning) {
+			// blog(LOG_WARNING, "skipping autozoom tracking update because in the middle of a transition.");
+		}
+		obs_source_release(transition);
+	}
+	return isTransitioning;
+}
+//---------------------------------------------------------------------------

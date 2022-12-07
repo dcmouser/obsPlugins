@@ -325,7 +325,7 @@ void SourceTracker::getDualTrackedViews(TrackedSource*& tsourcepView, TrackedSou
 
 //---------------------------------------------------------------------------
 void SourceTracker::initiateHunt(EnumHuntType htype, bool inshouldConcludeNoMarkersAnywhereAndSwitch) {
-	//mydebug("Initiating hunt type %d.", htype);
+	//mydebug("ATTN: Initiating hunt type %d.", htype);
 
 	if (isTrackingDelayed()) {
 		return;
@@ -387,6 +387,7 @@ void SourceTracker::internalInitiateHuntOnNewTargetFoundPushIn() {
 
 void SourceTracker::internalInitiateHuntOnTargetLostPullOut() {
 	// if we are already farthest camera, nothing to do
+	//mydebug("ATTN: In internalInitiateHuntOnTargetLostPullOut at souce %d.", sourceIndexViewing);
 	if (sourceIndexViewing == 0) {
 		// but we may need to trigger onHuntFinished
 		onHuntFinished();
@@ -447,16 +448,21 @@ void SourceTracker::foundGoodHuntedSourceIndex(int huntingIndex) {
 	bool shouldFade = (huntType == EnumHuntType_TargetLostPullOut || huntType == EnumHuntType_LongTimeMarkerless);
 	setViewSourceIndex(huntingIndex,shouldFade);
 
-	//mydebug("foundGoodHuntedSourceIndex: %d.  Aborting hunting, switching to instant jump due to dif view same? = %d.", huntingIndex, (int)alreadyViewing);
 	bool alreadyViewing = (sourceIndexViewing == huntingIndex);
+	//mydebug("ATTN: foundGoodHuntedSourceIndex: %d.  Aborting hunting, switching to instant jump due to dif view same? = %d.", huntingIndex, (int)alreadyViewing);
+
 	if (alreadyViewing) {
 		//mydebug("!!!!!!!!! WARNING - WHY DID WE FIND A GOOD HUNTED SOURCE IF WE ARE ALREADY VIEIWING THIS SOURCE??????");
 	}
 
 	// tell the new source we are switching to to do a one time instant jump
 	// ATTEMPT TO FIND BUG
-	//getTrackedSourceByIndex(huntingIndex)->forceTargetToMarkersNow(!alreadyViewing);
-	getTrackedSourceByIndex(huntingIndex)->setLocationsToMarkerLocations(true);
+	TrackedSource* tsp = getTrackedSourceByIndex(huntingIndex);
+	//tsp->forceTargetToMarkersNow(!alreadyViewing);
+	tsp->setLocationsToMarkerLocations(true);
+
+	// reset counters (new 11/25/22)
+	tsp->resetMarkerLessCounters();
 
 	// all done
 	abortHunting();
@@ -500,6 +506,7 @@ void SourceTracker::onHuntFinished() {
 		TrackedSource* tsp = getTrackedSourceByIndex(sourceIndexViewing);
 		if (tsp && tsp->areMarkersMissing()) {
 			// we failed to find markers
+			//mydebug("ATTN: onHuntFinished and failed to find markers anywhere.");
 			onPullOutHuntFailedToFindMarkersAnywhere();
 		}
 	}
@@ -631,13 +638,49 @@ void SourceTracker::setExternallyManagedTrackedSource(int index, obs_source_t* s
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //---------------------------------------------------------------------------
 void SourceTracker::travelToMarkerless(int forcedSourceId, bool forceInstant, bool useFade) {
 	// first find the markerless coord entry we want to jump to, based on constraint of forcedSourceId
 	//mydebug("travelToMarkerless 1 with %d and %d.", plugin->opt_markerlessCycleIndex, forcedSourceId);
+	// forceSourceId is for when we want to stay on the current source if option is set to NOT transition between sources for some reason
 	JrMarkerlessEntry* entryp = NULL;
-	if (plugin->opt_enableMarkerlessUse) {
+
+	if (plugin->getMarkerlessModeIsManualZoom()) {
+		entryp = &manualZoomEntry;
+	} else if (plugin->getMarkerlessModeIsPresets()) {
 		entryp = markerlessManager.lookupMarkerlessEntry(plugin->opt_markerlessCycleIndex, forcedSourceId);
+	} else {
+		// nothing
 	}
 	//
 	TrackedSource* tsp;
@@ -729,5 +772,23 @@ void SourceTracker::goDirectlyToMakersAndDelayHunting() {
 		tsp->setStickyTargetToMarkers();
 		delayHuntingBriefly();
 	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+void SourceTracker::updateManualZoomEntry(int sourceIndex, float zoomLevel, int alignmentMode) {
+	// create a markerless "entry" based on manual zoom settings
+	manualZoomEntry.sourceIndex = sourceIndex;
+	manualZoomEntry.zoomLevel = zoomLevel;
+
+	// char* SETTING_zcAlignment_choices[] = { "topLeft", "topCenter", "topRight", "middleLeft", "center", "middleRight", "bottomLeft", "bottomCenter", "bottomRight", NULL };
+	int xmods[] = {0,1,2,0,1,2,0,1,2};
+	int ymods[] = {0,0,0,1,1,1,2,2,2};
+	manualZoomEntry.alignxmod = xmods[alignmentMode];
+	manualZoomEntry.alignymod = ymods[alignmentMode];
 }
 //---------------------------------------------------------------------------

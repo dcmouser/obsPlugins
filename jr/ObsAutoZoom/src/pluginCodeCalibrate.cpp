@@ -89,8 +89,8 @@ bool JrPlugin::calibrateMarkerChroma() {
 		double colorG = (double)colorSumG / (double)foregroundPixelsFount;
 		double colorB = (double)colorSumB / (double)foregroundPixelsFount;
 		//opt_key_color = JrRgb(0xff, (unsigned char)colorR, (unsigned char)colorG, (unsigned char)colorB);
-		opt_key_color1 = JrRgb(0xff, (unsigned char)colorB, (unsigned char)colorG, (unsigned char)colorR);
-		//opt_key_color2 = JrRgb(0xff, (unsigned char)colorB, (unsigned char)colorG, (unsigned char)colorR);
+		opt_chroma_color1 = JrRgb(0xff, (unsigned char)colorB, (unsigned char)colorG, (unsigned char)colorR);
+		//opt_chroma_color2 = JrRgb(0xff, (unsigned char)colorB, (unsigned char)colorG, (unsigned char)colorR);
 	}
 
 	// ok all done now SAVE values to options

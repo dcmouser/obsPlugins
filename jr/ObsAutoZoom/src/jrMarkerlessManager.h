@@ -21,8 +21,8 @@ public:
 	void clearEntries() { entryCount = 0; }
 	int getEntryCount() { return entryCount; }
 	JrMarkerlessEntry* getEntryByIndex(int ix) { return &mentries[ix]; };
-	JrMarkerlessEntry* findFirstEntryMatchingSourceIndex(int index);
-	void computeCoordinatesForEntryWithSource(JrMarkerlessEntry* entryp, int& x1, int& y1, int& x2, int& y2);
+	//JrMarkerlessEntry* findFirstEntryMatchingSourceIndex(int index);
+	//void computeCoordinatesForEntryWithSource(JrMarkerlessEntry* entryp, int& x1, int& y1, int& x2, int& y2);
 public:
 	bool parseSettingString(const char* settingBuf);
 	bool addMarkerEntry(int sourceNumber, float zoomLevel, const char* alignBuf);

@@ -4,6 +4,8 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("transition-fadeDelayed", "en-US")
 
+// whether to use a modified audio fade
+#define DefUseModifiedDelayedAudioFade	true
 
 
 
@@ -116,26 +118,30 @@ static void fade_video_render(void *data, gs_effect_t *effect)
 static float mix_a(void *data, float t)
 {
 	UNUSED_PARAMETER(data);
-	// first half its all A, then we scale from 1->0 for second half
-	if (t < 0.5f) {
-		return 1.0f;
+
+	if (DefUseModifiedDelayedAudioFade) {
+		// first half its all A, then we scale from 1->0 for second half
+		if (t < 0.5f) {
+			return 1.0f;
+		}
+
+		// match video fade, full mix at the END
+		if (true) {
+			// rescale the second half to be from 0 to 1 scale
+			t = (t - 0.5f) * 2.0f;
+			// normal fade
+			return 1.0f - t;
+		}
+
+		// faster fade in so it's full (OFF) at 75%
+		// this doesn't really seem needed
+		if (t > 0.75f) {
+			return 0.0f;
+		}
+		// rescale (0.5 to 0.75) to 0 to 1
+		t = (t - 0.5f) * 4.0f;
 	}
 
-	// match video fade, full mix at the END
-	if (true) {
-		// rescale the second half to be from 0 to 1 scale
-		t = (t - 0.5f) * 2.0f;
-		// normal fade
-		return 1.0f - t;
-	}
-
-	// faster fade in so it's full (OFF) at 75%
-	// this doesn't really seem needed
-	if (t > 0.75f) {
-		return 0.0f;
-	}
-	// rescale (0.5 to 0.75) to 0 to 1
-	t = (t - 0.5f) * 4.0f;
 	// normal fade
 	return 1.0f - t;
 }
@@ -143,25 +149,29 @@ static float mix_a(void *data, float t)
 static float mix_b(void *data, float t)
 {
 	UNUSED_PARAMETER(data);
-	// first half its no B, then we scale from 0->1 for second half
-	if (t < 0.5f) {
-		return 0.0f;
-	}
-	// match video fade, full mix at the END
-	if (true) {
-		// rescale the second half to be from 0 to 1 scale
-		t = (t - 0.5f) * 2.0f;
-		// normal fade
-		return t;
+
+	if (DefUseModifiedDelayedAudioFade) {
+		// first half its no B, then we scale from 0->1 for second half
+		if (t < 0.5f) {
+			return 0.0f;
+		}
+		// match video fade, full mix at the END
+		if (true) {
+			// rescale the second half to be from 0 to 1 scale
+			t = (t - 0.5f) * 2.0f;
+			// normal fade
+			return t;
+		}
+
+		// faster fade in so it's full (ON) at 75%
+		// this doesn't really seem needed
+		if (t > 0.75f) {
+			return 1.0f;
+		}
+		// rescale (0.5 to 0.75) to 0 to 1
+		t = (t - 0.5f) * 4.0f;
 	}
 
-	// faster fade in so it's full (ON) at 75%
-	// this doesn't really seem needed
-	if (t > 0.75f) {
-		return 1.0f;
-	}
-	// rescale (0.5 to 0.75) to 0 to 1
-	t = (t - 0.5f) * 4.0f;
 	// normal fade
 	return t;
 }

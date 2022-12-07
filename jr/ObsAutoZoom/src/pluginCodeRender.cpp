@@ -2,6 +2,7 @@
 #include <cstdio>
 //
 #include "jrPlugin.h"
+#include "jrazcolorhelpers.h"
 //---------------------------------------------------------------------------
 
 
@@ -97,26 +98,37 @@ void JrPlugin::doRender() {
 	}
 
 
+	// first place we might check for transitioning -- we do not use this
+	if (false && validSources && opt_avoidTrackingInTransitions) {
+		// new code to try to avoid tracking if in middle of transition
+		if (currentlyTransitioning) {
+			validSources = false;
+		}
+	}
+
+
 	// sources good to use, if not we skill all the work
 	if (validSources) {
 
 		// are we doing tracking? either at a certain rate or during oneshots or when hunting
 		bool shouldUpdateTrackingBox = false;
-		if (stracker.isTrackingDelayed() || opt_ignoreMarkers) {
+
+		// next place we could check for transitioning
+		if (true && opt_avoidTrackingInTransitions && currentlyTransitioning) {
+			// skip updating
+		} else if (stracker.isTrackingDelayed() || opt_ignoreMarkers) {
 			// if delayed tracking
 		} else if (tsourcepTrack && DefAlwaysUpdateTrackingWhenHunting) {
 			// when we are hunting we always update tracking
 			trackingUpdateCounter = 0;
 			shouldUpdateTrackingBox = true;
-		}
-		else if (opt_enableAutoUpdate || oneShotEngaged || tsourcepTrack) {
+		} else if (opt_enableAutoUpdate || oneShotEngaged || tsourcepTrack) {
 			if (++trackingUpdateCounter >= opt_updateRate) {
 				// frequence to update tracking box
 				trackingUpdateCounter = 0;
 				shouldUpdateTrackingBox = true;
 			}
 		}
-
 
 
 		// default source to track
@@ -335,8 +347,12 @@ void JrPlugin::doRender() {
 
 
 //---------------------------------------------------------------------------
-void JrPlugin::setEffectParamsChroma(uint32_t swidth, uint32_t sheight) {
+void JrPlugin::setEffectParamsChromaKey(uint32_t swidth, uint32_t sheight) {
 	// setting params for effects file .effect
+	struct vec2 pixel_size;
+	vec2_set(&pixel_size, 1.0f / (float)swidth, 1.0f / (float)sheight);
+	gs_effect_set_vec2(chroma_pixel_size_param, &pixel_size);
+	//
 	gs_effect_set_vec2(chroma1_param, &opt_chroma1);
 	gs_effect_set_float(similarity1_param, opt_similarity1);
 	gs_effect_set_float(smoothness1_param, opt_smoothness1);
@@ -344,15 +360,31 @@ void JrPlugin::setEffectParamsChroma(uint32_t swidth, uint32_t sheight) {
 	gs_effect_set_vec2(chroma2_param, &opt_chroma2);
 	gs_effect_set_float(similarity2_param, opt_similarity2);
 	gs_effect_set_float(smoothness2_param, opt_smoothness2);
-	//
-	struct vec2 pixel_size;
-	vec2_set(&pixel_size, 1.0f / (float)swidth, 1.0f / (float)sheight);
-	gs_effect_set_vec2(chroma_pixel_size_param, &pixel_size);
-	//
-	gs_effect_set_float(chromaThreshold_param, opt_chromaThreshold);
+	gs_effect_set_float(testThreshold_param, opt_testThreshold);
 }
 
 
+void JrPlugin::setEffectParamsHsvKey(uint32_t swidth, uint32_t sheight) {
+	// setting params for effects file .effect
+	struct vec2 pixel_size;
+	vec2_set(&pixel_size, 1.0f / (float)swidth, 1.0f / (float)sheight);
+	gs_effect_set_vec2(hsv_pixel_size_param, &pixel_size);
+	//
+	gs_effect_set_float(hueThreshold1_param, opt_hueThreshold1);
+	gs_effect_set_float(saturationThreshold1_param, opt_saturationThreshold1);
+	gs_effect_set_float(valueThreshold1_param, opt_valueThreshold1);
+	gs_effect_set_float(hueThreshold2_param, opt_hueThreshold2);
+	gs_effect_set_float(saturationThreshold2_param, opt_saturationThreshold2);
+	gs_effect_set_float(valueThreshold2_param, opt_valueThreshold2);
+	//
+	gs_effect_set_vec3(color1hsv_param, &color1AsHsv);
+	gs_effect_set_vec3(color2hsv_param, &color2AsHsv);
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
 void JrPlugin::setEffectParamsZoomCrop(uint32_t swidth, uint32_t sheight) {
 	gs_effect_set_vec2(param_zoom_mul, &ep_zoom_mulVal);
 	gs_effect_set_vec2(param_zoom_add, &ep_zoom_addVal);
@@ -411,6 +443,17 @@ void JrPlugin::setEffectParamsOutput(TrackedSource* tsourcep, uint32_t swidth, u
 	struct vec2 pixel_size;
 	vec2_set(&pixel_size, 1.0f / (float)swidth, 1.0f / (float)sheight);
 	gs_effect_set_vec2(param_output_pixel_size, &pixel_size);
+}
+
+
+
+void JrPlugin::setEffectParamsDilate(uint32_t swidth, uint32_t sheight) {
+	// setting params for effects file .effect
+	struct vec2 pixel_size;
+	vec2_set(&pixel_size, 1.0f / (float)swidth, 1.0f / (float)sheight);
+	gs_effect_set_vec2(param_dilate_pixel_size, &pixel_size);
+	//
+	gs_effect_set_vec4(param_dilateBackgroundRgba, &colorBackgroundAsRgbaVec);
 }
 //---------------------------------------------------------------------------
 

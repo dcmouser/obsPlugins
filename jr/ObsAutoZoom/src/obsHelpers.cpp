@@ -173,7 +173,7 @@ void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *te
 			gs_texrender_reset(tex);
 		}
 		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
-			mydebug("ERROR -------------> failed in jrRenderSourceIntoTexture to gs_texrender_begin %d,%d.", outWidth, outHeight);
+			//mydebug("ERROR -------------> failed in jrRenderSourceIntoTexture to gs_texrender_begin %d,%d.", outWidth, outHeight);
 			return;
 		}
 	}
@@ -241,8 +241,6 @@ void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *te
 
 
 
-
-
 //---------------------------------------------------------------------------
 void jrRenderEffectIntoTexture(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, char* drawTechnique) {
 	// let's try using our new function
@@ -262,7 +260,7 @@ void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect
 			gs_texrender_reset(tex);
 		}
 		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
-			mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin %d,%d.", outWidth, outHeight);
+			//mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin2 %d,%d.", outWidth, outHeight);
 			return;
 		}
 	}
@@ -360,7 +358,7 @@ void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t *tex, gs_effect_t*
 			gs_texrender_reset(tex);
 		}
 		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
-			mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin %d,%d.", outWidth, outHeight);
+			//mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin2 %d,%d.", outWidth, outHeight);
 			return;
 		}
 	}
@@ -424,7 +422,7 @@ void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRende
 			gs_texrender_reset(tex);
 		}
 		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
-			mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin %d,%d.", outWidth, outHeight);
+			//mydebug("ERROR ----> failure in jrRenderEffectIntoTexture to gs_texrender_begin3 %d,%d.", outWidth, outHeight);
 			return;
 		}
 	}

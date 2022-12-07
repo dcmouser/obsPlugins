@@ -11,7 +11,11 @@
 //---------------------------------------------------------------------------
 
 
-
+//---------------------------------------------------------------------------
+// only one should be true
+#define DefDilateImplementationCpp true
+#define DefDilateImplementationEffect false
+//---------------------------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
@@ -34,10 +38,13 @@
 
 //---------------------------------------------------------------------------
 // pixel rgba to enum colors
-#define DefRdPixelRgbaColorBackground		0x00000000
+#define DefRdPixelRgbaColorBackground			0x00000000
 #define DefRdPixelRgbaColor2				0xFF0000FF
 #define DefRdPixelRgbaColor1				0xFF00FF00
 #define DefRdPixelRgbaColor3				0xFFFFFFFF
+//
+#define DefRdPixelRgbaColor2Temp			0xFE0000FF
+#define DefRdPixelRgbaColor1Temp			0xFE00FF00
 //
 #define DefRdPixelEnumColorBackground		0  
 #define DefRdPixelEnumColor1				1
@@ -125,9 +132,14 @@ public:
 public:
 	void setNothingFound() { foundRegions = foundRegions = 0; };
 public:
-	void doRenderToInternalMemoryPostProcessing(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int optionGapFillSize);
+	void doRenderToInternalMemoryPostProcessing_DualColorGapFill(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int optionGapFillSize);
+	void doRenderToInternalMemoryPostProcessing_Dilate(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int dilateGreenSteps, int dilateRedSteps);
+	void doRenderToInternalMemoryPostProcessing_Dilate_Cpp(DefPixelRgbaType* internalObsRgbAData, uint32_t linesize, int dilateGreenSteps, int dilateRedSteps);
+	//
 	DefPixelEnumType convertRgbaToPixelColorEnum(DefPixelRgbaType pixelColor);
 public:
 	bool isPixelEnumConsideredForeground(DefPixelEnumType pixelEnum, bool contextWalkingOutside);
+public:
+	void clearComputations() { foundRegions = foundRegionsValid = 0; };
 };
 //---------------------------------------------------------------------------

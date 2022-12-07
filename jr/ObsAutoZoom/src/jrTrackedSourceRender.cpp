@@ -8,7 +8,7 @@
 
 
 //---------------------------------------------------------------------------
-void TrackedSource::doRenderWorkFromEffectToStageTexRender(gs_effect_t* effectChroma, obs_source_t* source) {
+void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source) {
 	JrPlugin* plugin = getPluginp();
 
 	//mydebug("In doRenderWorkFromEffectToStageTexRender1.");
@@ -25,8 +25,8 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(gs_effect_t* effectCh
 	jrBlendClearMode blendClearMode = jrBlendClearOverwite;
 	
 	
-	bool flagRenderForChromaAtReducedStageSize = true;
-	if (flagRenderForChromaAtReducedStageSize) {
+	bool flagRenderForKeyAtReducedStageSize = true;
+	if (flagRenderForKeyAtReducedStageSize) {
 		jrRenderSourceIntoTextureAtSizeLoc(source, stageHoldingSpaceTexrender, sourceWidth, sourceHeight, 0, 0, stageWidth, stageHeight, blendClearMode, false);
 	}
 	else {
@@ -37,12 +37,23 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(gs_effect_t* effectCh
 	//mydebug("In doRenderWorkFromEffectToStageTexRender 2 (%d,%d) format %d.", stageHoldingSpaceTexrender->width, stageHoldingSpaceTexrender->height, stageHoldingSpaceTexrender->format);
 
 	// STAGE 2 - render effect from this holdingSpaceTexrender to stagingTexRender, with chroma effect applied
-	// first set effect params
-	plugin->setEffectParamsChroma(sourceWidth, sourceHeight);
-	// then render effect from holding space into stage
 	blendClearMode = jrBlendClearOverwite;
-	char* drawTechnique = markerChromaModeRenderTechniques[plugin->getOptMarkerChromaMode()];
-	jrRenderEffectIntoTexture(stagingTexrender, effectChroma, stageHoldingSpaceTexrender, stageWidth, stageHeight, blendClearMode, drawTechnique);
+	char* drawTechnique = markerMultiColorModeRenderTechniques[plugin->getOptMarkerMultiColorMode()];
+	int optKeyMode = plugin->getOptKeyMode();
+	if (optKeyMode == 0) {
+		// chroma key
+		// first set effect params
+		plugin->setEffectParamsChromaKey(sourceWidth, sourceHeight);
+		// then render effect from holding space into stage
+		jrRenderEffectIntoTexture(stagingTexrender, plugin->effectChromaKey, stageHoldingSpaceTexrender, stageWidth, stageHeight, blendClearMode, drawTechnique);
+	}
+	else if (optKeyMode == 1) {
+		// hsv key
+		// first set effect params
+		plugin->setEffectParamsHsvKey(sourceWidth, sourceWidth);
+		// then render effect from holding space into stage
+		jrRenderEffectIntoTexture(stagingTexrender, plugin->effectHsvKey, stageHoldingSpaceTexrender, stageWidth, stageHeight, blendClearMode, drawTechnique);
+	}
 
 	//mydebug("In doRenderWorkFromEffectToStageTexRender 3.");
 	//mydebug("In doRenderWorkFromEffectToStageTexRender 3 (%d,%d) format %d.", stagingTexrender->width, stagingTexrender->height, stagingTexrender->format);;
@@ -68,7 +79,9 @@ bool TrackedSource::doRenderWorkFromStageToInternalMemory() {
 
 	// clear it to help debugger not see old version
 	if (DefDebugClearDrawingSpaced) {
-		memset(stagedData, 0x07, (stageWidth + 32) * stageHeight * 4);
+		if (stagedData) {
+			memset(stagedData, 0x07, (stageWidth + 32) * stageHeight * 4);
+		}
 	}
 
 	if (stagedData) {
@@ -106,20 +119,21 @@ bool TrackedSource::doRenderWorkFromStageToInternalMemory() {
 			mydebug("ERROR ---> doRenderWorkFromStageToInternalMemory tex is NULL.");
 		}
 	} else {
-		mydebug("ERROR ---> doRenderWorkFromStageToInternalMemory stagedata is NULL.");
+		//mydebug("ERROR ---> doRenderWorkFromStageToInternalMemory stagedata is NULL.");
 	}
 
 	//mydebug("doRenderWorkFromStageToInternalMemory 10");
 	if (!stageMemoryReady) {
-		mydebug("ERROR ---> stageMemoryReady is false.");
+		//mydebug("ERROR ---> stageMemoryReady is false.");
 		// clear it to help debugger not see old version
-		if (DefDebugClearDrawingSpaced) {
+		if (DefDebugClearDrawingSpaced && stagedData) {
 			memset(stagedData, 0xFF, (stageWidth + 32) * stageHeight * 4);
 		}
 	}
 
 	//mydebug("doRenderWorkFromStageToInternalMemory DONE");
-	return true;
+	//return true;
+	return stageMemoryReady;
 }
 //---------------------------------------------------------------------------
 
@@ -636,5 +650,82 @@ gs_texrender_t* TrackedSource::doPipeLineOutputEffect_Blur(gs_texrender_t* input
 
 	// and return output texture
 	return outputTextRenderLastOut;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void TrackedSource::doRender_Dilate_Effect_OnStagingTexrender(int dilateGreenSteps, int dilateRedSteps) {
+	// use stageHoldingSpaceTexrender as temp space
+	bool flagDilateSimultaneous = true;
+	//
+	int maxDilations = max(dilateGreenSteps, dilateRedSteps);
+	if (maxDilations == 0) {
+		return;
+	}
+	// set general effect params
+	plugin->setEffectParamsDilate(stageWidth, stageHeight);
+	//
+	if (flagDilateSimultaneous) {
+		for (int dstep = 0; dstep < maxDilations; ++dstep) {
+			if (dstep < dilateRedSteps) {
+				// red dilation
+				doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(plugin->colorRedAsRgbaVec, plugin->colorRedTempAsRgbaVec);
+			}
+			if (dstep < dilateGreenSteps) {
+				// green dilation
+				doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(plugin->colorGreenAsRgbaVec, plugin->colorGreenTempAsRgbaVec);
+			}
+		}
+	}
+	else {
+		for (int dstep = 0; dstep < dilateRedSteps; ++dstep) {
+			// red dilation
+			doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(plugin->colorRedAsRgbaVec, plugin->colorRedTempAsRgbaVec);
+		}
+		for (int dstep = 0; dstep < dilateGreenSteps; ++dstep) {
+			// green dilation
+			doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(plugin->colorGreenAsRgbaVec, plugin->colorGreenTempAsRgbaVec);
+		}
+	}
+}
+
+
+
+
+void TrackedSource::doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(vec4 &colorFrom, vec4& colorTo) {
+    // use stageHoldingSpaceTexrender as temp space
+
+	// then render effect from holding space into stage
+	jrBlendClearMode blendClearMode = jrBlendClearOverwite;
+
+	// always in two steps
+
+	// step 1 to temp space using temp color target
+	if (true) {
+		// this shouldnt be needed as its set by caller
+		plugin->setEffectParamsDilate(stageWidth, stageHeight);
+	}
+	// to and from colors
+	gs_effect_set_vec4(plugin->param_dilateColorToRgba, &colorTo);
+	gs_effect_set_vec4(plugin->param_dilateColorFromRgba, &colorFrom);
+	jrRenderEffectIntoTexture(stageHoldingSpaceTexrender, plugin->effectDilate, stagingTexrender, stageWidth, stageHeight, blendClearMode, "DilateStage1");
+
+	// step 2 back to staging space and real color
+	if (true) {
+		// this shouldnt be needed as its set by caller
+		plugin->setEffectParamsDilate(stageWidth, stageHeight);
+	}
+	// to and from colors
+	gs_effect_set_vec4(plugin->param_dilateColorToRgba, &colorTo);
+	gs_effect_set_vec4(plugin->param_dilateColorFromRgba, &colorFrom);
+	jrRenderEffectIntoTexture(stagingTexrender, plugin->effectDilate, stageHoldingSpaceTexrender, stageWidth, stageHeight, blendClearMode, "DilateStage2");
 }
 //---------------------------------------------------------------------------

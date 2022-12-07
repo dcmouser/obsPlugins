@@ -66,6 +66,29 @@ int JrPlugin::parseCoordStr(const char* cpos, int max) {
 
 
 
+//---------------------------------------------------------------------------
+void JrPlugin::fillFloatListFromString(char* commaList, float* floatList, int max) {
+	char buf[80];
+	strcpy(buf, commaList);
+	char* tokpos = buf;
+	char* cpos;
+	int i = 0;
+	for (; i < max; ++i) {
+		if (cpos = strtok(tokpos, ",")) {
+			tokpos = NULL;
+			floatList[i] = (float)atof(cpos);
+		}
+		else {
+			break;
+		}
+	}
+	for (; i < max; ++i) {
+		floatList[i] = 0;
+	}
+}
+//---------------------------------------------------------------------------
+
+
 
 
 

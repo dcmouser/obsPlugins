@@ -23,65 +23,6 @@
 
 
 
-//---------------------------------------------------------------------------
-void JrPlugin::gotoCurrentMarkerlessCoordinates() {
-	markerlessCycleListAdvance(0);
-}
-//---------------------------------------------------------------------------
-
-
-
-//---------------------------------------------------------------------------
-void JrPlugin::viewCycleAdvance(int delta) {
-	if (opt_enableMarkerlessUse) {
-		markerlessCycleListAdvance(delta);
-	}
-	else {
-		// if markerless use is disabled, we cycle sources
-		viewingSourceManuallyAdvance(delta);
-	}
-}
-
-void JrPlugin::markerlessCycleListAdvance(int delta) {
-	opt_markerlessCycleIndex += delta;
-	opt_markerlessCycleIndex = opt_markerlessCycleIndex % stracker.markerlessManager.getEntryCount();
-	if (opt_markerlessCycleIndex < 0) {
-		opt_markerlessCycleIndex += stracker.markerlessManager.getEntryCount();
-	}
-
-	mydebug("markerlessCycleListAdvanceDelta: %d mod %d.", opt_markerlessCycleIndex,stracker.markerlessManager.getEntryCount());
-
-	// switch what we see if we are markerless -- the true option here says switch sources to the new source even if normal autohunt is off
-	if (true) {
-		// travel to markerless locations EVEN if we have a target, we can rehunt to proper location after
-		// so if they manually change they will see the effect even if we are zoomed in
-		stracker.travelToMarkerlessInitiate(true);
-		stracker.goDirectlyToMakersAndDelayHunting();
-	}
-	else {
-		stracker.reTravelToMarkerlessIfMarkerless(true);
-	}
-}
-
-
-void JrPlugin::viewingSourceManuallyAdvance(int delta) {
-	// cycle through what source we are viewing -- useful to put on a hotkey to test multiple source cycling stuff
-	// NOTE that if we are not in non-autoswitch source mode, we may jump out of this new source almost immediately -- it should only really be called when autoswitch sources is off
-	stracker.sourceIndexViewing += delta;
-	stracker.sourceIndexViewing = stracker.sourceIndexViewing % stracker.sourceCount;
-	if (stracker.sourceIndexViewing < 0) {
-		stracker.sourceIndexViewing += stracker.sourceCount;
-	}
-
-	//reTravelToMarkerlessIfMarkerless(false);
-	stracker.travelToMarkerlessInitiate(true);
-	stracker.goDirectlyToMakersAndDelayHunting();
-}
-//---------------------------------------------------------------------------
-
-
-
-
 
 
 
@@ -176,8 +117,191 @@ void JrPlugin::updateOneShotStatus(bool isStill) {
 //---------------------------------------------------------------------------
 void JrPlugin::goToInitialView() {
 	// go to initial markerless view
+
 	stracker.travelToMarkerlessDefault();
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::gotoCurrentMarkerlessCoordinates() {
+	markerlessCycleListAdvance(0);
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::viewCycleAdvance(int delta) {
+	if (getMarkerlessModeIsManualZoom()) {
+		doManualZoomInOutByPercent(opt_manualZoomStepSize * delta);
+	} else if (getMarkerlessModeIsPresets()) {
+		markerlessCycleListAdvance(delta);
+	} else {
+		// if markerless use is disabled, we cycle sources
+		viewingSourceManuallyAdvance(delta);
+	}
+
+	// switch what we see if we are markerless -- the true option here says switch sources to the new source even if normal autohunt is off
+	if (true) {
+		// travel to markerless locations EVEN if we have a target and markers, we can rehunt to proper location after
+		// so if they manually change they will see the effect even if we are zoomed in, so they can see that they tried to set markerless even while markers are present and controlling
+		stracker.travelToMarkerlessInitiate(true);
+		stracker.goDirectlyToMakersAndDelayHunting();
+	}
+	else {
+		stracker.reTravelToMarkerlessIfMarkerless(true);
+	}
+}
+
+void JrPlugin::markerlessCycleListAdvance(int delta) {
+	opt_markerlessCycleIndex += delta;
+	opt_markerlessCycleIndex = opt_markerlessCycleIndex % stracker.markerlessManager.getEntryCount();
+	if (opt_markerlessCycleIndex < 0) {
+		opt_markerlessCycleIndex += stracker.markerlessManager.getEntryCount();
+	}
+	mydebug("markerlessCycleListAdvanceDelta: %d mod %d.", opt_markerlessCycleIndex,stracker.markerlessManager.getEntryCount());
+}
+
+
+void JrPlugin::viewingSourceManuallyAdvance(int delta) {
+	// this function is used when the markerless options are diabled and hotkey rotates through sources.. very little reason to use this mode
+	// cycle through what source we are viewing -- useful to put on a hotkey to test multiple source cycling stuff
+	// NOTE that if we are not in non-autoswitch source mode, we may jump out of this new source almost immediately -- it should only really be called when autoswitch sources is off
+	stracker.sourceIndexViewing += delta;
+	stracker.sourceIndexViewing = stracker.sourceIndexViewing % stracker.sourceCount;
+	if (stracker.sourceIndexViewing < 0) {
+		stracker.sourceIndexViewing += stracker.sourceCount;
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::doManualZoomInOutByPercent(float scalePercent) {
+
+	// tell the source tracker about our new markerless
+	int sourceIndex = opt_manualZoomSourceIndex;
+	float zoomLevel = opt_manualZoomSourceScale;
+	int alignmentMode = opt_manualZoomAlignment;
+
+	// ok now adjust zoom level by a certain percent
+	// note that this MIGHT cause us to transition to a wider or closer source if multiple camera source, based on 	float opt_manualZoomTransitions[DefMaxSources];
+
+	// ok adust zoom
+	if (scalePercent == 0.0) {
+		// nothing
+	} else if (scalePercent < 0.0) {
+		// attempt to go up and down symmetrically instead of more
+		zoomLevel = zoomLevel / (float)(1.0 - scalePercent);
+	} else if (scalePercent > 0.0) {
+		zoomLevel = zoomLevel + (scalePercent * zoomLevel);
+	}
+
+	// might want this configured based on aspect ratio of display -- let user configure it?
+	float minZoom = opt_manualZoomMinZoom;
+
+	//mydebug("In doManualZoomInOutByPercent %f.", zoomLevel);
+	// note that we are not allowed to go below 1.0
+	if (zoomLevel < minZoom) {
+		// ok so either we have to pop to a wider source or clamp here
+		if (sourceIndex < 1) {
+			// clamp
+			zoomLevel = minZoom;
+		}
+		else {
+			// drop to wider source
+			--sourceIndex;
+			// and now init the zoom level
+			zoomLevel = opt_manualZoomTransitions[sourceIndex];
+			if (zoomLevel <= 0) {
+				zoomLevel = 2;
+			}
+		}
+	} else if (scalePercent >= 0.0 && sourceIndex < stracker.getSourceCount()-1) {
+		// when zooming in we see if we need to switch to closer camera
+		float zoomLimit = opt_manualZoomTransitions[sourceIndex];
+		if (zoomLimit <= 0) {
+			zoomLimit = 2.0;
+		}
+		if (zoomLevel > zoomLimit) {
+			// move to closer source
+			++sourceIndex;
+			zoomLevel = 1.0;
+		}
+	}
+
+	// save new values
+	opt_manualZoomSourceIndex = sourceIndex;
+	opt_manualZoomSourceScale = zoomLevel;
+
+	// now update store this look
+	stracker.updateManualZoomEntry(sourceIndex, zoomLevel, alignmentMode);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
 
 

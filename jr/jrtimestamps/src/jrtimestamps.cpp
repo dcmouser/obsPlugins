@@ -546,3 +546,20 @@ void jrTimestamper::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialo
 //---------------------------------------------------------------------------
 
 
+
+
+
+//---------------------------------------------------------------------------
+std::string jrTimestamper::AddTimeOffsetHintToLabel(std::string label) {
+	long secsOffsetIntoRecording = 0;
+	if (timestampOriginRecording > 0) {
+		clock_t nowTime = clock();
+		clock_t timeOffsetIntoRecording = nowTime - timestampOriginRecording;
+		secsOffsetIntoRecording = timeOffsetIntoRecording / CLOCKS_PER_SEC;
+	}
+	if (secsOffsetIntoRecording > 0) {
+		label += " (" + std::to_string(secsOffsetIntoRecording) + " secs into recording)";
+	}
+	return label;
+}
+//---------------------------------------------------------------------------

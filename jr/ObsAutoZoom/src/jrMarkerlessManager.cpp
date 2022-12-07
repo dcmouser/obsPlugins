@@ -10,15 +10,17 @@
 
 
 
-
+/*
 JrMarkerlessEntry* JrMarkerlessManager::findFirstEntryMatchingSourceIndex(int index) {
 	return NULL;
 }
 
 
+
 void JrMarkerlessManager::computeCoordinatesForEntryWithSource(JrMarkerlessEntry* entryp, int& x1, int& y1, int& x2, int& y2) {
 	// ATTN: TODO
 }
+*/
 
 
 bool JrMarkerlessManager::parseSettingString(const char* settingBuf) {

@@ -942,11 +942,11 @@ void jrStats::Update()
 	cpuUsage->setText(str);
 
 
-
+	// note this must be freed with bfree
 	const char *path = obs_frontend_get_current_record_output_path();
-
-
 	num_bytes = os_get_free_disk_space(path);
+	bfree((void*)path);
+
 	QString abrv = QStringLiteral(" MB");
 	long double num;
 

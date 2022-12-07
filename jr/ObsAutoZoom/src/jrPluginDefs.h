@@ -2,41 +2,99 @@
 
 
 //---------------------------------------------------------------------------
-// chroma options based on obs chroma plugin
-#define SETTING_markerChromaMode				"markerChromaMode"
-#define TEXT_markerChromaMode					obs_module_text("markerChromaMode")
-#define SETTING_Def_markerChromaMode			"color 1"
+#define SETTING_keyMode						"keyMode"
+#define TEXT_keyMode						obs_module_text("Key mode")
+#define SETTING_Def_keyMode					"chroma"
 //
-#define SETTING_COLOR_TYPE1						"key_color_type1"
-#define TEXT_COLOR_TYPE1						obs_module_text("KeyColorType1")
-#define SETTING_Def_KEY_COLOR					0x00FF00
-#define SETTING_KEY_COLOR1						"key_color_1"
-#define TEXT_KEY_COLOR1							obs_module_text("KeyColor1")
-#define SETTING_Def_COLOR_TYPE					"green"
-#define SETTING_SIMILARITY1						"similarity1"
-#define TEXT_SIMILARITY1						obs_module_text("Similarity1")
+#define SETTING_markerMultiColorMode				"markerMultiColorMode"
+#define TEXT_markerMultiColorMode				obs_module_text("Marker Color Style")
+#define SETTING_Def_markerMultiColorMode			"color 1"
+//---------------------------------------------------------------------------
+//
+// 
+//---------------------------------------------------------------------------
+// chroma options based on obs chroma plugin
+#define SETTING_CHROMA_COLOR_TYPE1				"key_chroma_color_type1"
+#define TEXT_CHROMA_COLOR_TYPE1					obs_module_text("Color 1 type")
+#define SETTING_Def_CHROMA_COLOR_TYPE1				"green"
+#define SETTING_CHROMA_COLOR1					"key_chroma_color_1"
+#define TEXT_CHROMA_COLOR1					obs_module_text("Color 1")
+#define SETTING_Def_CHROMA_COLOR1				0x00FF00
+#define SETTING_SIMILARITY1					"similarity1"
+#define TEXT_SIMILARITY1					obs_module_text("Color 1: Similarity weighting")
 #define SETTING_Def_SIMILARITY					365
-#define SETTING_SMOOTHNESS1						"smoothness1"
-#define TEXT_SMOOTHNESS1						obs_module_text("Smoothness1")
+#define SETTING_SMOOTHNESS1					"smoothness1"
+#define TEXT_SMOOTHNESS1					obs_module_text("Color 1: Smoothness weighting")
 #define SETTING_Def_SMOOTHNESS					122
 //
-#define SETTING_COLOR_TYPE2						"key_color_type2"
-#define TEXT_COLOR_TYPE2						obs_module_text("KeyColorType2")
-#define SETTING_KEY_COLOR2						"key_color_2"
-#define TEXT_KEY_COLOR2							obs_module_text("KeyColor2")
-#define SETTING_SIMILARITY2						"similarity2"
-#define TEXT_SIMILARITY2						obs_module_text("Similarity2")
-#define SETTING_SMOOTHNESS2						"smoothness2"
-#define TEXT_SMOOTHNESS2						obs_module_text("Smoothness2")
+#define SETTING_CHROMA_COLOR_TYPE2				"key_chroma_color_type2"
+#define TEXT_CHROMA_COLOR_TYPE2					obs_module_text("Color 2 type")
+#define SETTING_Def_CHROMA_COLOR_TYPE2				"magenta"
+#define SETTING_CHROMA_COLOR2					"key_chroma_color_2"
+#define TEXT_CHROMA_COLOR2					obs_module_text("Color 2")
+#define SETTING_Def_CHROMA_COLOR2				0xFF00FF
+#define SETTING_SIMILARITY2					"similarity2"
+#define TEXT_SIMILARITY2					obs_module_text("Color 2: Similarity weighting")
+#define SETTING_SMOOTHNESS2					"smoothness2"
+#define TEXT_SMOOTHNESS2					obs_module_text("Color 2: Smoothness weighting")
 //
-#define SETTING_DualColorGapFill				"dualColorGapFill"
-#define TEXT_DualColorGapFill					obs_module_text("dualColorGapFill")
-#define SETTING_Def_DualColorGapFill			2
-// 
+#define SETTING_testThreshold					"testThreshold"
+#define TEXT_testThreshold					obs_module_text("Test threshold (default 500)")
+#define SETTING_Def_testThreshold				500
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+#define SETTING_HSV_COLOR_TYPE1					"key_hsv_color_type1"
+#define TEXT_HSV_COLOR_TYPE1					obs_module_text("Color 1 type")
+#define SETTING_Def_HSV_COLOR_TYPE1				"green"
+#define SETTING_HSV_COLOR1					"keyhsv_color_1"
+#define TEXT_HSV_COLOR1						obs_module_text("Color 1")
+#define SETTING_Def_HSV_COLOR1					0x00FF00
 //
-#define SETTING_ChromaThreshold					"ChromaThreshold"
-#define TEXT_ChromaThreshold					obs_module_text("Chroma threshold (redundant; leave at 500")
-#define SETTING_Def_ChromaThreshold				500
+#define SETTING_hueThreshold1					"hueThreshold1"
+#define TEXT_hueThreshold1					obs_module_text("Color 1: Hue Threshold")
+#define SETTING_Def_hueThreshold1				100
+#define SETTING_saturationThreshold1				"saturationThreshold1"
+#define TEXT_saturationThreshold1				obs_module_text("Color 1: Saturation Threshold")
+#define SETTING_Def_saturationThreshold1			100
+#define SETTING_valueThreshold1					"valueThreshold1"
+#define TEXT_valueThreshold1					obs_module_text("Color 1: Value Threshold")
+#define SETTING_Def_valueThreshold1				100
+//
+#define SETTING_HSV_COLOR_TYPE2					"key_hsv_color_type2"
+#define TEXT_HSV_COLOR_TYPE2					obs_module_text("Color 2 type")
+#define SETTING_Def_HSV_COLOR_TYPE2				"magenta"
+#define SETTING_HSV_COLOR2					"keyhsv_color_2"
+#define TEXT_HSV_COLOR2						obs_module_text("Color 2")
+#define SETTING_Def_HSV_COLOR2					0xFF00FF
+//
+#define SETTING_hueThreshold2					"hueThreshold2"
+#define TEXT_hueThreshold2					obs_module_text("Color 2: Hue Threshold")
+#define SETTING_Def_hueThreshold2				100
+#define SETTING_saturationThreshold2				"saturationThreshold2"
+#define TEXT_saturationThreshold2				obs_module_text("Color 2: Saturation Threshold")
+#define SETTING_Def_saturationThreshold2			100
+#define SETTING_valueThreshold2					"valueThreshold2"
+#define TEXT_valueThreshold2					obs_module_text("Color 2: Value Threshold")
+#define SETTING_Def_valueThreshold2				100
+//
+//---------------------------------------------------------------------------
+//
+//
+//
+//---------------------------------------------------------------------------
+// more
+#define SETTING_dilateGreen					"dilateGreen"
+#define TEXT_dilateGreen					"Dilate steps (color 1)"
+#define SETTING_Def_dilateGreen					2
+#define SETTING_dilateRed					"dilateRed"
+#define TEXT_dilateRed						"Dilate steps (color 2)"
+#define SETTING_Def_dilateRed					2
+//
+// no longer used
+//#define SETTING_DualColorGapFill				"dualColorGapFill"
+//#define TEXT_DualColorGapFill					obs_module_text("DualColor Fill Gap")
+//#define SETTING_Def_DualColorGapFill			2
 //---------------------------------------------------------------------------
 
 
@@ -50,7 +108,7 @@
 #define TEXT_debugRegions						obs_module_text("Debug overlay region detection (to assist setting marker options).")
 #define SETTING_Def_debugRegions				false
 #define SETTING_debugChroma						"dbgChroma"
-#define TEXT_debugChroma						obs_module_text("Hide background camera image so chroma is more obvious (to assist setting chrome options)")
+#define TEXT_debugChroma						obs_module_text("Hide background camera image (to assist configuring chroma keying options)")
 #define SETTING_Def_debugChroma					false
 #define SETTING_debugAllUpdate					"dbgAllUpdate"
 #define TEXT_debugAllUpdate						obs_module_text("When showing debug overlay, force all cameras to update every cycle")
@@ -65,19 +123,19 @@
 //
 // valid region filtering
 #define SETTING_rmDensityMin					"rmTDensityMin"
-#define TEXT_rmDensityMin						obs_module_text("rmTDensityMin")
+#define TEXT_rmDensityMin						obs_module_text("Minimum density (square is 100%, dimaond or circle 50%)")
 #define SETTING_Def_rmDensityMin				50
 #define SETTING_rmAspectMin						"rmTAspectMin"
-#define TEXT_rmAspectMin						obs_module_text("rmTAspectMin")
+#define TEXT_rmAspectMin						obs_module_text("Minimum aspect ratio (square and circle are 100%, rectangle less)")
 #define SETTING_Def_rmAspectMin					70
 #define SETTING_rmSizeMin						"rmSizeMin"
-#define TEXT_rmSizeMin							obs_module_text("rmSizeMin")
+#define TEXT_rmSizeMin							obs_module_text("Minimum size")
 #define SETTING_Def_rmSizeMin					3
 #define SETTING_rmSizeMax						"rmSizeMax"
-#define TEXT_rmSizeMax							obs_module_text("rmSizeMax")
+#define TEXT_rmSizeMax							obs_module_text("Maximum size")
 #define SETTING_Def_rmSizeMax					100
 #define SETTING_rmStageSize						"rmStageSize"
-#define TEXT_rmStageSize						obs_module_text("Stage size for doing visual analysis (see help)")
+#define TEXT_rmStageSize						obs_module_text("Stage size for doing visual analysis (see help; default 3)")
 #define SETTING_Def_rmStageSize					3
 #define SETTING_Max_rmStageSize					5
 #define SETTING_rmTooCloseDist					"rmTooCloseDist"
@@ -104,15 +162,15 @@
 #define TEXT_zcBoxMargin						obs_module_text("Position margin from markers")
 #define SETTING_Def_zcBoxMargin					0
 #define SETTING_zcBoxMoveSpeed					"zcBoxMoveSpeed"
-#define TEXT_zcBoxMoveSpeed						obs_module_text("Travel speed of view change")
+#define TEXT_zcBoxMoveSpeed						obs_module_text("Travel speed to new marker location")
 #define SETTING_Def_zcBoxMoveSpeed				8
 #define SETTING_zcBoxMoveDelay					"zcBoxMoveDelay"
-#define TEXT_zcBoxMoveDelay						obs_module_text("Delay between traveling to new view")
+#define TEXT_zcBoxMoveDelay						obs_module_text("Delay between traveling to new marker location")
 #define SETTING_Def_zcBoxMoveDelay				10
 
 // used for a bunch of things which are derived from it
 #define SETTING_zcReactionDistance				"zcReactionDistance"
-#define TEXT_zcReactionDistance					obs_module_text("zcReactionDistance")
+#define TEXT_zcReactionDistance					obs_module_text("Movement distance considered insignificant")
 #define SETTING_Def_zcReactionDistance			35
 
 
@@ -141,10 +199,17 @@
 #define TEXT_zcOutputSize						obs_module_text("Output size (Width x Height); default 1920x1080")
 #define SETTING_Def_zcOutputSize				"1920x1080"
 
-#define SETTING_manualViewSourceIndex			"manualViewSourceIndex"
-#define TEXT_manualViewSourceIndex				obs_module_text("Current/manually source shown when markerless cycle is disabled")
-#define SETTING_DEF_manualViewSourceIndex		0
 
+
+// markerless
+#define SETTING_markerlessMode				"markerlessMode"
+#define TEXT_markerlessMode				obs_module_text("Markerless mode")
+#define SETTING_Def_markerlessMode			"manualZoom"
+//
+#define SETTING_manualViewSourceIndex			"manualViewSourceIndex"
+#define TEXT_manualViewSourceIndex			obs_module_text("Current/manually source shown when markerless cycle is disabled")
+#define SETTING_DEF_manualViewSourceIndex		0
+//
 #define SETTING_zcMarkerlessCycleList			"markerlessCycleList"
 #define TEXT_zcMarkerlessCycleList				obs_module_text("Markerless cycle list (| separated s=#,z=#.#,a=[ul|uc|ur|ml|mc|mr|ll|lc|lr])")
 #define SETTING_Def_zcMarkerlessCycleList		"s=0,z=0 | s=1,z=0 | s=1,z=1,a=mc | s=0,z=2,a=lc"
@@ -156,13 +221,38 @@
 #define SETTING_enableAutoSourceHunting			"enableAutoSourceHunting"
 #define TEXT_enableAutoSourceHunting			obs_module_text("Enable automatic source switching (prefer closer zoom = latter source)")
 #define SETTING_Def_enableAutoSourceHunting		true
-#define SETTING_enableMarkerlessCoordinates		"enableMarkerlessCoordinates"
-#define TEXT_enableMarkerlessCoordinates		obs_module_text("Use markerless cycles above (to control view when no markers detected)")
-#define SETTING_Def_enableMarkerlessCoordinates	true
+//#define SETTING_enableMarkerlessCoordinates		"enableMarkerlessCoordinates"
+//#define TEXT_enableMarkerlessCoordinates		obs_module_text("Use markerless cycles below (to control view when no markers detected)")
+//#define SETTING_Def_enableMarkerlessCoordinates	true
+
+// manualzoom
+//#define SETTING_manualZoomEnableMarkerless		"manualZoomEnableMarkerless"
+//#define TEXT_manualZoomEnableMarkerless			obs_module_text("Use manual zoom when markerless (instead of markerless options above)")
+//#define SETTING_Def_manualZoomEnableMarkerless		true
+#define SETTING_manualZoomSourceIndex			"manualZoomSourceIndex"
+#define TEXT_manualZoomSourceIndex			obs_module_text("Current source id #")
+#define SETTING_Def_manualZoomSourceIndex		0
+#define SETTING_manualZoomSourceScale			"manualZoomSourceScale"
+#define TEXT_manualZoomSourceScale			obs_module_text("Current zoom scale")
+#define SETTING_Def_manualZoomSourceScale		100
+#define SETTING_manualZoomStepSize			"manualZoomStepSize"
+#define TEXT_manualZoomStepSize				obs_module_text("Zoom change per hotkey trigger (percent)")
+#define SETTING_Def_manualZoomStepSize			10
+#define SETTING_manualZoomAlignment			"manualZoomAlignment"
+#define TEXT_manualZoomAlignment			obs_module_text("Zoomed area alignment")
+#define SETTING_Def_manualZoomAlignment			"center"
+#define SETTING_manualZoomSourceTransitionList		"manualZoomSourceTransitionList"
+#define TEXT_manualZoomSourceTransitionList		obs_module_text("Camera source transition zoom levels (see help; comma separate)")
+#define SETTING_Def_manualZoomSourceTransitionList	"2"
+#define SETTING_manualZoomMinZoom			"manualZoomMinZoom"
+#define TEXT_manualZoomMinZoom				obs_module_text("Minimum zoom level")
+#define SETTING_Def_manualZoomMinZoom			50
+
+
 
 
 #define SETTING_zcEasing						"zcEasing"
-#define TEXT_zcEasing							obs_module_text("Travel easting")
+#define TEXT_zcEasing							obs_module_text("Travel easing")
 #define SETTING_Def_zcEasing					"eased"
 //
 #define SETTING_srcN							"NumSources"
@@ -182,6 +272,15 @@
 #define TEXT_sourceNameWithArg					obs_module_text("Source %d")
 #define SETTING_sourceZoomScaleWithArg			"srcZs%d"
 #define TEXT_sourceZoomScaleWithArg				obs_module_text("Source %d zoom scale modifier (default 100; see help)")
+
+//
+#define SETTING_missingMarkerPulloutTimeout			"zcMissingMarkerPulloutTimeout"
+#define TEXT_missingMarkerPulloutTimeout			obs_module_text("Missing marker timeout (default 40)")
+#define SETTING_Def_missingMarkerPulloutTimeout			30
+//
+#define SETTING_validMarkersToCheckForOcclusion			"zcValidMarkersCheckOcclusion"
+#define TEXT_validMarkersToCheckForOcclusion			obs_module_text("Valid markers to check for occlusion (default 5)")
+#define SETTING_Def_validMarkersToCheckForOcclusion		5
 //---------------------------------------------------------------------------
 
 
@@ -221,7 +320,8 @@
 //
 #define DefAlwaysUpdateTrackingWhenHunting				true
 //
-#define DefPollMissingMarkersZoomOutCheckMult			10
+// prior to 11/23/22 this was 10, but then we modified code to jump by 2 each time (if no markers round) or by 1 if one marker missing, this should hopefully give us more time before switching wide
+//#define DefPollMissingMarkersZoomOutCheckMult			30
 
 // set this to low value to fix failure to zoom in; set long to try to find insane obs bug failure of source to update
 #define DefSettledLookingPositionRecheckLimit			40

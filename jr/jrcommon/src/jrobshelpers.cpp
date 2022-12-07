@@ -129,8 +129,7 @@ void addLineSeparatorToLayout(QLayout *layout, int paddingTop, int paddingBot) {
 
 
 //---------------------------------------------------------------------------
-void setThemeID(QWidget *widget, const QString &themeID)
-{
+void setThemeID(QWidget *widget, const QString &themeID) {
 	if (widget->property("themeID").toString() != themeID) {
 		widget->setProperty("themeID", themeID);
 

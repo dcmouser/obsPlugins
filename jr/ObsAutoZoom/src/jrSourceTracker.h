@@ -32,6 +32,8 @@ public:
 	TrackedSource tsource[DefMaxSources];
 	JrMarkerlessManager markerlessManager;
 public:
+	JrMarkerlessEntry manualZoomEntry;
+public:
 	float sourceZoomScale[DefMaxSources];
 public:
 	// auto switching between sources (cameras)
@@ -112,6 +114,8 @@ public:
 	void delayHuntingBriefly();
 	void cancelDelayHunting();
 	bool isTrackingDelayed();
+public:
+	void updateManualZoomEntry(int sourceIndex, float zoomLevel, int alignmentMode);
 };
 //---------------------------------------------------------------------------
 
