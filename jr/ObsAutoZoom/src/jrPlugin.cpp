@@ -458,20 +458,6 @@ uint32_t plugin_height(void *data)
 
 
 
-//---------------------------------------------------------------------------
-// signal based zoom in and out
-void plugin_media_next(void *data) {
-	JrPlugin *plugin = (JrPlugin*) data;
-	plugin->viewCycleAdvance(1);
-}
-
-void plugin_media_previous(void *data) {
-	JrPlugin *plugin = (JrPlugin*) data;
-	plugin->viewCycleAdvance(-1);
-}
-//---------------------------------------------------------------------------
-
-
 
 
 
@@ -496,11 +482,71 @@ const char *plugin_get_name(void *data)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+// internal signaling system by hijacking hotkey stuff
+void pluginOnKeyClick(void* data, const struct obs_key_event* event, bool key_up) {
+	JrPlugin *plugin = (JrPlugin*) data;
+
+	// here is our test to see if the signal is really from us
+	if (key_up != DefActionSignalStructPreset_keyUp || event->modifiers != DefActionSignalStructPreset_modifiers || event->native_modifiers != DefActionSignalStructPreset_native_modifiers || event->native_vkey != DefActionSignalStructPreset_native_vkey) {
+		// not a special internal signal
+		return;
+	}
+
+	// its a special internal signal, so process it
+	uint32_t keyCode = event->native_scancode;
+	if (key_up) {
+		plugin->receiveVisibleActionSignal(keyCode);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //---------------------------------------------------------------------------
 void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	pluginInfo->version = 2;
 	// note that the OBS_SOURCE_COMPOSITE flag below is supposed to be used by sources that composite multiple children, which we seem to do -- not sure its needed though
-	pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW  /* | OBS_SOURCE_COMPOSITE*/;
+	// note that we need the OBS_SOURCE_INTERACTION flag so we can use our internal signaling system
+	pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_INTERACTION; /* | OBS_SOURCE_COMPOSITE */
 	pluginInfo->get_name = plugin_get_name;
 	pluginInfo->create = plugin_create;
 	pluginInfo->destroy = plugin_destroy;
@@ -517,8 +563,8 @@ void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	pluginInfo->enum_active_sources = plugin_enum_sources;
 	pluginInfo->audio_render = plugin_audio_render;
 	pluginInfo->icon_type = OBS_ICON_TYPE_CAMERA;
-	pluginInfo->media_next = plugin_media_next;
-	pluginInfo->media_previous = plugin_media_previous;
+	// this is really used for our internal signaling system
+	pluginInfo->key_click = pluginOnKeyClick;
 }
 
 

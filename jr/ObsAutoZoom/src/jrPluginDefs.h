@@ -379,3 +379,24 @@
 #define DefDebugDoForegroundPixelCountTest				false
 //---------------------------------------------------------------------------
 
+
+
+
+//---------------------------------------------------------------------------
+// hotkey signals that allow us to send messages to fellow AutoZoomSources
+#define DefActionSignalStructPreset_keyUp		true
+#define DefActionSignalStructPreset_modifiers		1234
+#define DefActionSignalStructPreset_native_modifiers	1234
+//#define DefActionSignalStructPreset_native_scancode	1234
+#define DefActionSignalStructPreset_native_vkey		1234
+//
+#define DefActionSignalKeyToggleAutoUpdate		'a'
+#define DefActionSignalKeyToggleIgnoreMarkers		'b'
+#define DefActionSignalKeyCycleForward			'c'
+#define DefActionSignalKeyCycleBackward			'd'
+#define DefActionSignalKeyToggleAutoSourceHunting	'e'
+#define DefActionSignalKeyInitiateOneShot		'f'
+#define DefActionSignalKeyToggleCropping		'g'
+#define DefActionSignalKeyToggleDebugDisplay		'h'
+
+//---------------------------------------------------------------------------

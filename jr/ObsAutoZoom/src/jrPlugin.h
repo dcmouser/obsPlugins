@@ -384,14 +384,7 @@ public:
 	bool getMarkerlessModeIsManualZoom() { return opt_markerlessMode == 0; }
 	bool getMarkerlessModeIsDisabled() { return opt_markerlessMode == 2; }
 public:
-	bool isThisPluginSourceActiveAndVisible();
-	obs_source_t* findActiveAndVisibleAutoZoomSource();
-	obs_source_t* findActiveAndVisibleAutoZoomSourceInScene(obs_scene_t* scenep);
-	obs_source_t* findActiveAndVisibleAutoZoomSourceInSceneUsingEnum(obs_scene_t* scenep);
-	//
-	void smartVisibleViewCycleAdvance(int delta);
-public:
-	void viewCycleAdvance(int delta);
+	void performViewCycleAdvance(int delta);
 	void markerlessCycleListAdvance(int delta);
 	void viewingSourceManuallyAdvance(int delta);
 	//bool gotoManualViewSourceIndex();
@@ -412,6 +405,22 @@ public:
 public:
 	void doManualZoomInOutByPercent(float scalePercent);
 	void fillFloatListFromString(char* commaList, float* floatList, int max);
+public:
+	void performToggleAutoUpdate();
+	void performToggleIgnoreMarkers();
+	void performToggleAutoSourceHunting();
+	void performInitiateOneShot();
+	void performToggleCropping();
+	void performToggleDebugDisplay();
+public:
+	bool isThisPluginSourceActiveAndVisible();
+	obs_source_t* findActiveAndVisibleAutoZoomSource();
+	obs_source_t* findActiveAndVisibleAutoZoomSourceInScene(obs_scene_t* scenep);
+	obs_source_t* findActiveAndVisibleAutoZoomSourceInSceneUsingEnum(obs_scene_t* scenep);
+public:
+	bool triggerVisibleActionSignal(uint32_t actionSignalKey);
+	bool sendVisibleActionSignal(uint32_t actionSignalKey);
+	bool receiveVisibleActionSignal(uint32_t actionSignalKey);
 };
 //---------------------------------------------------------------------------
 

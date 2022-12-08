@@ -448,67 +448,36 @@ void JrPlugin::updateComputedOptions() {
 
 void JrPlugin::handleHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 	//
+
 	WaitForSingleObject(mutex, INFINITE);
 	//
 	// trigger hotkey
+	// see PluginCodePerform.cpp for where these are all handled
 	if (id == hotkeyId_ToggleAutoUpdate) {
 		// ATTN: TODO - should we combine ignore markers with auto update and just have one setting?
-		opt_enableAutoUpdate = !opt_enableAutoUpdate;
-		if (opt_enableAutoUpdate) {
-			// if we turn on auto update, then we turn off ignore markers
-			opt_ignoreMarkers = false;
-		}
-		saveVolatileSettings();
-	} else if (id == hotkeyId_OneShotZoomCrop) {
-		initiateOneShot();
-	} else if (id == hotkeyId_ToggleCropping) {
-		if (opt_zcMode == Def_zcMode_OnlyZoom) {
-			opt_zcMode = Def_zcMode_ZoomCrop;
-		} else {
-			opt_zcMode = Def_zcMode_OnlyZoom;
-		}
-		saveVolatileSettings();
-	} else if (id == hotkeyId_ToggleDebugDisplay) {
-		opt_debugRegions = !opt_debugRegions;
-		saveVolatileSettings();
+		triggerVisibleActionSignal(DefActionSignalKeyToggleAutoUpdate);
 	} else if (id == hotkeyId_ToggleIgnoreMarkers) {
 		// ATTN: TODO - should we combine ignore markers with auto update and just have one setting?
-		saveCurrentViewedSourceAsManualViewOption();
-		opt_ignoreMarkers = !opt_ignoreMarkers;
-		if (!opt_ignoreMarkers) {
-			// if we turn off ignore markers, we turn on auto update
-			opt_enableAutoUpdate = true;
-		}
-		gotoCurrentMarkerlessCoordinates();
-		saveVolatileSettings();
+		triggerVisibleActionSignal(DefActionSignalKeyToggleIgnoreMarkers);
 	} else if (id == hotkeyId_CycleViewForward) {
-		// ATTN: TODO - should we force ignore markers in this case?
-		smartVisibleViewCycleAdvance(1);
+		triggerVisibleActionSignal(DefActionSignalKeyCycleForward);
 	} else if (id == hotkeyId_CycleViewBack) {
-		// ATTN: TODO - should we force ignore markers in this case?
-		smartVisibleViewCycleAdvance(-1);
+		triggerVisibleActionSignal(DefActionSignalKeyCycleBackward);
 	} else if (id == hotkeyId_toggleAutoSourceHunting) {
-		saveCurrentViewedSourceAsManualViewOption();
-		opt_enableAutoSourceHunting = !opt_enableAutoSourceHunting;
-		saveVolatileSettings();
+		triggerVisibleActionSignal(DefActionSignalKeyToggleAutoSourceHunting);
+	} else if (id == hotkeyId_OneShotZoomCrop) {
+		triggerVisibleActionSignal(DefActionSignalKeyInitiateOneShot);
+	} else if (id == hotkeyId_ToggleCropping) {
+		triggerVisibleActionSignal(DefActionSignalKeyToggleCropping);
+	} else if (id == hotkeyId_ToggleDebugDisplay) {
+		triggerVisibleActionSignal(DefActionSignalKeyToggleDebugDisplay);
 	} else {
 		// unknown hotkey
-		/*
-		if (id == hotkeyId_ToggleBypass) {
-			saveCurrentViewedSourceAsManualViewOption();
-			opt_filterBypass = !opt_filterBypass;
-			saveVolatileSettings();
-		}
-		*/ 
 	}
 	//
 	ReleaseMutex(mutex);
 }
 //---------------------------------------------------------------------------
-
-
-
-
 
 
 
