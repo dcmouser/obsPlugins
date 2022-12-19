@@ -63,6 +63,7 @@ bool OnPropertyChangeCallback(obs_properties_t *props, obs_property_t *p, obs_da
 	obs_property_set_visible(obs_properties_get(props, SETTING_hueThreshold1), showColor1);
 	obs_property_set_visible(obs_properties_get(props, SETTING_saturationThreshold1), showColor1);
 	obs_property_set_visible(obs_properties_get(props, SETTING_valueThreshold1), showColor1);
+	obs_property_set_visible(obs_properties_get(props, SETTING_hsvLightAdjust1), showColor1);
 
 	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR_TYPE2), showColor2);
 	obs_property_set_visible(obs_properties_get(props, SETTING_CHROMA_COLOR2), showColor2);
@@ -73,6 +74,7 @@ bool OnPropertyChangeCallback(obs_properties_t *props, obs_property_t *p, obs_da
 	obs_property_set_visible(obs_properties_get(props, SETTING_hueThreshold2), showColor2);
 	obs_property_set_visible(obs_properties_get(props, SETTING_saturationThreshold2), showColor2);
 	obs_property_set_visible(obs_properties_get(props, SETTING_valueThreshold2), showColor2);
+	obs_property_set_visible(obs_properties_get(props, SETTING_hsvLightAdjust2), showColor1);
 
 	//obs_property_set_visible(obs_properties_get(props, SETTING_DualColorGapFill), showColorDual);
 
@@ -436,7 +438,7 @@ enum gs_color_space plugin_get_color_space(void *data, size_t count,  const enum
 uint32_t plugin_width(void *data)
 {
 	JrPlugin *plugin = (JrPlugin*) data;
-	if (!plugin->opt_resizeOutput || plugin->opt_filterBypass) {
+	if (plugin->opt_filterBypass) {
 		// when bypassing, pass through original dimension and dont obey any forced output size
 		return (uint32_t)plugin->outputWidthAutomatic;
 	}
@@ -446,7 +448,7 @@ uint32_t plugin_width(void *data)
 uint32_t plugin_height(void *data)
 {
 	JrPlugin *plugin = (JrPlugin*) data;
-	if (!plugin->opt_resizeOutput || plugin->opt_filterBypass) {
+	if (plugin->opt_filterBypass) {
 		// when bypassing, pass through original dimension and dont obey any forced output size
 		return (uint32_t)plugin->outputHeightAutomatic;
 	}

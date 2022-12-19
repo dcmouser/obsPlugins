@@ -173,6 +173,7 @@ public:
 	struct vec2 ep_output_clip_lr;
 	struct vec2 ep_output_hardClip_ul;
 	struct vec2 ep_output_hardClip_lr;
+	//
 	float ep_optBlurExteriorDullness;
 	int ep_optBlurPasses;
 	float ep_optBlurSizeReduction;
@@ -191,15 +192,13 @@ public:
 	//
 	// general configurable params
 	bool opt_filterBypass;
-	bool opt_ignoreMarkers;
-	bool opt_resizeOutput;
 	//
 	bool opt_debugRegions;
 	bool opt_debugChroma;
 	bool opt_debugAllUpdate;
 	//
-	bool opt_enableAutoUpdate;
-	int opt_updateRate;
+	bool opt_autoTrack;
+	int opt_trackRate;
 	//
 	float opt_rmTDensityMin;
 	float opt_rmTAspectMin;
@@ -255,10 +254,10 @@ public:
 	// hotkeys
 	obs_hotkey_id hotkeyId_ToggleAutoUpdate;
 	obs_hotkey_id hotkeyId_OneShotZoomCrop;
-	obs_hotkey_id hotkeyId_ToggleCropping;
+	obs_hotkey_id hotkeyId_ToggleCropping, hotkeyId_ToggleCropBlurMode;
 	obs_hotkey_id hotkeyId_ToggleDebugDisplay;
-	//obs_hotkey_id hotkeyId_ToggleBypass;
-	obs_hotkey_id hotkeyId_ToggleIgnoreMarkers;
+	obs_hotkey_id hotkeyId_ResetView;
+	obs_hotkey_id hotkeyId_ToggleLastGoodMarkers;
 	obs_hotkey_id hotkeyId_CycleSource, hotkeyId_CycleSourceBack;
 	obs_hotkey_id hotkeyId_CycleViewForward, hotkeyId_CycleViewBack;
 	obs_hotkey_id hotkeyId_toggleAutoSourceHunting;
@@ -296,8 +295,11 @@ public:
 	clock_t oneShotEndTime;
 	bool oneShotEngaged;
 	int oneShotStage;
+	bool oneShotFoundTarget;
+	bool oneShotDidAtLeastOneTrack;
 	//
 	bool sourceDetailsHaveChanged;
+
 public:
 	EnumJrPluginType getPluginType() { return pluginType; }
 	bool isPluginTypeFilter() { return true && (pluginType == EnumJrPluginTypeFilter); }
@@ -312,7 +314,7 @@ public:
 	int getPluginOutputWidthAutomatic() { return outputWidthAutomatic; };
 	int getPluginOutputHeightAutomatic() { return outputHeightAutomatic; };
 	//
-	bool enableAutoSwitchingSources() { return (opt_enableAutoSourceHunting && !opt_filterBypass && !opt_ignoreMarkers); };
+	bool enableAutoSwitchingSources() { return (opt_enableAutoSourceHunting && !opt_filterBypass); };
 	//
 	int getOptMarkerMultiColorMode() { return opt_markerMultiColorMode; };
 	char* getOptMarkerMultiColorModeStr() { return markerMultiColorModeRenderTechniques[opt_markerMultiColorMode]; };
@@ -320,6 +322,7 @@ public:
 public:
 	obs_properties_t* doPluginAddProperties();
 	void updateSettingsOnChange(obs_data_t* settings);
+	void updateCropStyleDrawTechnique();
 	static void doGetPropertyDefauls(obs_data_t* settings);
 public:
 	void freeBeforeReallocateEffects();
@@ -370,14 +373,18 @@ public:
 public:
 	void initiateOneShot();
 	void cancelOneShot();
-	void updateOneShotStatus(bool isStill);
+	void updateOneShotStatus(bool isStill, bool goodMarkersFound);
 	bool isOneShotEngaged() { return oneShotEngaged; };
 	bool isOneShotEngagedAndFirstStage() { return (oneShotEngaged && oneShotStage == 0); };
+	bool isOneShotEngagedButPastFirstStage() { return (oneShotEngaged && oneShotStage > 0); };
+	bool didOneShotFindValidTarget() { return oneShotFoundTarget; };
+	void setOneShotFoundValidTarget(bool val) { oneShotFoundTarget = val; };
 public:
 	void saveVolatileSettings();
 	void saveVolatileMarkerZoomScaleSettings(bool isCustomColor);
 public:
 	void gotoCurrentMarkerlessCoordinates();
+	void gotoLastGoodMarkerLocation();
 public:
 	bool updateMarkerlessSettings();
 	bool getMarkerlessModeIsPresets() { return opt_markerlessMode == 1; }
@@ -407,11 +414,13 @@ public:
 	void fillFloatListFromString(char* commaList, float* floatList, int max);
 public:
 	void performToggleAutoUpdate();
-	void performToggleIgnoreMarkers();
+	void performToggleLastGoodMarkers();
 	void performToggleAutoSourceHunting();
 	void performInitiateOneShot();
 	void performToggleCropping();
+	void performCycleCropBlurMode();
 	void performToggleDebugDisplay();
+	void performResetView();
 public:
 	bool isThisPluginSourceActiveAndVisible();
 	obs_source_t* findActiveAndVisibleAutoZoomSource();

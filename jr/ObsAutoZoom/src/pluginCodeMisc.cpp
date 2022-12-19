@@ -65,40 +65,56 @@ bool JrPlugin::updateFadePosition() {
 
 //---------------------------------------------------------------------------
 void JrPlugin::cancelOneShot() {
+	//mydebug("ATTN:oneshot - canceling.");
 	oneShotEngaged = false;
+	oneShotFoundTarget = false;
 }
 
 
 void JrPlugin::initiateOneShot() {
 	// turn off auto updating
-	opt_enableAutoUpdate = false;
-	// turn off ignore if it is on?
-	opt_ignoreMarkers = false;
+	opt_autoTrack = false;
 	saveVolatileSettings();
 	// abort any hunting
 	stracker.abortHunting();
 	// start oneshot
 	oneShotEngaged = true;
 	oneShotStage = 0;
+	oneShotFoundTarget = false;
+	oneShotDidAtLeastOneTrack = false;
+	//mydebug("ATTN:oneshot - initiating.");
 }
 
 
-void JrPlugin::updateOneShotStatus(bool isStill) {
+void JrPlugin::updateOneShotStatus(bool isStill, bool goodMarkersFound) {
 	// this is also where oneshot gets turned off
 	//mydebug("In updateOneSHot status %d and stage: %d.", (int) oneShotEngaged, oneShotStage);
 	if (!isOneShotEngaged()) {
 		return;
 	}
+
+	if (!oneShotDidAtLeastOneTrack) {
+		// ATTN: this new code ensures that we dont change these findings on a render tick() without a tracking tick
+		return;
+	}
+
+	if (goodMarkersFound && !oneShotFoundTarget) {
+		setOneShotFoundValidTarget(true);
+		//mydebug("ATTN:oneshot - Setting oneshot found valid target.");
+	}
+
 	//mydebug("In updateOneSHot stage: %d.", oneShotStage);
 	if (oneShotStage == 0 || !isStill) {
 		// switch into stage 1 which allows hunting for a short period, and reset clock
 		// we also do this if we detect some movement before we get to the end
+		//mydebug("ATTN:oneshot entering stage 1 not still = %d.",(int)isStill);
 		oneShotEndTime = (clock_t)(clock() + ((float)CLOCKS_PER_SEC/ 1000.0f) * (float)DEF_MsSecsToHuntAfterOneShotSettles);
 		oneShotStage = 1;
 	} else {
 		// beyond stage 0 we check time and turn off
 		if (clock() > oneShotEndTime) {
 			// turn off tracking for oneshot
+			//mydebug("ATTN:oneshot expires.");
 			cancelOneShot();
 		}
 	}
@@ -175,7 +191,14 @@ void JrPlugin::goToInitialView() {
 
 //---------------------------------------------------------------------------
 void JrPlugin::gotoCurrentMarkerlessCoordinates() {
-	markerlessCycleListAdvance(0);
+	if (true) {
+		stracker.travelToMarkerlessInitiate(true);
+		stracker.goDirectlyToMakersAndDelayHunting();
+	}
+	else {
+		// old code
+		markerlessCycleListAdvance(0);
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -304,16 +327,14 @@ void JrPlugin::doManualZoomInOutByPercent(float scalePercent) {
 
 
 
-
-
-
-
-
-
-
-
-
-
+//---------------------------------------------------------------------------
+void JrPlugin::gotoLastGoodMarkerLocation() {
+	// turn off auto tracking
+	opt_autoTrack = false;
+	// now go
+	stracker.gotoLastGoodMarkerLocation();
+}
+//---------------------------------------------------------------------------
 
 
 

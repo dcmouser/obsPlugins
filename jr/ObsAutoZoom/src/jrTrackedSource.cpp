@@ -249,7 +249,7 @@ void TrackedSource::freeBeforeReallocateNonGraphicData() {
 
 //---------------------------------------------------------------------------
 void TrackedSource::clearAllBoxReadies() {
-	markerBoxReady = false;
+	setMarkerBoxReady(false,false);
 	lookingBoxReady = false;
 	stickyBoxReady = false;
 	lastTargetBoxReady = false;
@@ -268,7 +268,7 @@ void TrackedSource::clearAllBoxReadies() {
 //---------------------------------------------------------------------------
 void TrackedSource::clearFoundTrackingBox() {
 	markerx1 = markery1 = markerx2 = markery2 = -1;
-	markerBoxReady = false;
+	setMarkerBoxReady(false,false);
 	markerBoxIsOccluded = false;
 }
 
@@ -289,7 +289,7 @@ void TrackedSource::setStickyTargetToMarkers() {
 	markerlessStreakCycleCounter = 0;
 	settledLookingStreakCounter = 0;
 	//
-	markerBoxReady = true;
+	setMarkerBoxReady(true,false);
 	lookingBoxReady = true;
 	stickyBoxReady = true;
 	lastTargetBoxReady = true;
@@ -360,7 +360,7 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 		markery1 = 135;
 		markerx2 = 1000;
 		markery2 = 535;
-		markerBoxReady = true;
+		setMarkerBoxReady(true,true);
 		rd->foundRegions = 0;
 		return true;
 	}
@@ -576,7 +576,7 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 	//mydebug("IN findNewCandidateTrackingBox 5");
 
 	// tracking box now has valid data
-	markerBoxReady = true;
+	setMarkerBoxReady(true,true);
 	return markerBoxReady;
 }
 //---------------------------------------------------------------------------
@@ -853,6 +853,39 @@ void TrackedSource::travelToTrackedSourceMarkerless(JrMarkerlessEntry *entryp, b
 }
 
 
+void TrackedSource::travelToSourceCoords(int x1, int y1, int x2, int y2, bool forceInstant, bool useFade) {
+	// this is called when we hunt for markers in a different view and FAIL to find them.. so it is what now says finally that we should travel to markerless coordinates (and optionally change sources)
+	// note the caller is responsible for setting sourcetracker viewindex to us
+	//mydebug("ATTN: In travelToSourceCoords for source index #%d: %d,%d,%d,%d.", index, x1,y1,x2,y2);
+	JrPlugin* plugin = getPluginp();
+
+	// first set OUR marker locations (or to defaults)
+	setMarkerCoords(x1, y1, x2, y2);
+
+	// set other coords based on our now updated markers, including looking if forceInstant
+	setLocationsToMarkerLocations(forceInstant);
+
+	// independent from whether there is an instant set of our looking location, if we are on a different source we may fade
+	// ok now transition fade or move?
+	if (sourceTrackerp->getViewSourceIndex() == index) {
+		// we are already the view source, so we just need to set target locations, not switch over to this source; we will graduall move to the lasttarget locations set above
+		// ATTN: not sure we really want to check for getMarkerlessModeIsDisabled() here..
+	} else {
+		// ATTN: TODO there are times in our old code when we did NOT fade if pushing in -- we are missing that here
+		sourceTrackerp->setViewSourceIndex(index,useFade);
+		// always force instant destination positions when fading between sources
+		if (useFade) {
+			setLocationsToMarkerLocations(true);
+		}
+	}
+
+	// and cancel any oneshot -- this makes it easier to cover up markers and trigger a one shot without it maintaining prolonged one shot tracking
+	if (true) {
+		plugin->cancelOneShot();
+	}
+}
+
+
 
 
 
@@ -911,4 +944,11 @@ void TrackedSource::setMarkerCoordsFromMarklessEntry(JrMarkerlessEntry* entryp) 
 
 
 
-
+//---------------------------------------------------------------------------
+bool TrackedSource::isViewNearLocation(int x1, int y1, int x2, int y2) {
+	double dst1 = jrPointDist(x1, y1, lookingx1, lookingy1);
+	double dst2 = jrPointDist(x2, y2, lookingx2, lookingy2);
+	double dstmax = max(dst1, dst2);
+	return (dstmax < SavedMarkerCheckSameDistance);
+}
+//---------------------------------------------------------------------------

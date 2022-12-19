@@ -78,6 +78,12 @@
 #define TEXT_valueThreshold2					obs_module_text("Color 2: Value Threshold")
 #define SETTING_Def_valueThreshold2				100
 //
+#define SETTING_hsvLightAdjust1					"hsvLightMod1"
+#define TEXT_hsvLightAdjust1					obs_module_text("Color 1: Lighting adjustment")
+#define SETTING_Def_hsvLightAdjust1				0
+#define SETTING_hsvLightAdjust2					"hsvLightMod2"
+#define TEXT_hsvLightAdjust2					obs_module_text("Color 2: Lighting adjustment")
+#define SETTING_Def_hsvLightAdjust2				0
 //---------------------------------------------------------------------------
 //
 //
@@ -101,9 +107,6 @@
 
 
 //---------------------------------------------------------------------------
-#define SETTING_ignoreMarkers					"ignoreMarkers"
-#define TEXT_ignoreMarkers						obs_module_text("Ignore markers, just show configured full (markerless) view/source")
-
 #define SETTING_debugRegions					"dbgRegions"
 #define TEXT_debugRegions						obs_module_text("Debug overlay region detection (to assist setting marker options).")
 #define SETTING_Def_debugRegions				false
@@ -114,12 +117,12 @@
 #define TEXT_debugAllUpdate						obs_module_text("When showing debug overlay, force all cameras to update every cycle")
 #define SETTING_Def_debugAllUpdate				true
 
-#define SETTING_enableAutoUpdate				"enableAutoUpdate"
-#define TEXT_enableAutoUpdate					obs_module_text("Auto update detection of marker locations (set rate below)")
-#define SETTING_Def_enableAutoUpdate			true
-#define SETTING_updateRate						"updateRate"
-#define TEXT_updateRate							obs_module_text("Update marker positions every N frames")
-#define SETTING_Def_updateRate					3
+#define SETTING_autoTrack					"autoTrack"
+#define TEXT_autoTrack						obs_module_text("Auto track marker locations (set rate below)")
+#define SETTING_Def_autoTrack					true
+#define SETTING_trackRate						"trackRate"
+#define TEXT_trackRate							obs_module_text("Scan for marker positions every N frames")
+#define SETTING_Def_trackRate					3
 //
 // valid region filtering
 #define SETTING_rmDensityMin					"rmTDensityMin"
@@ -281,6 +284,16 @@
 #define SETTING_validMarkersToCheckForOcclusion			"zcValidMarkersCheckOcclusion"
 #define TEXT_validMarkersToCheckForOcclusion			obs_module_text("Valid markers to check for occlusion (default 5)")
 #define SETTING_Def_validMarkersToCheckForOcclusion		5
+//
+#define SETTING_blurPasses			"zcBlurPasses"
+#define TEXT_blurPasses				obs_module_text("Blur: Number of passes (default 6)")
+#define SETTING_Def_blurPasses			6
+#define SETTING_blurSizeReduce			"zcBlurSizeReduce"
+#define TEXT_blurSizeReduce			obs_module_text("Blur: Size reduce (default 12)")
+#define SETTING_Def_blurSizeReduce		12
+#define SETTING_blurExteriorDull		"zcBlur"
+#define TEXT_blurExteriorDull			obs_module_text("Blur: Exterior dullness (default 5)")
+#define SETTING_Def_blurExteriorDull		5
 //---------------------------------------------------------------------------
 
 
@@ -319,6 +332,9 @@
 #define DefNameLenSource								80
 //
 #define DefAlwaysUpdateTrackingWhenHunting				true
+
+// ATTN: 12/8/22 setting this to true can degrate performance
+#define DefAlwaysUpdateTrackingWhenOneShotting				false
 //
 // prior to 11/23/22 this was 10, but then we modified code to jump by 2 each time (if no markers round) or by 1 if one marker missing, this should hopefully give us more time before switching wide
 //#define DefPollMissingMarkersZoomOutCheckMult			30
@@ -339,6 +355,8 @@
 #define DefFadeTextureReduction							1
 
 #define DefDelayHuntingBriefTimeMs						500
+
+#define SavedMarkerCheckSameDistance				100
 //---------------------------------------------------------------------------
 
 
@@ -391,12 +409,14 @@
 #define DefActionSignalStructPreset_native_vkey		1234
 //
 #define DefActionSignalKeyToggleAutoUpdate		'a'
-#define DefActionSignalKeyToggleIgnoreMarkers		'b'
+#define DefActionSignalKeyToggleLastGoodMarkers		'b'
 #define DefActionSignalKeyCycleForward			'c'
 #define DefActionSignalKeyCycleBackward			'd'
 #define DefActionSignalKeyToggleAutoSourceHunting	'e'
 #define DefActionSignalKeyInitiateOneShot		'f'
 #define DefActionSignalKeyToggleCropping		'g'
 #define DefActionSignalKeyToggleDebugDisplay		'h'
+#define DefActionSignalKeyToggleCropBlurMode		'i'
+#define DefActionSignalKeyResetView			'j'
 
 //---------------------------------------------------------------------------

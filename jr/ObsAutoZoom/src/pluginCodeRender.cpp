@@ -116,14 +116,14 @@ void JrPlugin::doRender() {
 		// next place we could check for transitioning
 		if (true && opt_avoidTrackingInTransitions && currentlyTransitioning) {
 			// skip updating
-		} else if (stracker.isTrackingDelayed() || opt_ignoreMarkers) {
+		} else if (stracker.isTrackingDelayed()) {
 			// if delayed tracking
 		} else if (tsourcepTrack && DefAlwaysUpdateTrackingWhenHunting) {
 			// when we are hunting we always update tracking
 			trackingUpdateCounter = 0;
 			shouldUpdateTrackingBox = true;
-		} else if (opt_enableAutoUpdate || oneShotEngaged || tsourcepTrack) {
-			if (++trackingUpdateCounter >= opt_updateRate) {
+		} else if (opt_autoTrack || oneShotEngaged || tsourcepTrack) {
+			if (++trackingUpdateCounter >= opt_trackRate || (oneShotEngaged && (DefAlwaysUpdateTrackingWhenOneShotting || !oneShotDidAtLeastOneTrack))) {
 				// frequence to update tracking box
 				trackingUpdateCounter = 0;
 				shouldUpdateTrackingBox = true;
@@ -193,6 +193,9 @@ void JrPlugin::doRender() {
 			if (shouldUpdateTrackingBox) {
 				trackedSourcePointerToTrack->findTrackingMarkerRegionInSource(sourcePointerToTrack, shouldUpdateTrackingBox, isHunting, false);
 				didUpdateTrackingBox = true;
+				if (oneShotEngaged) {
+					oneShotDidAtLeastOneTrack = true;
+				}
 			}
 		}
 

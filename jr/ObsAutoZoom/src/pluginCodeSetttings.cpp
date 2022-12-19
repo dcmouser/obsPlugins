@@ -92,9 +92,8 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	propgroup = obs_properties_create();
 	obs_properties_add_group(props, "groupBehavior", "Behavior options", OBS_GROUP_NORMAL, propgroup);
 	//
-	obs_properties_add_bool(propgroup, SETTING_ignoreMarkers, TEXT_ignoreMarkers);
-	obs_properties_add_bool(propgroup, SETTING_enableAutoUpdate, TEXT_enableAutoUpdate);
-	obs_properties_add_int_slider(propgroup, SETTING_updateRate, TEXT_updateRate, 1, 120, 1);
+	obs_properties_add_bool(propgroup, SETTING_autoTrack, TEXT_autoTrack);
+	obs_properties_add_int_slider(propgroup, SETTING_trackRate, TEXT_trackRate, 1, 120, 1);
 	obs_properties_add_bool(propgroup, SETTING_enableAutoSourceHunting, TEXT_enableAutoSourceHunting);
 	//
 	comboString = obs_properties_add_list(propgroup, SETTING_zcEasing, TEXT_zcEasing, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -153,6 +152,7 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
 	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
 	obs_properties_add_color(propgroup, SETTING_HSV_COLOR1, TEXT_HSV_COLOR1);
+	obs_properties_add_int_slider(propgroup, SETTING_hsvLightAdjust1, TEXT_hsvLightAdjust1, -255, 255, 1);
 	//
 	obs_properties_add_int_slider(propgroup, SETTING_hueThreshold1, TEXT_hueThreshold1, 0, 1000, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_saturationThreshold1, TEXT_saturationThreshold1, 0, 1000, 1);
@@ -162,6 +162,7 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcKeyColor_choicesFull);
 	obs_property_set_modified_callback(comboString, OnPropertyChangeCallback);
 	obs_properties_add_color(propgroup, SETTING_HSV_COLOR2, TEXT_HSV_COLOR2);
+	obs_properties_add_int_slider(propgroup, SETTING_hsvLightAdjust2, TEXT_hsvLightAdjust2, -255, 255, 1);
 	//
 	obs_properties_add_int_slider(propgroup, SETTING_hueThreshold2, TEXT_hueThreshold2, 0, 1000, 1);
 	obs_properties_add_int_slider(propgroup, SETTING_saturationThreshold2, TEXT_saturationThreshold2, 0, 1000, 1);
@@ -265,6 +266,13 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	comboString = obs_properties_add_list(propgroup, SETTING_manualZoomAlignment, TEXT_manualZoomAlignment, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcAlignment_choices);
 
+
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupBlur", "Blurring options (set crop mode to blur above)", OBS_GROUP_NORMAL, propgroup);
+	obs_properties_add_int_slider(propgroup, SETTING_blurPasses, TEXT_blurPasses, 1, 30, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_blurSizeReduce, TEXT_blurSizeReduce, 1, 30, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_blurExteriorDull, TEXT_blurExteriorDull, 0, 30, 1);
+
 	return props;
 }
 //---------------------------------------------------------------------------
@@ -295,22 +303,19 @@ void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	obs_data_set_default_int(settings, SETTING_saturationThreshold2, SETTING_Def_saturationThreshold2);
 	obs_data_set_default_int(settings, SETTING_valueThreshold2, SETTING_Def_valueThreshold2);
 	//
+	obs_data_set_default_int(settings, SETTING_hsvLightAdjust1, SETTING_Def_hsvLightAdjust1);
+	obs_data_set_default_int(settings, SETTING_hsvLightAdjust2, SETTING_Def_hsvLightAdjust2);
+	//
 	obs_data_set_default_int(settings, SETTING_dilateGreen, SETTING_Def_dilateGreen);
 	obs_data_set_default_int(settings, SETTING_dilateRed, SETTING_Def_dilateRed);
-
-
-//	obs_data_set_default_int(settings, SETTING_hsvTestThreshold1, SETTING_Def_hsvTestThreshold1);
-//	obs_data_set_default_int(settings, SETTING_hsvTestThreshold2, SETTING_Def_hsvTestThreshold2);
-	//
-	obs_data_set_default_bool(settings, SETTING_ignoreMarkers, false);
 
 	//
 	obs_data_set_default_bool(settings, SETTING_debugRegions, SETTING_Def_debugRegions);
 	obs_data_set_default_bool(settings, SETTING_debugChroma, SETTING_Def_debugChroma);
 	obs_data_set_default_bool(settings, SETTING_debugAllUpdate, SETTING_Def_debugAllUpdate);
 	//
-	obs_data_set_default_bool(settings, SETTING_enableAutoUpdate, SETTING_Def_enableAutoUpdate);
-	obs_data_set_default_int(settings, SETTING_updateRate, SETTING_Def_updateRate);
+	obs_data_set_default_bool(settings, SETTING_autoTrack, SETTING_Def_autoTrack);
+	obs_data_set_default_int(settings, SETTING_trackRate, SETTING_Def_trackRate);
 	obs_data_set_default_bool(settings, SETTING_zcPreserveAspectRatio, SETTING_Def_zcPreserveAspectRatio);
 	obs_data_set_default_string(settings, SETTING_zcMarkerPos, SETTING_Def_zcMarkerPos);
 	obs_data_set_default_int(settings, SETTING_zcBoxMargin, SETTING_Def_zcBoxMargin);
@@ -364,6 +369,10 @@ void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	obs_data_set_default_string(settings, SETTING_manualZoomAlignment, SETTING_Def_manualZoomAlignment);
 	obs_data_set_default_int(settings, SETTING_manualZoomMinZoom, SETTING_Def_manualZoomMinZoom);
 
+	// blur
+	obs_data_set_default_int(settings, SETTING_blurPasses, SETTING_Def_blurPasses);
+	obs_data_set_default_int(settings, SETTING_blurSizeReduce, SETTING_Def_blurSizeReduce);
+	obs_data_set_default_int(settings, SETTING_blurExteriorDull, SETTING_Def_blurExteriorDull);
 
 	//
 	obs_data_set_default_int(settings, SETTING_srcN, SETTING_Def_srcN);
@@ -389,12 +398,11 @@ void JrPlugin::reRegisterHotkeys() {
 	obs_source_t* target = isPluginTypeFilter() ? getThisPluginFiltersAttachedSource() : getThisPluginSource();
 	//
 	if (hotkeyId_ToggleAutoUpdate==-1) hotkeyId_ToggleAutoUpdate = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleAutoUpdate", "1 autoZoom - Toggle AutoUpdate", onHotkeyCallback, this);
-	if (hotkeyId_toggleAutoSourceHunting==-1) hotkeyId_toggleAutoSourceHunting = obs_hotkey_register_source(target, "autoZoom.toggleAutoSourceHunting", "2 autoZoom - Toggle auto source switching", onHotkeyCallback, this);
-	if (hotkeyId_OneShotZoomCrop==-1) hotkeyId_OneShotZoomCrop = obs_hotkey_register_source(target, "autoZoom.hotkeyOneShotZoomCrop", "3 autoZoom - One-shot ZoomCrop", onHotkeyCallback, this);
-	if (hotkeyId_ToggleCropping==-1) hotkeyId_ToggleCropping = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleCropping", "4 autoZoom - Toggle Cropping", onHotkeyCallback, this);
-
-	//if (hotkeyId_ToggleBypass==-1) hotkeyId_ToggleBypass = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleBypass", "5 autoZoom Toggle Bypass", onHotkeyCallback, this);
-	if (hotkeyId_ToggleIgnoreMarkers==-1) hotkeyId_ToggleIgnoreMarkers = obs_hotkey_register_source(target, "autoZoom.toggleIgnoreMarkers", "5 autoZoom - Toggle ignore makers", onHotkeyCallback, this);
+	if (hotkeyId_ToggleLastGoodMarkers==-1) hotkeyId_ToggleLastGoodMarkers = obs_hotkey_register_source(target, "autoZoom.toggleLastGoodMarkers", "2 autoZoom - Toggle last good markers", onHotkeyCallback, this);
+	if (hotkeyId_toggleAutoSourceHunting==-1) hotkeyId_toggleAutoSourceHunting = obs_hotkey_register_source(target, "autoZoom.toggleAutoSourceHunting", "3 autoZoom - Toggle auto source switching", onHotkeyCallback, this);
+	if (hotkeyId_OneShotZoomCrop==-1) hotkeyId_OneShotZoomCrop = obs_hotkey_register_source(target, "autoZoom.hotkeyOneShotZoomCrop", "4 autoZoom - One-shot ZoomCrop", onHotkeyCallback, this);
+	if (hotkeyId_ToggleCropping==-1) hotkeyId_ToggleCropping = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleCropping", "5a autoZoom - Toggle Cropping", onHotkeyCallback, this);
+	if (hotkeyId_ToggleCropBlurMode==-1) hotkeyId_ToggleCropBlurMode = obs_hotkey_register_source(target, "autoZoom.hotkeyCycleCropBlurMode", "5b autoZoom - Cycle crop style", onHotkeyCallback, this);
 
 	// we dont use these any more, we use a unified hotkey for cycling source or markerless
 	//if (hotkeyId_CycleSource==-1) hotkeyId_CycleSource = obs_hotkey_register_source(target, "autoZoom.hotkeyCycleSource", "6a autoZoom cycle source", onHotkeyCallback, this);
@@ -404,7 +412,9 @@ void JrPlugin::reRegisterHotkeys() {
 	if (hotkeyId_CycleViewBack==-1) hotkeyId_CycleViewBack = obs_hotkey_register_source(target, "autoZoom.cycleViewBack", "6b autoZoom - Cycle view backwards (markerless index or source if disabled)", onHotkeyCallback, this);
 	//
 
-	if (hotkeyId_ToggleDebugDisplay==-1) hotkeyId_ToggleDebugDisplay = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleDebugDisplay", "9 autoZoom - Toggle Debug Display", onHotkeyCallback, this);
+	if (hotkeyId_ResetView==-1) hotkeyId_ResetView = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleBypass", "9 autoZoom - Reset view", onHotkeyCallback, this);
+
+	if (hotkeyId_ToggleDebugDisplay==-1) hotkeyId_ToggleDebugDisplay = obs_hotkey_register_source(target, "autoZoom.hotkeyToggleDebugDisplay", "10 autoZoom - Toggle Debug Display", onHotkeyCallback, this);
 	//
 	if (hotkeyId_ToggleAutoUpdate == -1) {
 		info("Failed to register one or more hotkeys.");
@@ -543,6 +553,12 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	jrazUint32ToHsvVec(hsv_color1, color1AsHsv);
 	jrazUint32ToHsvVec(hsv_color2, color2AsHsv);
 
+	// light adjustment
+	int color1LightAdjust = (int)obs_data_get_int(settings, SETTING_hsvLightAdjust1);
+	int color2LightAdjust = (int)obs_data_get_int(settings, SETTING_hsvLightAdjust2);
+	color1AsHsv.z = (float)min(1.0,max(0.0,color1AsHsv.z + (float)color1LightAdjust/255.0f));
+	color2AsHsv.z = (float)min(1.0,max(0.0,color2AsHsv.z + (float)color2LightAdjust/255.0f));
+
 	// no longer used
 	// opt_chromaDualColorGapFill = (int)obs_data_get_int(settings, SETTING_DualColorGapFill);
 	opt_chromaDualColorGapFill = 0;
@@ -552,9 +568,8 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_debugChroma = obs_data_get_bool(settings, SETTING_debugChroma);
 	opt_debugAllUpdate = obs_data_get_bool(settings, SETTING_debugAllUpdate);
 	//
-	opt_ignoreMarkers = obs_data_get_bool(settings, SETTING_ignoreMarkers);
-	opt_enableAutoUpdate = obs_data_get_bool(settings, SETTING_enableAutoUpdate);
-	opt_updateRate = (int)obs_data_get_int(settings, SETTING_updateRate);
+	opt_autoTrack = obs_data_get_bool(settings, SETTING_autoTrack);
+	opt_trackRate = (int)obs_data_get_int(settings, SETTING_trackRate);
 	//
 	opt_rmTDensityMin = (float)obs_data_get_int(settings, SETTING_rmDensityMin) / 100.0f;
 	opt_rmTAspectMin = (float)obs_data_get_int(settings, SETTING_rmAspectMin) / 100.0f;
@@ -661,6 +676,30 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_fadeDuration = DefFadeDuration;
 
 	// cropzoom drawing technique
+	updateCropStyleDrawTechnique();
+
+	// fixed values for now
+	opt_filterBypass = false;
+
+	// defaults with reasonable performance
+//	ep_optBlurPasses = 6;
+//	ep_optBlurSizeReduction = 12;
+//	ep_optBlurExteriorDullness = 0.5f;
+
+	ep_optBlurPasses = (int)obs_data_get_int(settings, SETTING_blurPasses);
+	ep_optBlurSizeReduction = (float)obs_data_get_int(settings, SETTING_blurSizeReduce);
+	ep_optBlurExteriorDullness = (float)((30-obs_data_get_int(settings, SETTING_blurExteriorDull)) / 30.0f);
+	//
+	// doesn't seem to have any effect
+	//opt_avoidTrackingInTransitions = true;
+	opt_avoidTrackingInTransitions = false;
+
+
+	// and now make changes based on options changing
+	forceUpdatePluginSettingsOnOptionChange();
+}
+
+void JrPlugin::updateCropStyleDrawTechnique() {
 	if (opt_zcCropStyle == Def_zcCropStyles_blackBars) {
 		strcpy(cropZoomTechnique, "Draw");
 	} else if (opt_zcCropStyle == Def_zcCropStyle_blur) {
@@ -670,21 +709,6 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	} else {
 		strcpy(cropZoomTechnique, "Draw");
 	}
-
-	// fixed values for now
-	opt_resizeOutput = true;
-	ep_optBlurExteriorDullness = 0.5f;
-	opt_filterBypass = false;
-	ep_optBlurPasses = 6;
-	ep_optBlurSizeReduction = 12;
-	//
-	// doesn't seem to have any effect
-	//opt_avoidTrackingInTransitions = true;
-	opt_avoidTrackingInTransitions = false;
-
-
-	// and now make changes based on options changing
-	forceUpdatePluginSettingsOnOptionChange();
 }
 //---------------------------------------------------------------------------
 
@@ -729,15 +753,14 @@ void JrPlugin::saveVolatileSettings() {
 	obs_data_t* settings = obs_source_get_settings(getThisPluginSource());
 
 	// push values
-	obs_data_set_bool(settings, SETTING_enableAutoUpdate, opt_enableAutoUpdate);
+	obs_data_set_bool(settings, SETTING_autoTrack, opt_autoTrack);
 	obs_data_set_bool(settings, SETTING_debugRegions, opt_debugRegions);
-	obs_data_set_bool(settings, SETTING_ignoreMarkers, opt_ignoreMarkers);
 	//
 	//obs_data_set_bool(settings, SETTING_enableMarkerlessCoordinates, opt_enableMarkerlessUse);
 	obs_data_set_bool(settings, SETTING_enableAutoSourceHunting, opt_enableAutoSourceHunting);
 	obs_data_set_int(settings, SETTING_markerlessCycleIndex, opt_markerlessCycleIndex);
 	obs_data_set_string(settings, SETTING_zcMode, jrStringFromListChoice(opt_zcMode,(const char**)SETTING_zcMode_choices));
-	obs_data_set_string(settings, SETTING_zcCropStyle, jrStringFromListChoice(opt_zcMode,(const char**)SETTING_zcCropStyle_choices));
+	obs_data_set_string(settings, SETTING_zcCropStyle, jrStringFromListChoice(opt_zcCropStyle,(const char**)SETTING_zcCropStyle_choices));
 
 	// make sure this one is up to date
 	opt_manualViewSourceIndex = stracker.getViewSourceIndex();
@@ -799,6 +822,9 @@ void JrPlugin::saveVolatileMarkerZoomScaleSettings(bool isCustomColor) {
 
 	// release settings
 	obs_data_release(settings);
+
+	// release properties
+	obs_properties_destroy(props);
 }
 //---------------------------------------------------------------------------
 

@@ -93,7 +93,7 @@ bool SourceTracker::checkAndUpdateAllTrackingSources() {
 	TrackedSource* tsourcep;
 	for (int i = 0; i < sourceCount; i++) {
 		tsourcep = &tsource[i];
-		didChangeSources = didChangeSources | checkAndUpdateTrackingSource(tsourcep);
+		didChangeSources = didChangeSources || checkAndUpdateTrackingSource(tsourcep);
 	}
 	return didChangeSources;
 }
@@ -301,7 +301,7 @@ void SourceTracker::getDualTrackedViews(TrackedSource*& tsourcepView, TrackedSou
 	// get the TrackedSources for viewing and tracking
 	// if they are the same (ie we aren't currently hunting for a new source(camera)) then tracking source will be NULL, meaning use view source
 	//mydebug("getDualTrackedViewsA says view = %d and track = %d.", sourceIndexViewing, sourceIndexTracking);
-	if (!isHunting() || sourceIndexViewing==sourceIndexTracking || plugin->opt_ignoreMarkers) {
+	if (!isHunting() || sourceIndexViewing==sourceIndexTracking) {
 		// no hunting
 		tsourcepView = &tsource[sourceIndexViewing];
 		tsourcepTrack = NULL;
@@ -708,7 +708,6 @@ void SourceTracker::travelToMarkerless(int forcedSourceId, bool forceInstant, bo
 
 
 
-
 bool SourceTracker::parseSettingString(const char* settingBuf) {
 	return markerlessManager.parseSettingString(settingBuf);
 }
@@ -792,3 +791,57 @@ void SourceTracker::updateManualZoomEntry(int sourceIndex, float zoomLevel, int 
 	manualZoomEntry.alignymod = ymods[alignmentMode];
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void SourceTracker::saveGoodMarkerPosition(int markerx1, int markery1, int markerx2, int markery2, int sourceIndex) {
+	savedMarkerx1 = markerx1;
+	savedMarkery1 = markery1;
+	savedMarkerx2 = markerx2;
+	savedMarkery2 = markery2;
+	savedMarkerSourceIndex = sourceIndex;
+	//mydebug("Saving marker location %d, %d, %d, %d.", markerx1, markery1, markerx2, markery2);
+}
+
+
+void SourceTracker::gotoLastGoodMarkerLocation() {
+	//mydebug("ATTN: in gotoLastGoodMarkerLocation: %d", savedMarkerSourceIndex);
+	if (savedMarkerSourceIndex == -1) {
+		return;
+	}
+	TrackedSource* tsp = getTrackedSourceByIndex(savedMarkerSourceIndex);
+	if (tsp == NULL) {
+		return;
+	}
+
+	abortHunting();
+
+	bool forceInstant = false;
+	bool useFade = true;
+	tsp->travelToSourceCoords(savedMarkerx1, savedMarkery1, savedMarkerx2, savedMarkery2, forceInstant, useFade);
+	//
+	goDirectlyToMakersAndDelayHunting();
+}
+
+
+bool SourceTracker::isViewNearSavedMarkerLocation() {
+	if (savedMarkerSourceIndex != sourceIndexViewing) {
+		return false;
+	}
+	TrackedSource* tsp = getTrackedSourceByIndex(savedMarkerSourceIndex);
+	if (tsp == NULL) {
+		return false;
+	}
+	return tsp->isViewNearLocation(savedMarkerx1, savedMarkery1, savedMarkerx2, savedMarkery2);
+}
+//---------------------------------------------------------------------------
+
+

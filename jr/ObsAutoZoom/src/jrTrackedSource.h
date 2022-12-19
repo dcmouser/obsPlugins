@@ -65,6 +65,7 @@ public:
 	int occludedCornerIndex;
 	//
 	bool markerBoxReady;
+	bool markerBoxesExamined = false;
 	bool lastTargetBoxReady;
 	bool lookingBoxReady;
 	bool stickyBoxReady;
@@ -161,6 +162,7 @@ public:
 	bool areMarkersBothVisibleNeitherOccluded() { return markerBoxReady && !markerBoxIsOccluded; };
 	bool areMarkersBothVisibleOrOneOccluded() { return markerBoxReady; };
 	bool areMarkersMissing() { return !markerBoxReady; }
+	bool areMakersExamined() { return markerBoxesExamined; };
 public:
 	void updateAfterHuntCheck();
 public:
@@ -170,6 +172,7 @@ public:
 public:
 
 	void travelToTrackedSourceMarkerless(JrMarkerlessEntry *entryp, bool forceInstant, bool useFade);
+	void travelToSourceCoords(int x1, int y1, int x2, int y2, bool forceInstant, bool useFade);
 	void setMarkerCoordsToBoundaries();
 	void setMarkerCoordsFromMarklessEntry(JrMarkerlessEntry* entryp);
 	//
@@ -201,6 +204,9 @@ public:
 public:
 	void doRender_Dilate_Effect_OnStagingTexrender(int dilateGreenSteps, int dilateRedSteps);
 	void doRender_Dilate_Effect_OnStagingTexrender_ColorToColor(vec4& colorFrom, vec4& colorTo);
+public:
+	void setMarkerBoxReady(bool readyVal, bool examinedVal) { markerBoxReady = readyVal; markerBoxesExamined = examinedVal; };
+	bool isViewNearLocation(int x1, int y1, int x2, int y2);
 };
 
 

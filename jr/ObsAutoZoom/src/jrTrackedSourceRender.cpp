@@ -618,7 +618,8 @@ gs_texrender_t* TrackedSource::doPipeLineOutputEffect_Blur(gs_texrender_t* input
 			outputTextRenderLastOut = outputTextRenderNextOut;
 			outputTextRenderNextOut = (outputTextRenderLastOut == plugin->outTexRenderA) ? plugin->outTexRenderB : plugin->outTexRenderA;
 		}
-		if (downRatio > 0) {
+		// we now apply dullness which i think requires this
+		if (downRatio > 0 || true) {
 			flagNeedsMergedOriginal = true;
 		}
 	}

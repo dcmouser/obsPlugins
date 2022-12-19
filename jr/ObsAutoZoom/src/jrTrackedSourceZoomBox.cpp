@@ -162,6 +162,8 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 	float newTargetDeltaSticky = (float)jrRectDist(targetx1, targety1, targetx2, targety2, stickygoalx1, stickygoaly1, stickygoalx2, stickygoaly2);
 
 	//mydebug("Delta newTargetDeltaLooking = %f  and newTargetDeltaSticky = %d and newTargetInMotion = %d.", newTargetDeltaLooking, newTargetDeltaSticky, (int)newTargetInMotion);
+
+
 	//
 	if (newTargetInMotion) {
 		// when new target is clearly in motion, we avoid making any changes to where we are looking
@@ -255,6 +257,12 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 		markersAreMoving = false;
 	}
 
+	//
+	// remember good sticky marker goals
+	if (bothMarkersValid && areMakersExamined() && (switchToNewTarget || doDriftSlowlyToTarget)) {
+		sourceTrackerp->saveGoodMarkerPosition((int)stickygoalx1, (int)stickygoaly1, (int)stickygoalx2, (int)stickygoaly2, index);
+		}
+
 
 	//mydebug("sticky position is %f,%f-%f,%f.", stickygoalx1, stickygoaly1, stickygoalx2, stickygoaly2);
 	//mydebug("target position is %d,%d-%d,%d.", targetx1, targety1, targetx2, targety2);
@@ -276,9 +284,19 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 		isLookingPositionSettled = false;
 	}
 
+	// ATTN: 12/8/22 attempt to get one shot no target to work well
+	if (isTargetMarkerless && !plugin->didOneShotFindValidTarget()) {
+		isLookingPositionSettled = true;
+	}
+
+	if (plugin->oneShotEngaged) {
+		//mydebug("ATTN:oneshot - in updateZoomCropBoxFromCurrentCandidate with isLookingPositionSettled=%d  isTargetMarkerless=%d  isOneShotEngaged() = %d.",(int)isLookingPositionSettled, (int)isTargetMarkerless, (int)plugin->isOneShotEngaged());
+	}
+
+
 	//mydebug("[ Index %d ]  looking %d,%d - %d,%d   with target %d,%d - %d,%d  and sticky %f,%f - %f,%f  with dist1 = %f and dist2 = %f and dist3 = %f and settledLookingThresh = %f and lookingsettled = %d and targetstable=%d.", index, lookingx1, lookingy1, lookingx2, lookingy2, targetx1, targety1, targetx2, targety2, stickygoalx1, stickygoaly1, stickygoalx2, stickygoaly2, dist1, dist2, dist3, settledLookingThresh, (int)isLookingPositionSettled, (int)targetIsStable);
 
-	if (isLookingPositionSettled && (plugin->opt_enableAutoUpdate || plugin->isOneShotEngaged())) {
+	if (isLookingPositionSettled && (plugin->opt_autoTrack || plugin->isOneShotEngaged())) {
 		// ok we are settled on where we are looking and our goal, so we are going to consider doing a hunt
 		// this only happens if we are auto updating or in a oneshot
 
@@ -298,12 +316,12 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 
 		bool markersMovedEnoughForRehunt = huntdist > plugin->computedThresholdTargetStableDistance * sourceDistMult;
 
-		//mydebug("ATTN: IN isLookingPositionSettled.  huntdist = %f  and moveEnoughForFastHunt = %d.",huntdist, (int)markersMovedEnoughForRehunt);
+		//mydebug("ATTN:oneshot - IN isLookingPositionSettled.huntdist = % f and moveEnoughForFastHunt = % d.",huntdist, (int)markersMovedEnoughForRehunt);
 
 		// travelingToNewTarget is set each time we choose a new target to go to, and only reset here when we arrive somewhere
 		if (markersMovedEnoughForRehunt || (bothMarkersValid && plugin->isOneShotEngagedAndFirstStage()) ) {
 			// we just arrived at new target we've been traveling to; we could so special stuff on this once-per-new-target arrival; this might be good time to hunt for better views
-			//mydebug("---------- [YES] Markers have moved enough to trigger fast hunt!!!!!!!");
+			//mydebug("---------- [YES] Markers have moved enough to trigger fast hunt; bothmarkersfound= %d.", (int)bothMarkersValid);
 			if (bothMarkersValid || (DefTestDontHuntOnOnlyOneMissingMarker && oneMarkerIsOccluded)) {
 				// we have just arrived at a good marker target, so check for zoomed in good view
 				//mydebug("TESTING bothMarkersValid initiateHunt new target push in.");
@@ -321,7 +339,7 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 			// hunt clear
 			updateAfterHuntCheck();
 			// oneshot stage advance or disable
-			plugin->updateOneShotStatus(isLookingPositionSettled);
+			plugin->updateOneShotStatus(isLookingPositionSettled, bothMarkersValid);
 		} else {
 			// markers havent moved enough to trigger a rehunt, but we still check occasionally
 			//mydebug("Markers have NOT moved enough to retrigger fast hunt.");
@@ -345,7 +363,7 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 					}
 				updateAfterHuntCheck();
 				// oneshot stage advance or disable
-				plugin->updateOneShotStatus(isLookingPositionSettled);
+				plugin->updateOneShotStatus(isLookingPositionSettled, bothMarkersValid);
 				}
 				else {
 					// settled count isnt high enough, do nothing
@@ -357,25 +375,37 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 			} else {
 				// markers not found (or only one); has long enough of this gone by to check again? this will never stop and check EVERY opt_zcMissingMarkerTimeout cycles
 				// one problem here is that we are looking both for wider markers, AND to catch a markerless situation, but we might like to delay the latter more
-				//mydebug("ATTN: MARKERS NOT FOUND on index %d -- onemark = %d TESTING markerlessStreakCounter = %d vs %d.", index, (int)oneMarkerIsOccluded, markerlessStreakCounter,opt_zcMissingMarkerTimeout);
+				//mydebug("ATTN:oneshot MARKERS NOT FOUND on index %d -- onemark = %d TESTING markerlessStreakCounter = %d vs %d.", index, (int)oneMarkerIsOccluded, markerlessStreakCounter,plugin->opt_zcMissingMarkerTimeout);
 				++markerlessStreakCounter;
 				if (!oneMarkerIsOccluded) {
 					// increase this counter more if NO markers seen, so we could be jumping +2 per time
 					++markerlessStreakCounter;
 				}
-				//mydebug("ATTN: both markers not found,  markerlessStreakCounters : %d.", markerlessStreakCounter);
-				if (markerlessStreakCounter > plugin->opt_zcMissingMarkerTimeout || plugin->isOneShotEngagedAndFirstStage()) {
+				if (plugin->isOneShotEngaged()) {
+					// 12/8/22 attempt to go earlier to missing target
+					markerlessStreakCounter += 2;
+				}
+				//mydebug("ATTN:oneshot - both markers not found,  markerlessStreakCounters : %d.", markerlessStreakCounter);
+				if (plugin->isOneShotEngaged() && plugin->didOneShotFindValidTarget()) {
+					// we found a good oneshot target earlier, so we do NOT allow ourselves to pull out if they are removed by user
+					// this ensures that we essentially stop looking for markers after a oneshot finds something
+					plugin->updateOneShotStatus(isLookingPositionSettled, bothMarkersValid);
+					//mydebug("ATTN:oneshot earlier found target so avoiding going to markerless.");
+//				} else if (markerlessStreakCounter > plugin->opt_zcMissingMarkerTimeout || plugin->isOneShotEngagedAndFirstStage()) {
+				} else if (markerlessStreakCounter > plugin->opt_zcMissingMarkerTimeout) {
 					// we've been markerless on this source for long enough, lets check again; this will happen regularly
-					//mydebug("ATTN: TESTING initiateHunt markerlessStreakCounter : %d.", markerlessStreakCounter);
 					// we will switch to the markerless view only if its not the case that we have an occluded marker and we have done enough cycles of checking this for a wider marker first
 
 					bool shouldConcludeNoMarkersAnywhereAndSwitch = (!oneMarkerIsOccluded && (markerlessStreakCycleCounter >= DefMarkerlessStreakCyclesBeforeSwitch)) || plugin->isOneShotEngaged();
+
+					//mydebug("ATTN:oneshot TESTING initiateHunt markerlessStreakCounter : %d shouldConclude = %d.", markerlessStreakCounter, (int)shouldConcludeNoMarkersAnywhereAndSwitch);
+
 					sourceTrackerp->initiateHunt(EnumHuntType_LongTimeMarkerless, shouldConcludeNoMarkersAnywhereAndSwitch);
 
 					// hunt clear
 					updateAfterHuntCheck();
 					// oneshot stage advance or disable
-					plugin->updateOneShotStatus(isLookingPositionSettled);
+					plugin->updateOneShotStatus(isLookingPositionSettled, bothMarkersValid);
 					// reset normal markerlessStreakCounter
 					markerlessStreakCounter = 0;
 					//  now every time a streakcounter passes threshold we increase our markerlessStreakCycleCounter counter, and when that passes thereshold we will be willing to jump to markerless conclusion
@@ -394,7 +424,7 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 	} else {
 		// looking is moving.. so reset these
 		resetMarkerLessCounters();
-		plugin->updateOneShotStatus(isLookingPositionSettled);
+		plugin->updateOneShotStatus(isLookingPositionSettled, bothMarkersValid);
 	}
 
 	// ok now we have our chosen current TARGET updated in stickygoalx1
@@ -403,6 +433,7 @@ void TrackedSource::updateZoomCropBoxFromCurrentCandidate(bool debugPreviewOnly)
 	goaly1 = (int)stickygoaly1;
 	goalx2 = (int)stickygoalx2;
 	goaly2 = (int)stickygoaly2;
+
 
 	// some options at this point are:
 	// 1. instantly switch to the new box

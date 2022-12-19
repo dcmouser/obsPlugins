@@ -50,6 +50,9 @@ public:
 public:
 	clock_t trackingDelayEndTime;
 public:
+	int savedMarkerx1, savedMarkery1, savedMarkerx2, savedMarkery2;
+	int savedMarkerSourceIndex = -1;
+public:
 	void init(JrPlugin* inpluginp);
 	void freeForFinalExit();
 
@@ -116,6 +119,10 @@ public:
 	bool isTrackingDelayed();
 public:
 	void updateManualZoomEntry(int sourceIndex, float zoomLevel, int alignmentMode);
+public:
+	void saveGoodMarkerPosition(int markerx1, int markery1, int markerx2, int markery2, int sourceIndex);
+	void gotoLastGoodMarkerLocation();
+	bool isViewNearSavedMarkerLocation();
 };
 //---------------------------------------------------------------------------
 

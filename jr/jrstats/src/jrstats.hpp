@@ -133,7 +133,8 @@ protected:
 	clock_t stopTimeOnAirSession = 0;
 	clock_t startTimeOnAirGeneric = 0;
 	clock_t stopTimeOnAirGeneric = 0;
-
+protected:
+	size_t hotkeyId_triggerStatsReset = -1;
 
 public:
 	jrStats(QWidget *parent = nullptr);

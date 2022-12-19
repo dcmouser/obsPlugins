@@ -208,20 +208,24 @@ bool JrPlugin::sendVisibleActionSignal(uint32_t actionSignalKey) {
 bool JrPlugin::receiveVisibleActionSignal(uint32_t actionSignalKey) {
 	if (actionSignalKey == DefActionSignalKeyToggleAutoUpdate) {
 		performToggleAutoUpdate();
-	} else if (actionSignalKey == DefActionSignalKeyToggleIgnoreMarkers) {
-		performToggleIgnoreMarkers();
+	} else if (actionSignalKey == DefActionSignalKeyToggleLastGoodMarkers) {
+		performToggleLastGoodMarkers();
 	} else if (actionSignalKey == DefActionSignalKeyToggleAutoSourceHunting) {
 		performToggleAutoSourceHunting();
 	} else if (actionSignalKey == DefActionSignalKeyInitiateOneShot) {
 		performInitiateOneShot();
 	} else if (actionSignalKey == DefActionSignalKeyToggleCropping) {
 		performToggleCropping();
+	} else if (actionSignalKey == DefActionSignalKeyToggleCropBlurMode) {
+		performCycleCropBlurMode();
 	} else if (actionSignalKey == DefActionSignalKeyToggleDebugDisplay) {
 		performToggleDebugDisplay();
 	} else if (actionSignalKey == DefActionSignalKeyCycleForward) {
 		performViewCycleAdvance(1);
 	} else if (actionSignalKey == DefActionSignalKeyCycleBackward) {
 		performViewCycleAdvance(-1);
+	} else if (actionSignalKey == DefActionSignalKeyResetView) {
+		performResetView();
 	} else {
 		// unhandled
 		return false;
@@ -236,24 +240,15 @@ bool JrPlugin::receiveVisibleActionSignal(uint32_t actionSignalKey) {
 
 //---------------------------------------------------------------------------
 void JrPlugin::performToggleAutoUpdate() {
-	opt_enableAutoUpdate = !opt_enableAutoUpdate;
-	if (opt_enableAutoUpdate) {
-		// if we turn on auto update, then we turn off ignore markers
-		opt_ignoreMarkers = false;
+	opt_autoTrack = !opt_autoTrack;
+	if (opt_autoTrack) {
+	}
+	else {
+		gotoCurrentMarkerlessCoordinates();
 	}
 	saveVolatileSettings();
 }
 
-void JrPlugin::performToggleIgnoreMarkers() {
-	saveCurrentViewedSourceAsManualViewOption();
-	opt_ignoreMarkers = !opt_ignoreMarkers;
-	if (!opt_ignoreMarkers) {
-		// if we turn off ignore markers, we turn on auto update
-		opt_enableAutoUpdate = true;
-	}
-	gotoCurrentMarkerlessCoordinates();
-	saveVolatileSettings();
-}
 
 void JrPlugin::performToggleAutoSourceHunting() {
 	saveCurrentViewedSourceAsManualViewOption();
@@ -274,9 +269,53 @@ void JrPlugin::performToggleCropping() {
 	saveVolatileSettings();
 }
 
+void JrPlugin::performCycleCropBlurMode() {
+	//mydebug("In performCycleCropBlurMode with current opt_zcCropStyle = %d.", (int)opt_zcCropStyle);
+	if (opt_zcCropStyle == Def_zcCropStyles_blackBars) {
+		opt_zcCropStyle = Def_zcCropStyle_blur;
+	}
+	else if (opt_zcCropStyle == Def_zcCropStyle_blur) {
+		opt_zcCropStyle = Def_zcCropStyles_blackBars;
+	}
+	updateCropStyleDrawTechnique();
+	saveVolatileSettings();
+}
+
 void JrPlugin::performToggleDebugDisplay() {
 	opt_debugRegions = !opt_debugRegions;
 	saveVolatileSettings();
+}
+
+
+void JrPlugin::performToggleLastGoodMarkers() {
+	// if we are already at saved good marker position, toggle to markerless
+	// either way turn off auto tracking
+	if (opt_autoTrack) {
+		opt_autoTrack = false;
+	}
+
+	bool atGoodMarkerLocation = stracker.isViewNearSavedMarkerLocation();
+	if (atGoodMarkerLocation) {
+		gotoCurrentMarkerlessCoordinates();
+	}
+	else {
+		// return to last good marker location
+		gotoLastGoodMarkerLocation();
+	}
+}
+
+
+void JrPlugin::performResetView() {
+	if (true) {
+		// we can just use this function which will toggle
+		performToggleLastGoodMarkers();
+	}
+	else {
+		if (opt_autoTrack) {
+			opt_autoTrack = false;
+			gotoCurrentMarkerlessCoordinates();
+		}
+	}
 }
 //---------------------------------------------------------------------------
 

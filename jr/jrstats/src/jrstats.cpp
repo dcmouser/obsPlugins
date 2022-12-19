@@ -225,6 +225,9 @@ void jrStats::handleObsFrontendEvent(enum obs_frontend_event event) {
 
 
 void jrStats::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
+	if (id == hotkeyId_triggerStatsReset) {
+		Reset();
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -263,10 +266,15 @@ void jrStats::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 //---------------------------------------------------------------------------
 void jrStats::registerCallbacksAndHotkeys() {
 	obs_frontend_add_event_callback(ObsFrontendEvent, this);
+	if (hotkeyId_triggerStatsReset==-1) hotkeyId_triggerStatsReset = obs_hotkey_register_frontend("jrStats.resetStatsTrigger", "jrStats - Reset stats", ObsHotkeyCallback, this);
 }
 
 void jrStats::unregisterCallbacksAndHotkeys() {
 	obs_frontend_remove_event_callback(ObsFrontendEvent, this);
+	//
+	if (hotkeyId_triggerStatsReset != -1) {
+		obs_hotkey_unregister(hotkeyId_triggerStatsReset);
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -284,12 +292,22 @@ void jrStats::loadStuff(obs_data_t *settings) {
 	fontSizeNormal = obs_data_get_int(settings, "jrstats.fontSizeNormal");
 	obs_data_set_default_int(settings, "jjrstats.fontSizeHeadline", fontSizeHeadline);
 	fontSizeHeadline = obs_data_get_int(settings, "jrstats.fontSizeHeadline");
+	//
+	obs_data_array_t *hotkeys = obs_data_get_array(settings, "jrstats.resetStatsTrigger");
+	if (hotkeyId_triggerStatsReset!=-1 && obs_data_array_count(hotkeys)) {
+		obs_hotkey_load(hotkeyId_triggerStatsReset, hotkeys);
+	}
+	obs_data_array_release(hotkeys);
 }
 
 void jrStats::saveStuff(obs_data_t *settings) {
 	obs_data_set_string(settings, "jrstats.breakPatterns", breakPatternStringNewlined.c_str());
 	obs_data_set_int(settings, "jrstats.fontSizeNormal", fontSizeNormal);
 	obs_data_set_int(settings, "jrstats.fontSizeHeadline", fontSizeHeadline);
+	//
+	obs_data_array_t *hotkeys = obs_hotkey_save(hotkeyId_triggerStatsReset);
+	obs_data_set_array(settings, "jrTimestamps.timestampTrigger", hotkeys);
+	obs_data_array_release(hotkeys);
 }
 //---------------------------------------------------------------------------
 
