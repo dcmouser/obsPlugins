@@ -499,6 +499,7 @@ void jrStats::buildUi() {
 	float fontSizeNormalf = (float)fontSizeNormal / 10.0f;
 	float fontSizeMultTypeLabel = fontSizeNormalf;
 	float fontSizeMultLabel = fontSizeNormalf;
+	float fontSizeMultLabel_DateTime = fontSizeMultLabel * 1.5;
 
 	auto newStatBare = [&](QGridLayout* layout, QString name, QWidget *label, int row, int col) {
 		QLabel *typeLabel = new QLabel(name, this);
@@ -631,7 +632,7 @@ void jrStats::buildUi() {
 
 
 	// new date time layout?
-	buildUiInfoLayout(infoLayout, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel);
+	buildUiInfoLayout(infoLayout, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel_DateTime);
 
 	// streaming and recording stats
 	buildUiAddOutputLabels(outLayoutStream, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel);
@@ -792,19 +793,37 @@ void jrStats::buildUiAddOutputLabels(QGridLayout* layout, QString name, float fo
 
 
 //---------------------------------------------------------------------------
-void jrStats::buildUiInfoLayout(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel)
-{
+void jrStats::buildUiInfoLayout(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel) {
+	bool flagShowDateTime = true;
+	bool flagShowDateTimeLabels = false;
+	// test
+	if (!flagShowDateTimeLabels) {
+		// reduce gap between date and time
+		layout->setVerticalSpacing(0);
+		layout->setRowMinimumHeight(0, 0);
+		layout->setRowMinimumHeight(1, 0);
+	}
 
-	auto newStatBare = [&](QGridLayout* layout, QString name, QWidget *label, int row, int col, bool flagBold) {
-		QLabel *typeLabel = new QLabel(name, this);
-		layout->addWidget(typeLabel, row, col);
+
+	auto newStatBare = [&](QGridLayout* layout, QString name, QWidget *label, int row, int col, bool flagBold, bool flagShowDateTimeLabels) {
+		QLabel* typeLabel = NULL;
+		if (flagShowDateTimeLabels) {
+			typeLabel = new QLabel(name, this);
+			layout->addWidget(typeLabel, row, col);
+			++col;
+		}
 		if (label) {
-			layout->addWidget(label, row, col + 1);
+			if (flagShowDateTimeLabels) {
+				layout->addWidget(label, row, col);
+			}
+			else {
+				layout->addWidget(label, row, col, Qt::AlignHCenter);
+			}
 		}
 		bool flagSetFontSize = true;
 		if (flagSetFontSize) {
 			// font sizes
-			if (true) {
+			if (typeLabel) {
 				int newPointSize = (int)(typeLabel->font().pointSize() * fontSizeMultTypeLabel);
 				//				QString qss = QString("* {font-size: %1pt; font-weight: bold; border: 1px solid;}").arg(QString::number(newPointSize));
 				if (flagBold) {
@@ -819,25 +838,31 @@ void jrStats::buildUiInfoLayout(QGridLayout* layout, QString name, float fontSiz
 			if (label) {
 				int newPointSize = (int)(label->font().pointSize() * fontSizeMultLabel);
 				//				QString qss = QString("* {font-size: %1pt; font-weight: bold; border: 1px solid;}").arg(QString::number(newPointSize));
-				QString qss = QString("* {font-size: %1pt;}").arg(QString::number(newPointSize));
+				QString qss;
+				if (typeLabel) {
+					qss = QString("* {font-size: %1pt;}").arg(QString::number(newPointSize));
+				}
+				else {
+					qss = QString("* {font-size: %1pt;line-height: 40%;}").arg(QString::number(newPointSize));
+				}
 				label->setStyleSheet(qss);
 			}
 		}
 	};
-	auto newStat = [&](QGridLayout* layout, const char *strLoc, QWidget *label, int row, int col) {
+	auto newStat = [&](QGridLayout* layout, const char *strLoc, QWidget *label, int row, int col, bool flagShowDateTimeLabels) {
 		//std::string str = "jrstats.Stats.";
 		//str += strLoc;
 		std::string str = std::string(strLoc);
-		newStatBare(layout, QTStr(obs_module_text(str.c_str())), label, row, col, false);
+		newStatBare(layout, QTStr(obs_module_text(str.c_str())), label, row, col, false, flagShowDateTimeLabels);
 	};
 
 	// new date and time
 	int row = 0;
-	if (true) {
+	if (flagShowDateTime) {
 		dateLabel = new QLabel(this);
 		timeLabel = new QLabel(this);
-		newStat(layout, "Time", timeLabel, row, 0); ++row;
-		newStat(layout, "Date", dateLabel, row, 0); ++row;
+		newStat(layout, "Time", timeLabel, row, 0, flagShowDateTimeLabels); ++row;
+		newStat(layout, "Date", dateLabel, row, 0, flagShowDateTimeLabels); ++row;
 	}
 }
 //---------------------------------------------------------------------------
