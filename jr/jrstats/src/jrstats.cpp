@@ -274,6 +274,7 @@ void jrStats::unregisterCallbacksAndHotkeys() {
 	//
 	if (hotkeyId_triggerStatsReset != -1) {
 		obs_hotkey_unregister(hotkeyId_triggerStatsReset);
+		hotkeyId_triggerStatsReset = -1;
 	}
 }
 //---------------------------------------------------------------------------
@@ -306,7 +307,7 @@ void jrStats::saveStuff(obs_data_t *settings) {
 	obs_data_set_int(settings, "jrstats.fontSizeHeadline", fontSizeHeadline);
 	//
 	obs_data_array_t *hotkeys = obs_hotkey_save(hotkeyId_triggerStatsReset);
-	obs_data_set_array(settings, "jrTimestamps.timestampTrigger", hotkeys);
+	obs_data_set_array(settings, "jrstats.resetStatsTrigger", hotkeys);
 	obs_data_array_release(hotkeys);
 }
 //---------------------------------------------------------------------------
@@ -1107,12 +1108,14 @@ void jrStats::Update()
 	// new date time
 	if (true) {
 		//str = QDateTime::currentDateTime().toString("HH:mm:ss");
-		str = QDateTime::currentDateTime().toString("h:mm:ss a");
+		//str = QDateTime::currentDateTime().toString("h:mm:ss a");
+		str = QDateTime::currentDateTime().toString("h:mm a");
 		timeLabel->setText(str);
 		setThemeID(timeLabel, "");
 		//
 //		str = QDateTime::currentDateTime().toString("MMM dd, yyyy");
-		str = QDateTime::currentDateTime().toString("ddd, MMM dd");
+//		str = QDateTime::currentDateTime().toString("ddd, MMM dd");
+		str = QDateTime::currentDateTime().toString("dddd, MMM dd");
 		dateLabel->setText(str);
 		setThemeID(dateLabel, "");
 	}
