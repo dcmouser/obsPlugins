@@ -94,6 +94,8 @@ public:
 	//
 	bool needsRecheckForSize;
 	bool forceReallocate;
+	//
+	obs_source_t* sourceShowingIncdShowing;
 public:
 	void init(SourceTracker* st, int indexin);
 	void prepareForUseAndSetName(const char *name);
@@ -140,7 +142,7 @@ public:
 	void freeBeforeReallocateFilterTextures();
 	void freeBeforeReallocateNonGraphicData();
 	bool recheckSizeAndAdjustIfNeeded(obs_source_t* source);
-	void reallocateGraphiocsForTrackedSource();
+	void reallocateGraphiocsForTrackedSource(obs_source_t* source);
 public:
 	JrRegionDetector* getRegionDetectorp() { return &regionDetector; }
 	void markRegionsQuality();

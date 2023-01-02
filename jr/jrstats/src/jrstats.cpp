@@ -26,8 +26,16 @@
 #include <QDateTime>
 
 
-
-
+//---------------------------------------------------------------------------
+// jr use
+#define DefJrTestReconnectError		false
+//
+// normal
+//#define DefJeReconnectErrorThemeId	"error"
+//
+// big -- use only if you have a * [themeID="bigerror"] in your style.qss
+#define DefJeReconnectErrorThemeId	"bigerror"
+//---------------------------------------------------------------------------
 
 
 
@@ -1299,23 +1307,38 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec)
 	QString str = QTStr("Inactive");
 	QString themeID;
 	bool active = output ? obs_output_active(output) : false;
-	if (rec) {
-		if (active) {
-			str = QTStr("Recording");
-			themeID = "good";
-		}
-	} else {
-		if (active) {
-			bool reconnecting =
-				output ? obs_output_reconnecting(output)
-				       : false;
 
-			if (reconnecting) {
-				str = QTStr("Reconnecting");
-				themeID = "error";
-			} else {
-				str = QTStr("Live");
+
+
+
+	// ATTN: jr testing
+	if (DefJrTestReconnectError) {
+		str = QTStr("RECONNECTING");
+		themeID = DefJeReconnectErrorThemeId;
+	}
+	else {
+
+		if (rec) {
+			if (active) {
+				str = QTStr("Recording");
 				themeID = "good";
+			}
+		}
+		else {
+			if (active) {
+				bool reconnecting =
+					output ? obs_output_reconnecting(output)
+					: false;
+
+				if (reconnecting) {
+					str = QTStr("RECONNECTING");
+					themeID = DefJeReconnectErrorThemeId;
+					//themeID = "error";
+				}
+				else {
+					str = QTStr("Live");
+					themeID = "good";
+				}
 			}
 		}
 	}

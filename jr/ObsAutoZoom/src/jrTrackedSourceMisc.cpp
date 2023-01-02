@@ -79,7 +79,8 @@ bool TrackedSource::recheckSizeAndAdjustIfNeeded(obs_source_t* source) {
 		update = true;
 		forceReallocate = false;
 
-		//mydebug("Ok size has changed for index %d, we need to reallocate old size is %d,%d - %d,%d and new size is %d,%d - %d,%d.", index, sourceWidth, sourceHeight, stageWidth, stageHeight, newSourceWidth, newSourceHeight, newStageWidth, newStageHeight);
+		//mydebug("ATTN: jr - Ok size has changed for index %d, we need to reallocate old size is %d,%d - %d,%d and new size is %d,%d - %d,%d.", index, sourceWidth, sourceHeight, stageWidth, stageHeight, newSourceWidth, newSourceHeight, newStageWidth, newStageHeight);
+		//mydebug("ATTN: jr - in recheckSizeAndAdjustIfNeeded and resizing..");
 
 		// mutex surround -- not sure if needed
 		WaitForSingleObject(plugin->mutex, INFINITE);
@@ -94,7 +95,7 @@ bool TrackedSource::recheckSizeAndAdjustIfNeeded(obs_source_t* source) {
 		}
 
 		// now we need to reallocate graphics
-		reallocateGraphiocsForTrackedSource();
+		reallocateGraphiocsForTrackedSource(source);
 
 		// source tracker and region detect helper
 		setStageSize(stageWidth, stageHeight);
@@ -120,7 +121,7 @@ void TrackedSource::calculateSourceSize(obs_source_t* source, uint32_t &width, u
 
 
 //---------------------------------------------------------------------------
-void TrackedSource::reallocateGraphiocsForTrackedSource() {
+void TrackedSource::reallocateGraphiocsForTrackedSource(obs_source_t* source) {
 		obs_enter_graphics();
 		freeBeforeReallocateFilterTextures();
 		// allocate staging area based on DESTINATION size?
@@ -136,10 +137,14 @@ void TrackedSource::reallocateGraphiocsForTrackedSource() {
 
 		// realloc internal memory
 		stagedData = (uint8_t *) bzalloc((stageWidth + 32) * stageHeight * 4);
+
+		// experimental 12/24/22 -- tell obs we are showing this source
+		if (false) {
+			obs_source_inc_showing(source);
+			sourceShowingIncdShowing = source;
+		}
 }
 //---------------------------------------------------------------------------
-
-
 
 
 

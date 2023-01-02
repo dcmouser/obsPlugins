@@ -294,6 +294,10 @@
 #define SETTING_blurExteriorDull		"zcBlur"
 #define TEXT_blurExteriorDull			obs_module_text("Blur: Exterior dullness (default 5)")
 #define SETTING_Def_blurExteriorDull		5
+//
+#define SETTING_avoidTrackingDuringTransition			"zcAvoidTrackingInTransitions"
+#define TEXT_avoidTrackingDuringTransition				obs_module_text("Avoid tracking during transitions (broken)")
+#define SETTING_Def_avoidTrackingDuringTransition			false
 //---------------------------------------------------------------------------
 
 

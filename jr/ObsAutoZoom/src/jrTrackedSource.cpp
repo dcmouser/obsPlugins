@@ -43,6 +43,8 @@ void TrackedSource::init(SourceTracker* st, int indexin) {
 	//
 	forceReallocate = false;
 	needsRecheckForSize = false;
+	//
+	sourceShowingIncdShowing = NULL;
 
 	// init region detector
 	regionDetector.rdInit();
@@ -181,6 +183,12 @@ void TrackedSource::freeBeforeReallocateNonGraphicData() {
 	if (stagedData) {
 		bfree(stagedData);
 		stagedData = NULL;
+	}
+
+	// ATTN: experimental 12/24/22
+	if (false && sourceShowingIncdShowing != NULL) {
+		obs_source_dec_showing(sourceShowingIncdShowing);
+		sourceShowingIncdShowing = NULL;
 	}
 }
 //---------------------------------------------------------------------------

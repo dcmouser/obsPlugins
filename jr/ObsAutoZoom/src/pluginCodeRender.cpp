@@ -130,12 +130,10 @@ void JrPlugin::doRender() {
 			}
 		}
 
-
 		// default source to track
 		obs_source_t* sourcePointerToTrack = tsourcepTrack ? sourceTrack : sourceView;
 		TrackedSource* trackedSourcePointerToTrack = tsourcepTrack ? tsourcepTrack : tsourcepView;
 		int trackedIndexToTrack = tsourcepTrack ? stracker.getTrackSourceIndex() : stracker.getViewSourceIndex();
-
 
 		// record the hunting index - this is an ugly consequence of advancing the hunt before the end of this function
 		//mydebug("In dorender stage 1b.");
@@ -143,7 +141,6 @@ void JrPlugin::doRender() {
 			// we are hunting, record the index that we are currently checking, BEFORE we advance
 			isHunting = true;
 		}
-
 
 
 		bool needsRendering = false;
@@ -213,6 +210,13 @@ void JrPlugin::doRender() {
 
 
 		bool needsUpdateZoomBox = true;
+
+		// new 12/18/22
+		if (opt_avoidTrackingInTransitions && currentlyTransitioning && !didUpdateTrackingBox) {
+			// dont change while transitionining
+			needsUpdateZoomBox = false;
+		}
+
 		if (needsUpdateZoomBox && sourceView) {
 			// update target zoom box from tracking box -- note this may happen EVEN when we are not doing a tracking box update, to provide smooth movement to target
 			// ATTN: BUT.. do we want to do this on tracking source or viewing source?

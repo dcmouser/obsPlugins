@@ -29,9 +29,9 @@ extern "C" {
 // GLOBAL CHAR* ARRAYS USED IN SETTINGS PROPERTIES (would be better to have these as simple defines but awkward)
 char* SETTING_zcMarkerPos_choices[] =			{ "outer", "innner", "center", NULL };
 char* SETTING_zcAlignment_choices[] =			{ "topLeft", "topCenter", "topRight", "middleLeft", "center", "middleRight", "bottomLeft", "bottomCenter", "bottomRight", NULL };
-char* SETTING_zcMode_choices[] =				{ "zoom and crop", "only crop", "only zoom", NULL };
-char* SETTING_zcEasing_choices[] = 				{ "nstant","eased", NULL };
-char* SETTING_fadeMode_choices[] = 				{ "none","normal", NULL };
+char* SETTING_zcMode_choices[] =			{ "zoom and crop", "only crop", "only zoom", NULL };
+char* SETTING_zcEasing_choices[] = 			{ "nstant","eased", NULL };
+char* SETTING_fadeMode_choices[] = 			{ "none","normal", NULL };
 char* SETTING_zcCropStyle_choices[] = 			{ "black bars", "blur", NULL};
 //
 char* SETTING_zcKeyMode_choices[] = 			{ "chroma", "hsv", NULL};
@@ -95,6 +95,7 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	obs_properties_add_bool(propgroup, SETTING_autoTrack, TEXT_autoTrack);
 	obs_properties_add_int_slider(propgroup, SETTING_trackRate, TEXT_trackRate, 1, 120, 1);
 	obs_properties_add_bool(propgroup, SETTING_enableAutoSourceHunting, TEXT_enableAutoSourceHunting);
+	obs_properties_add_bool(propgroup, SETTING_avoidTrackingDuringTransition, TEXT_avoidTrackingDuringTransition);
 	//
 	comboString = obs_properties_add_list(propgroup, SETTING_zcEasing, TEXT_zcEasing, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcEasing_choices);
@@ -356,6 +357,8 @@ void JrPlugin::doGetPropertyDefauls(obs_data_t *settings) {
 	//
 	obs_data_set_default_int(settings, 	SETTING_manualViewSourceIndex, SETTING_DEF_manualViewSourceIndex);
 	obs_data_set_default_bool(settings, SETTING_enableAutoSourceHunting, SETTING_Def_enableAutoSourceHunting);
+
+	obs_data_set_default_bool(settings, SETTING_avoidTrackingDuringTransition, SETTING_Def_avoidTrackingDuringTransition);
 	//obs_data_set_default_bool(settings, SETTING_enableMarkerlessCoordinates, SETTING_Def_enableMarkerlessCoordinates);
 	obs_data_set_default_string(settings, SETTING_zcMarkerlessCycleList, SETTING_Def_zcMarkerlessCycleList);
 	obs_data_set_default_int(settings, SETTING_markerlessCycleIndex, SETTING_Def_markerlessCycleIndex);
@@ -464,6 +467,7 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	//mydebug("In updateSettingsOnChange.");
 
 	opt_enableAutoSourceHunting = obs_data_get_bool(settings, SETTING_enableAutoSourceHunting);
+	opt_avoidTrackingInTransitions = obs_data_get_bool(settings, SETTING_avoidTrackingDuringTransition);;
 
 	opt_markerMultiColorMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_markerMultiColorMode), (const char**)SETTING_markerMultiColorMode_choices, 0);
 	opt_keyMode = jrPropertListChoiceFind(obs_data_get_string(settings, SETTING_keyMode), (const char**)SETTING_zcKeyMode_choices, 0);
@@ -690,10 +694,6 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	ep_optBlurSizeReduction = (float)obs_data_get_int(settings, SETTING_blurSizeReduce);
 	ep_optBlurExteriorDullness = (float)((30-obs_data_get_int(settings, SETTING_blurExteriorDull)) / 30.0f);
 	//
-	// doesn't seem to have any effect
-	//opt_avoidTrackingInTransitions = true;
-	opt_avoidTrackingInTransitions = false;
-
 
 	// and now make changes based on options changing
 	forceUpdatePluginSettingsOnOptionChange();
