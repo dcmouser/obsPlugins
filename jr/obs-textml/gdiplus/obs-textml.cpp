@@ -31,12 +31,14 @@ public:
 	float fontSizeAdjustment;
 	float lineSpaceAdjustment;
 	int hueShift;
+	int valueShift;
+	int saturationShift;
 	float wordWrapAdjustment;
 	int xoff, yoff;
 	uint32_t color1, color2;
 public:
 	TextModifier() { reset(); };
-	void reset() { fontSizeAdjustment = 1.0f; lineSpaceAdjustment = 1.0f; hueShift = 0; wordWrapAdjustment = 1.0f; xoff = 0; yoff = 0; color1 = 0; color2 = 0; };
+	void reset() { fontSizeAdjustment = 1.0f; lineSpaceAdjustment = 1.0f; hueShift = 0; valueShift = 0; saturationShift = 0; wordWrapAdjustment = 1.0f; xoff = 0; yoff = 0; color1 = 0; color2 = 0; };
 };
 //---------------------------------------------------------------------------
 
@@ -187,12 +189,19 @@ using namespace Gdiplus;
 #define S_HueQuickShift			"hueQuickShift"
 #define S_HueQuickShift_TEXT		"Quick hue shift"
 #define S_HueQuickShift_DEF		0
+#define S_SaturationQuickShift		"saturationQuickShift"
+#define S_SaturationQuickShift_TEXT	"Quick sat shift"
+#define S_SaturationQuickShift_DEF	0
+#define S_ValueQuickShift		"valueQuickShift"
+#define S_ValueQuickShift_TEXT		"Quick val shift"
+#define S_ValueQuickShift_DEF		0
+
 #define S_FontSizeQuickScale		"fontSizeQuickScale"
 #define S_FontSizeQuickScale_TEXT	"Quick font size modifier"
 #define S_FontSizeQuickScale_DEF	100
 
 
-#define DEF_MAX_LINES			100
+#define DEF_MAX_LINES			200
 
 /* clang-format on */
 
@@ -207,10 +216,10 @@ static inline DWORD get_alpha_val(uint32_t opacity)
 }
 
 
-static inline DWORD calc_color(uint32_t color, uint32_t opacity, int hueShift)
+static inline DWORD calc_color(uint32_t color, uint32_t opacity, int hueShift, int saturationShift, int valueShift)
 {
 	//return color & 0xFFFFFF | get_alpha_val(opacity);
-	return hueShiftColor(color,hueShift) & 0xFFFFFF | get_alpha_val(opacity);
+	return hsvShiftColor(color,hueShift, saturationShift, valueShift) & 0xFFFFFF | get_alpha_val(opacity);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -344,6 +353,8 @@ struct TextSource {
 	//
 	float fontSizeQuickScale = 1.0f;
 	int hueQuickShift = 0;
+	int saturationQuickShift = 0;
+	int valueQuickShift = 0;
 	//
 	float lineHeightOrig[DEF_MAX_LINES];
 	float lineHeight[DEF_MAX_LINES];
@@ -388,7 +399,7 @@ protected:
 	bool jrSplitWStringOnChar(std::wstring& mainstr, std::wstring& oneline, wchar_t wc);
 	void parseLineSplitModString(std::wstring modString, TextModifier &tmodifier);
 	bool jrSplitWStringLine(std::wstring& mainstr, std::wstring &oneline, TextModifier &tmodifier);
-	void setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier);
+	void setCurrentBrushColorUsingHsvShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier);
 	uint32_t parseColorStr(std::wstring ws);
 };
 
@@ -592,6 +603,18 @@ void TextSource::parseLineSplitModString(std::wstring modString, TextModifier &t
 			} else if (oneline[1] == L'-') {
 				tmodifier.hueShift = -_wtoi(amt.c_str());
 			}
+		} else if (oneline[0] == L's' || oneline[0] == L'S') {
+			if (oneline[1] == L'+') {
+				tmodifier.saturationShift = _wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.saturationShift = -_wtoi(amt.c_str());
+			}
+		} else if (oneline[0] == L'v' || oneline[0] == L'V') {
+			if (oneline[1] == L'+') {
+				tmodifier.valueShift = _wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.valueShift = -_wtoi(amt.c_str());
+			}
 		} else if (oneline[0] == L'w' || oneline[0] == L'W') {
 			if (oneline[1] == L'+') {
 				tmodifier.wordWrapAdjustment =
@@ -689,6 +712,10 @@ bool TextSource::jrSplitWStringLine(std::wstring &mainstr, std::wstring &oneline
 				breakLinePos = lastSpacePosStart;
 				resumePos = lastSpacePosEnd + 1;
 				flagClearNextLineFontSizeAdjustment = DefClearAdjustmentsOnHardNewline;
+				if (w == 13 && pos < slen - 1 && mainstr[pos + 1] == 10) {
+					// skip over the \13 \10
+					++resumePos;
+				}
 				break;
 			}
 			flagInSpaces = true;
@@ -794,6 +821,10 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 				if (lineNumber > 1) {
 					bounding_box.Height = bounding_box.Height + lineHeight[lineNumber-1];
 				}
+				else {
+					// attn attempt to give it some extra height from first line
+					bounding_box.Height = bounding_box.Height + bounding_box_temp.Height;
+				}
 				if (lineNumber < DEF_MAX_LINES) {
 					++lineNumber;
 				}
@@ -801,6 +832,8 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 			if (lineNumber > 1) {
 				bounding_box.Height = bounding_box.Height + lineHeight[lineNumber-1];
 			}
+
+
 			// we make the bounding box height use the full height of the last line
 			if (lineNumber > 1) {
 				//bounding_box.Height += (float)bounding_box_temp.Height * (1.0f - tweakHeightAdjust);
@@ -850,6 +883,10 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 			}
 		}
 	}
+
+
+	// test
+	//bounding_box.Height += 200;
 
 	if (vertical) {
 		if (bounding_box.Width < face_size) {
@@ -902,8 +939,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
 				   const Brush &brush, TextModifier &tmodifier)
 {
-	//DWORD outline_rgba = calc_color(outline_color, outline_opacity, tmodifier.hueShift);
-	DWORD outline_rgba = calc_color(outline_color, outline_opacity, 0);
+	DWORD outline_rgba = calc_color(outline_color, outline_opacity, 0,0,0);
 	Status stat;
 
 	Pen pen(Color(outline_rgba), outline_size);
@@ -917,8 +953,8 @@ void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
 	warn_stat("graphics.FillPath");
 }
 
-void TextSource::setCurrentBrushColorUsingHueShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier) {
-	brushp->SetLinearColors(Color(calc_color(cl1, opacity, tmodifier.hueShift + hueQuickShift)), Color(calc_color(cl2, opacity2, tmodifier.hueShift + hueQuickShift)));
+void TextSource::setCurrentBrushColorUsingHsvShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier) {
+	brushp->SetLinearColors(Color(calc_color(cl1, opacity, tmodifier.hueShift + hueQuickShift, tmodifier.saturationShift + saturationQuickShift, tmodifier.valueShift + valueQuickShift)), Color(calc_color(cl2, opacity2, tmodifier.hueShift + hueQuickShift, tmodifier.saturationShift + saturationQuickShift, tmodifier.valueShift + valueQuickShift)));
 }
 
 
@@ -944,8 +980,8 @@ void TextSource::RenderText()
 	Graphics graphics_bitmap(&bitmap);
 
 	LinearGradientBrush brush(RectF(0, 0, (float)size.cx, (float)size.cy),
-		Color(calc_color(color, opacity, 0)),
-		Color(calc_color(color2, opacity2, 0)),
+		Color(calc_color(color, opacity, 0,0,0)),
+		Color(calc_color(color2, opacity2, 0,0,0)),
 		gradient_dir, 1);
 	brushp = &brush;
 
@@ -989,7 +1025,10 @@ void TextSource::RenderText()
 			float currentX = 0.0f;
 			float currentY = 0.0f;
 			bool flagDeleteBrush = false;
+			//
 			int lastHueShift = 0;
+			int lastSaturationShift = 0;
+			int lastValueShift = 0;
 			//
 			float marginFontSizeOffsetScale = 0.055f;
 			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;// 0.10f;
@@ -1028,19 +1067,23 @@ void TextSource::RenderText()
 				rcolor2 = (tmodifier.color2 != 0) ? tmodifier.color2 : color2;
 
 				int fHue = tmodifier.hueShift + hueQuickShift;
+				int fSaturation = tmodifier.saturationShift + saturationQuickShift;
+				int fValue = tmodifier.valueShift + valueQuickShift;
 				//blog(LOG_WARNING, " hue shift = %d last was %d and tmodhue = %d and quick = %d.", fHue, lastHueShift, tmodifier.hueShift, hueQuickShift);
 				if (gradientPerLine) {
 					brushp = new LinearGradientBrush(RectF(linebox.X, linebox.Y, (float)size.cx, lineHeightOrig[lineNumber]),
-						Color(calc_color(rcolor1, opacity, fHue)),
-						Color(calc_color(rcolor2, opacity2, fHue)),
+						Color(calc_color(rcolor1, opacity, fHue, fSaturation, fValue)),
+						Color(calc_color(rcolor2, opacity2, fHue, fSaturation, fValue)),
 						gradient_dir, 1);
 					flagDeleteBrush = true;
 				} else {
-					if (fHue != lastHueShift) {
-						setCurrentBrushColorUsingHueShift(brushp, rcolor1, rcolor2, tmodifier);
+					if (fHue != lastHueShift || fSaturation != lastSaturationShift || fValue != lastValueShift) {
+						setCurrentBrushColorUsingHsvShift(brushp, rcolor1, rcolor2, tmodifier);
 						}
 				}
 				lastHueShift = fHue;
+				lastSaturationShift = fSaturation;
+				lastValueShift = fValue;
 
 				if (use_outline) {
 					// too close to left margin
@@ -1245,6 +1288,8 @@ inline void TextSource::Update(obs_data_t *s)
 	gradientPerLine = obs_data_get_bool(s, S_GRADIENTPERLINE);
 	fontSizeQuickScale = (float)obs_data_get_int(s, S_FontSizeQuickScale) / 100.0f;
 	hueQuickShift = (int)obs_data_get_int(s, S_HueQuickShift);
+	saturationQuickShift = (int)obs_data_get_int(s, S_SaturationQuickShift);
+	valueQuickShift = (int)obs_data_get_int(s, S_ValueQuickShift);
 
 	/* ----------------------------- */
 	TextModifier tmodifier;
@@ -1548,7 +1593,9 @@ static obs_properties_t *get_properties(void *data)
 	p=obs_properties_add_int_slider(propgroup, S_LINESPACEADJUST, S_LINESPACEADJUST_TEXT, -90, 90, 1);
 	//
 	p=obs_properties_add_int_slider(propgroup, S_FontSizeQuickScale, S_FontSizeQuickScale_TEXT, 25, 200, 1);
-	p=obs_properties_add_int_slider(propgroup, S_HueQuickShift, S_HueQuickShift_TEXT, 0, 360, 1);
+	p=obs_properties_add_int_slider(propgroup, S_HueQuickShift, S_HueQuickShift_TEXT, -360, 360, 1);
+	p=obs_properties_add_int_slider(propgroup, S_SaturationQuickShift, S_SaturationQuickShift_TEXT, -360, 360, 1);
+	p=obs_properties_add_int_slider(propgroup, S_ValueQuickShift, S_ValueQuickShift_TEXT, -360, 360, 1);
 	//
 	p=obs_properties_add_text(propgroup, S_NOTES, S_NOTES_TEXT, OBS_TEXT_MULTILINE);
 
@@ -1657,6 +1704,8 @@ static void defaults(obs_data_t *settings, int ver)
 	obs_data_set_default_int(settings, S_WRAPLEN, S_WRAPLEN_DEF);
 	obs_data_set_default_int(settings, S_LINESPACEADJUST, S_LINESPACEADJUST_DEF);
 	obs_data_set_default_int(settings, S_HueQuickShift, S_HueQuickShift_DEF);
+	obs_data_set_default_int(settings, S_SaturationQuickShift, S_SaturationQuickShift_DEF);
+	obs_data_set_default_int(settings, S_ValueQuickShift, S_ValueQuickShift_DEF);
 	obs_data_set_default_int(settings, S_FontSizeQuickScale, S_FontSizeQuickScale_DEF);
 
 	obs_data_release(font_obj);
