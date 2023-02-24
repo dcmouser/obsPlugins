@@ -31,6 +31,7 @@ class OptionsDialog : public JrPluginOptionsDialog {
 	JrYouTubeId* pluginp = NULL;
 	QGridLayout *mainLayout;
 	QLineEdit* editChatUtilityCommandline;
+	QCheckBox* checkboxStartMinimized;
 public:
 	OptionsDialog(QMainWindow *parent, JrYouTubeId* inpluginp);
 	~OptionsDialog();
@@ -39,4 +40,5 @@ public:
 	virtual void buildUi();
 public:
 	void setOptionChatUtilityCommandline(QString chatUtilityCommandLine);
+	void setOptionStartMinimized(bool val);
 };

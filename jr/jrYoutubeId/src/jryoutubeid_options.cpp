@@ -51,6 +51,14 @@ void OptionsDialog::buildUi() {
 	mainLayout->addWidget(editChatUtilityCommandline, idx, 1);
 	editChatUtilityCommandline->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 	++idx;
+
+	//
+	label = new QLabel(obs_module_text("Start minimized"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	checkboxStartMinimized = new QCheckBox;
+	mainLayout->addWidget(checkboxStartMinimized, idx, 1, Qt::AlignLeft);
+	++idx;
+
 	//
 	mainLayout->setColumnStretch(1, 1);
 
@@ -79,7 +87,7 @@ void OptionsDialog::buildUi() {
 
 	// dialog
 	setWindowTitle(obs_module_text(PLUGIN_OPTIONS_LABEL));
-	setMinimumSize(160, 240);
+	setMinimumSize(640, 180);
 	setSizeGripEnabled(true);
 }
 //---------------------------------------------------------------------------
@@ -94,10 +102,15 @@ void OptionsDialog::buildUi() {
 //---------------------------------------------------------------------------
 void OptionsDialog::onClickApply() {
 	pluginp->setOptionChatUtilityCommandline(editChatUtilityCommandline->text());
+	pluginp->setOptionStartMinimized(checkboxStartMinimized->checkState() == Qt::Checked);
 	pluginp->optionsFinishedChanging();
 }
 
 void OptionsDialog::setOptionChatUtilityCommandline(QString chatUtilityCommandLine) {
 	editChatUtilityCommandline->setText(chatUtilityCommandLine);
+}
+
+void OptionsDialog::setOptionStartMinimized(bool val) {
+	checkboxStartMinimized->setCheckState(val ? Qt::Checked : Qt::Unchecked);
 }
 //---------------------------------------------------------------------------

@@ -215,6 +215,7 @@ void JrYouTubeId::setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialog
 //
 void JrYouTubeId::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 	optionDialog->setOptionChatUtilityCommandline(chatUtilityCommandLine);
+	optionDialog->setOptionStartMinimized(optionStartMinimized);
 }
 //---------------------------------------------------------------------------
 
@@ -237,12 +238,14 @@ void JrYouTubeId::loadStuff(obs_data_t *settings) {
 	youTubeIdQstr = QString(ytsBuf);
 	ytsBuf = obs_data_get_string(settings, "chatComline");
 	chatUtilityCommandLine = QString(ytsBuf);
+	optionStartMinimized = obs_data_get_bool(settings, "startMinimized");
 }
 
 void JrYouTubeId::saveStuff(obs_data_t *settings) {
 	auto yts = editYouTubeId->text();
 	obs_data_set_string(settings, "youtubeid", yts.toUtf8().constData());
 	obs_data_set_string(settings, "chatComline", chatUtilityCommandLine.toUtf8().constData());
+	obs_data_set_bool(settings, "startMinimized", optionStartMinimized);
 	dirtyChanges = false;
 }
 //---------------------------------------------------------------------------
@@ -308,11 +311,11 @@ void JrYouTubeId::saveStuff(obs_data_t *settings) {
 
 //---------------------------------------------------------------------------
 void JrYouTubeId::showEvent(QShowEvent *) {
-	timer.start(TIMER_INTERVAL);
+	//timer.start(TIMER_INTERVAL);
 }
 
 void JrYouTubeId::hideEvent(QHideEvent *) {
-	timer.stop();
+	//timer.stop();
 }
 
 
@@ -468,10 +471,12 @@ void JrYouTubeId::buildUi() {
 	}
 
 	// timers
+	/*
 	QObject::connect(&timer, &QTimer::timeout, this, &JrYouTubeId::Update);
 	timer.setInterval(TIMER_INTERVAL);
 	if (isVisible())
 		timer.start();
+	*/
 
 	// initial update
 	Update();
@@ -562,7 +567,7 @@ void JrYouTubeId::Update()
 //---------------------------------------------------------------------------
 void JrYouTubeId::Reset()
 {
-	timer.start();
+	//timer.start();
 	Update();
 }
 //---------------------------------------------------------------------------
@@ -631,6 +636,10 @@ void JrYouTubeId::destructStuff() {
 void JrYouTubeId::setOptionChatUtilityCommandline(QString inChatUtilityCommandLine) {
 	chatUtilityCommandLine = inChatUtilityCommandLine;
 }
+
+void JrYouTubeId::setOptionStartMinimized(bool val) {
+	optionStartMinimized = val;
+}
 //---------------------------------------------------------------------------
 
 
@@ -674,7 +683,6 @@ void JrYouTubeId::goOpenYtWebPage() {
 }
 
 void JrYouTubeId::grabVideoIdFromObsSelectedBroadcast() {
-	mydebug("ATTN: in grabVideoIdFromObsSelectedBroadcast.");
 	QString broadcastIdQstr = "";
 
 	// ask obs for broadcast id
@@ -742,11 +750,19 @@ void JrYouTubeId::launchChatMonitorUtility(QString videoid) {
 		return;
 	}
 
+	const bool constOptionStartMinimized = optionStartMinimized;
+
 	QProcess process;
 	process.setCreateProcessArgumentsModifier(
-                [](QProcess::CreateProcessArguments *args) {
+                [constOptionStartMinimized](QProcess::CreateProcessArguments *args) {
 		args->flags |= CREATE_NEW_CONSOLE;
+		//args->startupInfo->dwFlags &=~ STARTF_USESTDHANDLES;
 		args->startupInfo->dwFlags &=~ STARTF_USESTDHANDLES;
+		if (constOptionStartMinimized) {
+			args->startupInfo->wShowWindow |= SW_SHOWMINIMIZED;
+			//args->startupInfo->wShowWindow = SW_HIDE;
+			args->startupInfo->dwFlags |= STARTF_USESHOWWINDOW ;
+		}
 	});
 	QString program = argumentsList.takeFirst();
 
@@ -784,17 +800,16 @@ void JrYouTubeId::sendYoutubeIdToBrowserChatSources(const QString videoid) {
 			auto url = obs_data_get_string(sourceSettings, "url");
 			QString urlq = QString(url);
 			// regex check
-			//QRegularExpression re("(.+)(live_chat\?v=[^&\?]*)(.*)");
-			QRegularExpression re("(.+)(live_chat\\?v=[^&\\?]*)(.*)");
+			QRegularExpression re("(.+live_chat\\?)(.*)(v=[^&\\?]*)(.*)");
 			QRegularExpressionMatch match = re.match(urlq);
 			if (!match.isValid()) {
 				//mydebug("Match says invalid.");
 			}
 			if (match.hasMatch()) {
 				// built replacement url
-				auto pre = match.captured(1);
-				auto post = match.captured(3);
-				QString newUrlq = pre + QString("live_chat?v=") + *videoidstrp + post;
+				auto pre = match.captured(1)+match.captured(2);
+				auto post = match.captured(4);
+				QString newUrlq = pre + QString("v=") + *videoidstrp + post;
 				if (newUrlq != urlq) {
 					// save it
 					obs_data_set_string(sourceSettings, "url", newUrlq.toStdString().c_str());

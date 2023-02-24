@@ -51,6 +51,7 @@ protected:
 	QLineEdit *editYouTubeId;
 	QString youTubeIdQstr;
 	QString chatUtilityCommandLine;
+	bool optionStartMinimized = false;
 	bool dirtyChanges = false;
 	qint64 chatExePid = 0;
 public:
@@ -106,6 +107,7 @@ public:
 	void receiveYoutubeIdSelectedSignal(QString videoid);
 public:
 	void setOptionChatUtilityCommandline(QString inChatUtilityCommandLine);
+	void setOptionStartMinimized(bool val);
 };
 //---------------------------------------------------------------------------
 
