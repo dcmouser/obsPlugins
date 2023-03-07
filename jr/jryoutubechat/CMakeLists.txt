@@ -1,13 +1,13 @@
-project(jryoutubeid)
+project(jryoutubechat)
 
 # Find Qt
 find_qt(COMPONENTS Core Widgets Svg Network)
 
 
-add_library(jryoutubeid MODULE)
+add_library(jryoutubechat MODULE)
 
 target_link_libraries(
-jryoutubeid
+jryoutubechat
 PRIVATE
 	OBS::libobs
 	OBS::frontend-api
@@ -21,25 +21,25 @@ PRIVATE
 	
   get_target_property(_PANEL_INCLUDE_DIRECTORY OBS::browser-panels
                       INTERFACE_INCLUDE_DIRECTORIES)
-  target_include_directories(jryoutubeid PRIVATE ${_PANEL_INCLUDE_DIRECTORY})
-  target_compile_definitions(jryoutubeid PRIVATE BROWSER_AVAILABLE)
+  target_include_directories(jryoutubechat PRIVATE ${_PANEL_INCLUDE_DIRECTORY})
+  target_compile_definitions(jryoutubechat PRIVATE BROWSER_AVAILABLE)
 
 	
 
 
-set_target_properties(jryoutubeid PROPERTIES FOLDER "plugins/jr")
+set_target_properties(jryoutubechat PROPERTIES FOLDER "plugins/jr")
 
 set(MODULE_DESCRIPTION "Jr YouTube Id")
-configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jryoutubeid.rc)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jryoutubechat.rc)
 
 target_sources(
-	jryoutubeid
+	jryoutubechat
 	PRIVATE
-		jryoutubeid.rc
-		src/jryoutubeid.cpp
-		src/jryoutubeid.hpp
-		src/jryoutubeid_options.cpp
-		src/jryoutubeid_options.hpp
+		jryoutubechat.rc
+		src/jryoutubechat.cpp
+		src/jryoutubechat.hpp
+		src/jryoutubechat_options.cpp
+		src/jryoutubechat_options.hpp
 		../jrcommon/src/jrobshelpers.cpp
 		../jrcommon/src/jrobshelpers.hpp
 		../jrcommon/src/jrobsplugin.cpp
@@ -49,10 +49,10 @@ target_sources(
 		src/plugininfo.hpp
 		)
 
-target_link_libraries(jryoutubeid)
+target_link_libraries(jryoutubechat)
 
 target_compile_definitions(
-  jryoutubeid PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS
+  jryoutubechat PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS
                    _CRT_NONSTDC_NO_WARNINGS)
 
-setup_plugin_target(jryoutubeid)
+setup_plugin_target(jryoutubechat)
