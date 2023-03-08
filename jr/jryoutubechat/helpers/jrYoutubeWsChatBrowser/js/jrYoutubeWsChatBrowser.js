@@ -1,6 +1,6 @@
 // global
 var currentTargetDiv = "jrYtInteriorAltDiv1";
-
+var obs;
 
 
 function doStartup() {
