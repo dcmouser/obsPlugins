@@ -24,23 +24,22 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # global app and version info
 appName = "ytChatMon"
-appVersion = "2.0 (3/6/23)"
+appVersion = "2.2 (3/6/23)"
 appDescription = "YouTube Live Chat Monitor"
 #appPrintPrefix = "] " + appName + " v"+ appVersion
 appPrintPrefix = "] "
 
 
-# regex patterns to trigger alerts and cancel them
-patternAlert = re.compile(r"jesse.*check|check.*jesse", flags=re.I)
-patternCancel = re.compile(r"cancel alert", flags=re.I)
+
 
 # other options
-defSleepTimeBetweenChatGets = 4  # note that a value as small as 5 can get temporarily blocked by youtube, but script will reconnect and continue (5 works but kicks)
+defSleepTimeBetweenChatGets = 5  # note that a value as small as 5 can get temporarily blocked by youtube, but script will reconnect and continue (5 works but kicks)
 defSleepTimeBetweenChatProcess = 0.1  # how many seconds to wait between parsing each chat message
-defSleepTimeBetweenReconnect = 20  # how many seconds to wait before trying to reconnect on chat disconnect (30 is safe)
+defSleepTimeBetweenReconnect = 30  # how many seconds to wait before trying to reconnect on chat disconnect (30 is safe)
 defTooLongOnTime = 180  # shuts off alert light after this many seconds (normally you would do it with button)
 optionReconnect = True  # reconnect after chat connection lost?
 optionBrief = False
+optionFileBrief = True
 optionBlink = True
 blinkColorAlert = "#FF0000" #"red"
 blinkColorNetworkIssue = "#00003F" #"blue"
@@ -49,7 +48,13 @@ optionForceReplay = False # disabled does not work
 optionUseContinuationOnReconnect = True
 optionUseContinationEvenIfLive = False  # unused for now
 optionPythonNewerPytchatKludge = True
+optionRegexPatternAlert = r"jesse.*check|check.*jesse"
+optionRegexPatternCancel = r"cancel alert"
+optionReconnectAttemptLimit = 3;
 
+# regex patterns to trigger alerts and cancel them
+patternAlert = False
+patternCancel = False
 
 
 
@@ -66,6 +71,7 @@ chat = False
 ytChatStreamContinuation = False
 outFile = False
 kthread = False
+reconnectAttempts = 0
 
 
 
@@ -103,6 +109,7 @@ def setup():
     global youtubeVideoId
     #
     parseCommandlineArgs()
+    setupRegex();
     #
     setupOutputFile()
     setupBlink()
@@ -138,12 +145,16 @@ def myprint(*args, **kwargs):
 
 def parseCommandlineArgs():
     global appName, appDescription
+    global optionRegexPatternAlert, optionRegexPatternCancel
+
     parser = argparse.ArgumentParser(prog = appName, description = appDescription)
     parser.add_argument('-v', '--videoid', required=True)
     parser.add_argument('-o', '--outfile', default = False)
     parser.add_argument('-b', '--brief', default = False, action='store_true')
     parser.add_argument('-n', '--noblink', default = False, action='store_true')
     parser.add_argument('-l', '--live', default = False, action='store_true')
+    parser.add_argument('-a', '--regexalert', default = optionRegexPatternAlert)
+    parser.add_argument('-c', '--regexcancel', default = optionRegexPatternCancel)
     args = parser.parse_args()
     # store video id global
     global youtubeVideoId, outFilePath, optionBrief, optionBlink, optionUseContinuationOnReconnect
@@ -152,6 +163,14 @@ def parseCommandlineArgs():
     optionBrief = args.brief
     optionBlink = not args.noblink
     optionUseContinuationOnReconnect = not args.live
+    optionRegexPatternAlert = args.regexalert
+    optionRegexPatternCancel = args.regexcancel
+
+def setupRegex():
+    # regex compile
+    global optionRegexPatternAlert, optionRegexPatternCancel, patternAlert, patternCancel
+    patternAlert = re.compile(optionRegexPatternAlert, flags=re.I)
+    patternCancel = re.compile(optionRegexPatternCancel, flags=re.I)
 
 
 def abortApplication():
@@ -344,20 +363,26 @@ def loopDisplayAllChatMessages():
     global ytChatStreamContinuation
     global youtubeVideoId
     global outFile
-    global optionUseContinuationOnReconnect, optionUseContinationEvenIfLive
+    global optionUseContinuationOnReconnect, optionUseContinationEvenIfLive, optionReconnectAttemptLimit
+    global optionBrief, optionFileBrief
+    global reconnectAttempts
     #myprint("Fetching chat from video.")
     validChatMessages = 0
     iterationsSinceReconnect = 0
+    aliveDiscoveries = 0
+    reconnectAttempts = 0
     while (not wantsQuit):
         iterationsSinceReconnect = iterationsSinceReconnect + 1
         if (not chat.is_alive()):
             # try to reconnect?
             if (iterationsSinceReconnect < 3 or not optionReconnect):
-                myprint("Chat disconnected; stopping.")
-                if (validChatMessages==0):
-                    chat.raise_for_status()
-                break
-            myprint("Chat disconnected; sleeping before retry.")
+                reconnectAttempts = reconnectAttempts + 1
+                if (aliveDiscoveries==0) or (not optionReconnect) or (reconnectAttempts >= optionReconnectAttemptLimit):
+                    myprint("Chat disconnected; stopping.")
+                    if (validChatMessages==0):
+                        chat.raise_for_status()
+                    break
+            myprint("Chat disconnected; sleeping before retry %d of %d." % (reconnectAttempts, optionReconnectAttemptLimit))
             shutdownPytchat()
             #
             blinkDrawAttentionProblem()
@@ -370,10 +395,12 @@ def loopDisplayAllChatMessages():
             setupPytchat(youtubeVideoId, ytChatStreamContinuation)
             iterationsSinceReconnect = 0
             if (not chat.is_alive()):
-                myprint("Chat still dead; aborting.")
-                break
+                continue
+                # myprint("Chat still dead; aborting.")
+                #break
         try:
-            
+            # reest
+            aliveDiscoveries = aliveDiscoveries + 1
             # old buffered way
             if True:
                 data = chat.get()
@@ -392,8 +419,10 @@ def loopDisplayAllChatMessages():
                     ytChatStreamContinuation = chat.continuation
                 
 
-
             for c in items:
+                # reset
+                reconnectAttempts = 0
+                # inc
                 iterationsSinceReconnect = iterationsSinceReconnect + 1
                 validChatMessages = validChatMessages + 1
                 # print on screen
@@ -406,7 +435,7 @@ def loopDisplayAllChatMessages():
                 #
                 # log to file
                 if (outFile):
-                    if (optionBrief):
+                    if (optionFileBrief):
                         print(f"{c.elapsedTime} [{c.author.name}]- {c.message}", file=outFile)
                     else:
                         print(c.json(), file=outFile)

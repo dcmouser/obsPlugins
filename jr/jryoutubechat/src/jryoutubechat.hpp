@@ -38,11 +38,7 @@
 
 //---------------------------------------------------------------------------
 enum JrYtWidgetListItemTypeEnum {JrYtWidgetListItemTypeEnum_Normal, JrYtWidgetListItemTypeEnum_Info, JrYtWidgetListItemTypeEnum_ManuallyAdded, JrYtWidgetListItemTypeEnum_Pending};
-//---------------------------------------------------------------------------
-
-//---------------------------------------------------------------------------
-#define DefAutoTimerMsShowDuration	5000
-#define DefAutoTimerMsClearWaitDuration	2000
+enum JrYtAutoAdvanceStageEnum {JrYtAutoAdvanceStageEnum_Show, JrYtAutoAdvanceStageEnum_Hide, JrYtAutoAdvanceStageEnum_LastCheck};
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
@@ -77,11 +73,16 @@ protected:
 	obs_websocket_vendor vendor = NULL;
 protected:
 	// from scene notes plugin
-	QListWidget* msgList;
+	QListWidget* msgList = NULL;
 	QLineEdit* editYouTubeId;
 	QString youTubeIdQstrFromLastLoad;
 	QString youTubeIdQstrUsedByChatUtil;
 	QString chatUtilityCommandLine;
+	//
+	QPushButton* chatUtilityLaunchButton = NULL;
+	QPushButton* stopUtilityButton = NULL;
+	QPushButton* clearOverlayButton = NULL;
+	QPushButton* toggleAutoAdvanceButton = NULL;
 protected:
 	int optionListItemInfoFontSize = 10;
 protected:
@@ -93,13 +94,16 @@ protected:
 	QString optionManualLines = "";
 	QString optionAutoEnableDsk = "";
 	QString optionAutoEnableDskScene = "";
-protected:
-	QPushButton* toggleAutoAdvanceButton = NULL;
-	QTimer autoTimer;
+	//
+	int optionAutoDelayBetweenLastItemChecks = 1000;
 	int optionAutoTimeOff = 2000;
 	int optionAutoTimeShow = 5000;
+	int optionAutoTimeShowExtraLastItem = 10000; // note autocomputed as optionAutoTimeShow * 2
 	bool optionAutoEngaged = false;
+protected:
+	QTimer autoTimer;
 	int autoAdvanceStage = 0;
+	clock_t startTimeLastItem = 0;
 protected:
 	bool dirtyChanges = false;
 	qint64 chatExePid = 0;
@@ -192,11 +196,20 @@ public:
 public:
 	void autoStartChatUtility();
 public:
-	void clearMessageList();
 	void wsSetupWebsocketStuff();
 	void wsShutdownWebsocketStuff();
+	void requestWsSelectedMessageInfoEvent(obs_data_t *response_data, QListWidgetItem* itemp, int index);
+	void requestWsAllMessagesInListEvent(obs_data_t *response_data);
+	void requestWsHandleMessageSelectedByClient(obs_data_t *request_data, obs_data_t* response_data);
+	void requestWsHandleCommandByClient(obs_data_t *request_data, obs_data_t* response_data);
+	void requestWsHandleGetState(obs_data_t *request_data, obs_data_t* response_data);
 	void triggerWsSelectedMessageChangeEvent();
-	void requestWsSelectedMessageInfoEvent(obs_data_t *response_data);
+	void triggerWsClearMessageListEvent();
+	void triggerWsNewMessageAddedToListEvent(QListWidgetItem* itemp, int index);
+	void triggerWsFullListChangeEvent();
+	void triggerWsStateChangeEvent_AutoToggle();
+protected:
+	void clearMessageList();
 	void doMessageSelectClick(QListWidgetItem* item);
 	void doMessageSelect(QListWidgetItem* item);
 	void clearSelectedItem() { selectedListItem = NULL; };
@@ -239,8 +252,20 @@ public:
 	void autoTimerTrigger();
 	void setNextAutoTimer();
 	void updateAutoButton();
+	void gotoFirstMessage();
 	void gotoLastMessage();
+	void gotoMessageByIndex(int rowIndex);
 	void gotoNewLastIfOnNextToLast();
+	bool isOnLastRow();
+public:
+	void updateButtonDisableds();
+public:
+	int getLastListIndex();
+	int getSelectedIndex();
+	bool checkSelectedItemStillGood();
+//signals:
+public slots:
+	void toggleAutoSignal() {toggleAutoAdvance();};
 };
 //---------------------------------------------------------------------------
 

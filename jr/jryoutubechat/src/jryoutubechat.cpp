@@ -10,6 +10,7 @@
 #include <../qt-wrappers.hpp>
 #include <QObject>
 
+
 #include <csignal>
 #include <signal.h>
 
@@ -641,10 +642,10 @@ void JrYouTubeChat::buildUi() {
 		buttonLayout->addLayout(buttonLayoutInner);
 
 		QHBoxLayout* buttonLayoutInner2 = new QHBoxLayout;
-		QPushButton* chatUtilityLaunchButton = new QPushButton(QTStr("Launch chat"));
+		chatUtilityLaunchButton = new QPushButton(QTStr("Launch chat"));
 		buttonLayoutInner2->addWidget(chatUtilityLaunchButton);
 		connect(chatUtilityLaunchButton, &QPushButton::clicked, [this]() { goLaunchChatUtility(); });
-		QPushButton* stopUtilityButton = new QPushButton(QTStr("Kill chat"));
+		stopUtilityButton = new QPushButton(QTStr("Kill chat"));
 		buttonLayoutInner2->addWidget(stopUtilityButton);
 		connect(stopUtilityButton, &QPushButton::clicked, [this]() { stopRunningProcessClick(); });
 		chatUtilityLaunchButton->setStyleSheet("padding-left: 6px; padding-right: 6px;");
@@ -702,9 +703,9 @@ void JrYouTubeChat::buildUi() {
 		// buttons after listbox
 		QHBoxLayout* buttonLayoutInner2 = new QHBoxLayout;
 		//
-		QPushButton* clearChatButton = new QPushButton(QTStr("Clear overlay"));
-		buttonLayoutInner2->addWidget(clearChatButton);
-		connect(clearChatButton, &QPushButton::clicked, [this]() { clickClearSelectedItem(); });
+		clearOverlayButton = new QPushButton(QTStr("Clear overlay"));
+		buttonLayoutInner2->addWidget(clearOverlayButton);
+		connect(clearOverlayButton, &QPushButton::clicked, [this]() { clickClearSelectedItem(); });
 		//
 		toggleAutoAdvanceButton = new QPushButton(QTStr("Toggle Auto"));
 		buttonLayoutInner2->addWidget(toggleAutoAdvanceButton);
@@ -794,6 +795,9 @@ void JrYouTubeChat::buildUi() {
 
 	// add a save callback?
 	obs_frontend_add_save_callback(do_frontend_save, this);
+
+	// buttons
+	updateButtonDisableds();
 }
 //---------------------------------------------------------------------------
 
@@ -1046,7 +1050,6 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 
 
 	// clear listbox
-	clearSelectedItemTriggerUpdate();
 	clearMessageList();
 
 	// fill initial manual items
@@ -1080,6 +1083,10 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 	process.setProgram(program);
 	process.setArguments(argumentsList);
 
+	QObject::connect(&process, &QProcess::stateChanged, [this](QProcess::ProcessState state){
+		updateButtonDisableds();
+	});
+
 	if (!optionStartEmbedded) {
 		process.startDetached(&chatExePid);
 	}
@@ -1095,10 +1102,18 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 
 	// remember this
 	youTubeIdQstrUsedByChatUtil = videoid;
+
+	// update buttons
+	updateButtonDisableds();
 }
 
 void JrYouTubeChat::clearMessageList() {
+	// first clear selected
+	clearSelectedItemTriggerUpdate();
+	//
 	msgList->clear();
+	// send we event
+	triggerWsClearMessageListEvent();
 }
 //---------------------------------------------------------------------------
 
@@ -1285,108 +1300,6 @@ void JrYouTubeChat::autoStartChatUtility() {
 
 
 //---------------------------------------------------------------------------
-void JrYouTubeChat::wsSetupWebsocketStuff() {
-	//mydebug("In JrYouTubeChat::wsSetupWebsocketStuff.");
-	vendor = obs_websocket_register_vendor("jrYoutube");
-	if (!vendor) {
-		warn("Failed to register websockets vendor.");
-		return;
-	}
-
-	// register request clients can make of us
-	auto event_request_cb_JrYtMessageGet = [](obs_data_t *request_data, obs_data_t *response_data,
-					void *thisptr) {
-		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
-		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		const char *event_name =
-			obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data =
-			obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string =
-			event_data ? obs_data_get_json(event_data) : "{}";
-		// handle callback
-		ytp->requestWsSelectedMessageInfoEvent(response_data);
-
-	};
-	//
-	if (!obs_websocket_vendor_register_request(vendor, "JrYtMessageGet", event_request_cb_JrYtMessageGet, this)) {
-		warn("Failed to register obs - websocket request JrYtMessageGet");
-	}
-
-	// register an event we send out
-}
-
-
-void JrYouTubeChat::wsShutdownWebsocketStuff() {
-	if (vendor) {
-		obs_websocket_vendor_unregister_request(vendor, "JrYtMessageGet");
-	}
-}
-
-
-
-
-void JrYouTubeChat::triggerWsSelectedMessageChangeEvent() {
-	// after a message is selected in the listview, this function is called, it will broadcast a websocket event to any listeners
-
-	// obs_websocket_vendor_emit_event(obs_websocket_vendor vendor, const char *event_name, obs_data_t *event_data)
-	obs_data_t *event_data = obs_data_create();
-	// fill it
-	requestWsSelectedMessageInfoEvent(event_data);
-	// emit it
-	obs_websocket_vendor_emit_event(vendor, "jrYtMessageChanged", event_data);
-	// release?
-	obs_data_release(event_data);
-}
-
-void JrYouTubeChat::requestWsSelectedMessageInfoEvent(obs_data_t *response_data) {
-	// a websocket client can call this function to be told what the currrently selected message index is (useful on startup of client so it doesnt have to wait for next broadcast)
-	//mydebug("In requestWsSelectedMessageInfoEvent.");
-
-	// ATTN: we need to make sure selectedListItem stays valid
-	QString msgHtml,authorName,authorImageUrl;
-	// fill it from current selection
-	int plainTextLen = 0;
-	if (selectedListItem != NULL) {
-		// first try to parse original
-		QVariant jsonItemVar = selectedListItem->data(Qt::UserRole);
-		if (!jsonItemVar.isValid()) {
-			msgHtml = selectedListItem->text();
-			plainTextLen = msgHtml.length();
-		}
-		else {
-			// parse it
-			// ATTN: TEST
-			optionShowEmoticons = true;
-			QString str = jsonItemVar.toString();
-			// decode it again like in original parsing
-			QJsonDocument itemJsonDoc = QJsonDocument::fromJson(str.toUtf8());
-			QJsonObject itemJson = itemJsonDoc.object();
-			QString message = buildMessageFromChatItemJson(itemJson, optionShowEmoticons, false, false);
-			QJsonObject authorJson = itemJson.value("author").toObject();
-			authorName = authorJson.value("name").toString();
-			authorImageUrl = authorJson.value("imageUrl").toString();
-			msgHtml = message;
-			plainTextLen = itemJson.value("message").toString().length();
-			// drop down and send it
-			// ATTN: TO DO reconstruct the messageex with emoticons
-		}
-	}
-
-	if (authorImageUrl == "" && msgHtml.length()>0 && msgHtml[0]!=']') {
-		authorImageUrl = optionDefaultAvatarUrl;
-	}
-
-	// send it
-	obs_data_set_string(response_data, "msgHtml", msgHtml.toStdString().c_str());
-	obs_data_set_string(response_data, "authorName", authorName.toStdString().c_str());
-	obs_data_set_string(response_data, "authorImageUrl", authorImageUrl.toStdString().c_str());
-	obs_data_set_string(response_data, "plainTextLen", std::to_string(plainTextLen).c_str());
-}
-
-
 void JrYouTubeChat::doMessageSelectClick(QListWidgetItem* item) {
 	userDoesActionStopAutoTimer();
 	doMessageSelect(item);
@@ -1431,11 +1344,7 @@ void JrYouTubeChat::userDoesActionStopAutoTimer() {
 
 
 //---------------------------------------------------------------------------
-void JrYouTubeChat::addItemLabel(const QString &str, JrYtWidgetListItemTypeEnum typeEnum, int index) {
-	// simple
-	doMsgListAddItemStr(str, typeEnum, index);
-}
-
+// the (only) two functions that add new items
 void JrYouTubeChat::addItemJson(const QString &str, JrYtWidgetListItemTypeEnum typeEnum, int index) {
 	// parse json
 
@@ -1483,7 +1392,10 @@ void JrYouTubeChat::addItemJson(const QString &str, JrYtWidgetListItemTypeEnum t
 	else {
 		msgList->insertItem(index, itemp);
 	}
+	// go to it
 	gotoNewLastIfOnNextToLast();
+	// trigger websocket event
+	triggerWsNewMessageAddedToListEvent(itemp, getLastListIndex());
 }
 
 
@@ -1504,7 +1416,20 @@ void JrYouTubeChat::doMsgListAddItemStr(const QString& str, JrYtWidgetListItemTy
 	else {
 		msgList->insertItem(index,itemp);
 	}
+	// go to it
 	gotoNewLastIfOnNextToLast();
+	// trigger websocket event
+	triggerWsNewMessageAddedToListEvent(itemp, getLastListIndex());
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::addItemLabel(const QString &str, JrYtWidgetListItemTypeEnum typeEnum, int index) {
+	// simple
+	doMsgListAddItemStr(str, typeEnum, index);
 }
 
 
@@ -1721,8 +1646,15 @@ void JrYouTubeChat::optionsFinishedChanging() {
 		msgList->setFont(font);
 	}
 	jrObsPlugin::optionsFinishedChanging();
-
+	//
+	// computed values
+	optionAutoTimeShowExtraLastItem = optionAutoTimeShow * 2;
+	// stop any auto advance if on
+	userDoesActionStopAutoTimer();
+	// re-fill manual items
 	refillManualItems();
+	// let clients know they need to reload list
+	triggerWsFullListChangeEvent();
 }
 //---------------------------------------------------------------------------
 
@@ -1858,7 +1790,7 @@ void JrYouTubeChat::cycleParentDockTab() {
 		for (int i = 0; i < count; i++)
 		{
 			QString tabtitle = bar->tabText(i);
-			if (tabtitle == "jr YouTube") {
+			if (tabtitle == QString(PLUGIN_LABEL)) {
 				// found us, now advance tab
 				int index = bar->currentIndex();
 				++index;
@@ -1889,13 +1821,18 @@ void JrYouTubeChat::toggleAutoAdvance() {
 
 
 void JrYouTubeChat::stopAutoAdvance() {
+	if (!optionAutoEngaged) {
+		return;
+	}
 	clearSelectedItemTriggerUpdate();
 	// clear flag
 	optionAutoEngaged = false;
+	startTimeLastItem = 0;
 	// stop timer
 	autoTimer.stop();
 	//
 	updateAutoButton();
+	triggerWsStateChangeEvent_AutoToggle();
 }
 
 void JrYouTubeChat::startAutoAdvance() {
@@ -1905,15 +1842,29 @@ void JrYouTubeChat::startAutoAdvance() {
 	}
 	// reset
 	if (selectedListItem) {
-		autoAdvanceStage = 1;
+		// currently showing, set timer and then hide
+		autoAdvanceStage = JrYtAutoAdvanceStageEnum_Hide;
 	} else {
-		autoAdvanceStage = 0;
+		// not yet shown
+		// do we want to start by showing the current selection? or only if new lines come in?
+		if (isOnLastRow()) {
+			// when we are on last row, we just sit and wait and dont force last one on
+			autoAdvanceStage = JrYtAutoAdvanceStageEnum_LastCheck;
+		}
+		else {
+			// when user starts auto and not on last, we start by showing it
+			moveSelection(0, true);
+			autoAdvanceStage = JrYtAutoAdvanceStageEnum_Show;
+		}
 	}
 	// set timer to advance to "next" (first) stage
 	optionAutoEngaged = true;
-	setNextAutoTimer();
+	startTimeLastItem = 0;
 	//
 	updateAutoButton();
+	triggerWsStateChangeEvent_AutoToggle();
+	//
+	setNextAutoTimer();
 }
 
 void JrYouTubeChat::autoTimerTrigger() {
@@ -1922,27 +1873,48 @@ void JrYouTubeChat::autoTimerTrigger() {
 		return;
 	}
 	// ok do the next thing
-	if (autoAdvanceStage == 0) {
-		// advance and show
-		bool didMoveAndTrigger = moveSelection(1, true);
-		if (didMoveAndTrigger) {
-			// move to next stage, where we keep it on screen for a bit
-			autoAdvanceStage = 1;
+	bool isLastItem = isOnLastRow();
+	if (isLastItem) {
+		// we are on last item so we can't move forward
+		// however we should CLEAR the selection if it was on
+		// BUT we would like a LONGER time showing the LAST commment (maybe 3x as long as normal until new message comes in?); note that timer ensures we were shown for at least minimal time already
+		// by default delay a bit and then look for next message to show
+		autoAdvanceStage = JrYtAutoAdvanceStageEnum_LastCheck;
+		if (selectedListItem) {
+			// still showing last one
+			// lets linger it for a some extra time
+			if (startTimeLastItem==0) {
+				// initialize start time
+				startTimeLastItem = clock();
+			}
+			else {
+				// has it been on long enough?
+				clock_t elapsedTimeOn = clock() - startTimeLastItem;
+				if (elapsedTimeOn > optionAutoTimeShowExtraLastItem) {
+					// ok it's been on long enough, so turn it off
+					clearSelectedItemTriggerUpdate();
+					// we override this to ensure it stays off for long enough before we check for a update
+					autoAdvanceStage = JrYtAutoAdvanceStageEnum_Show;
+				}
+			}
 		}
 		else {
-			// do NOT turn off auto timer, just drop down and sit and wait at same stage, not advancing autoAdvanceStage
+			// it's already been turned off, nothing to do but check again in a bit
 		}
 	}
+	else if ((autoAdvanceStage != JrYtAutoAdvanceStageEnum_Hide && !selectedListItem) || optionAutoTimeOff == 0) {
+		// advance and show
+		// note that we now check for && !selectedListItem so that we guarantee a time off if optionAutoTimeOff>0, no matter where we are in cycle
+		moveSelection(1, true);
+		autoAdvanceStage = JrYtAutoAdvanceStageEnum_Hide;
+		startTimeLastItem = 0;
+	}
 	else {
-		// move to next (first) stage after some delay
-		autoAdvanceStage = 0;
-		// hide all selections for a bit
-		if (optionAutoTimeOff > 0) {
-			clearSelectedItemTriggerUpdate();
-		} else {
-			// just go back and display next
-			autoTimerTrigger();
-		}
+		// autoAdvanceStage == 1 , so our job is to clear selection and keep it off for a bit
+		clearSelectedItemTriggerUpdate();
+		// drop down to move back to first display stage after some delay
+		autoAdvanceStage = JrYtAutoAdvanceStageEnum_Show;
+		startTimeLastItem = 0;
 	}
 	// and advance
 	setNextAutoTimer();
@@ -1950,10 +1922,14 @@ void JrYouTubeChat::autoTimerTrigger() {
 
 
 void JrYouTubeChat::setNextAutoTimer() {
-	if (autoAdvanceStage == 0) {
+	if (autoAdvanceStage == JrYtAutoAdvanceStageEnum_LastCheck) {
+		autoTimer.setInterval(optionAutoDelayBetweenLastItemChecks);
+		autoTimer.start();
+	} else if (autoAdvanceStage == JrYtAutoAdvanceStageEnum_Show && optionAutoTimeOff>0) {
 		autoTimer.setInterval(optionAutoTimeOff);
 		autoTimer.start();
 	} else {
+		// next stage is JrYtAutoAdvanceStageEnum_Hide, so next trigger is after we show
 		autoTimer.setInterval(optionAutoTimeShow);
 		autoTimer.start();
 	}
@@ -1972,12 +1948,25 @@ void JrYouTubeChat::updateAutoButton() {
 
 
 //---------------------------------------------------------------------------
+void JrYouTubeChat::gotoFirstMessage() {
+	gotoMessageByIndex(0);
+}
+
+
 void JrYouTubeChat::gotoLastMessage() {
 	if (!msgList) {
 		return;
 	}
 	int rowIndex = msgList->count() - 1;
+	gotoMessageByIndex(rowIndex);
+}
+
+
+void JrYouTubeChat::gotoMessageByIndex(int rowIndex) {
 	if (rowIndex < 0) {
+		return;
+	}
+	if (rowIndex >= msgList->count()) {
 		return;
 	}
 	msgList->setCurrentRow(rowIndex);
@@ -1994,4 +1983,471 @@ void JrYouTubeChat::gotoNewLastIfOnNextToLast() {
 		msgList->setCurrentRow(rowIndex);
 	}
 }
+
+bool JrYouTubeChat::isOnLastRow() {
+	if (!msgList) {
+		return false;
+	}
+	return (msgList->currentRow() == msgList->count() - 1);
+}
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::updateButtonDisableds() {
+	bool isRunning = !(process.state() == QProcess::NotRunning);
+	bool isSelectedMessage = !(selectedListItem == NULL);
+	//
+	chatUtilityLaunchButton->setDisabled(isRunning);
+	stopUtilityButton->setDisabled(!isRunning);
+	clearOverlayButton->setDisabled(!isSelectedMessage);
+//	toggleAutoAdvanceButton->setDisabled(!isSelectedMessage);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::wsSetupWebsocketStuff() {
+	//mydebug("In JrYouTubeChat::wsSetupWebsocketStuff.");
+	vendor = obs_websocket_register_vendor("jrYoutube");
+	if (!vendor) {
+		warn("Failed to register websockets vendor.");
+		return;
+	}
+
+	// register request clients can make of us: GET SELECTED MESSAGE
+	auto event_request_cb_JrYtMessageGet = [](obs_data_t *request_data, obs_data_t *response_data,
+					void *thisptr) {
+		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
+		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		const char *event_name = obs_data_get_string(request_data, "event_name");
+		if (!event_name)
+			return;
+		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
+		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		// handle callback
+		ytp->checkSelectedItemStillGood();
+		ytp->requestWsSelectedMessageInfoEvent(response_data, ytp->selectedListItem, ytp->getSelectedIndex());
+
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "JrYtMessageGet", event_request_cb_JrYtMessageGet, this)) {
+		warn("Failed to register obs - websocket request JrYtMessageGet");
+	}
+
+	// register request clients can make of us: GET ALL MESSAGES
+	auto event_request_cb_JrYtListGet = [](obs_data_t *request_data, obs_data_t *response_data,
+					void *thisptr) {
+		//mydebug("IN cb event_request_cb_JrYtListGet.");
+		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		const char *event_name = obs_data_get_string(request_data, "event_name");
+		if (!event_name)
+			return;
+		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
+		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		// handle callback
+		ytp->requestWsAllMessagesInListEvent(response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "JrYtListGet", event_request_cb_JrYtListGet, this)) {
+		warn("Failed to register obs - websocket request JrYtListGet");
+	}
+
+	// register request clients can make of us: JrYtMessageSelect
+	auto event_request_cb_JrYtMessageSelect = [](obs_data_t *request_data, obs_data_t *response_data,
+					void *thisptr) {
+		//mydebug("IN cb JrYtMessageSelect.");
+		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		const char *event_name = obs_data_get_string(request_data, "event_name");
+		if (!event_name)
+			return;
+		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
+		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		// handle callback
+		ytp->requestWsHandleMessageSelectedByClient(request_data, response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "JrYtMessageSelect", event_request_cb_JrYtMessageSelect, this)) {
+		warn("Failed to register obs - websocket request JrYtMessageSelect");
+	}
+
+
+	// register request clients can make of us: JrYtMessageSelect
+	auto event_request_cb_JrYtCommand = [](obs_data_t *request_data, obs_data_t *response_data,
+					void *thisptr) {
+		//mydebug("IN cb JrYtCommand.");
+		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		const char *event_name = obs_data_get_string(request_data, "event_name");
+		if (!event_name)
+			return;
+		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
+		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		// handle callback
+		ytp->requestWsHandleCommandByClient(request_data, response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "JrYtCommand", event_request_cb_JrYtCommand, this)) {
+		warn("Failed to register obs - websocket request JrYtCommand");
+	}
+
+
+	// register request clients can make of us: JrYtMessageSelect
+	auto event_request_cb_JrYtGetState = [](obs_data_t *request_data, obs_data_t *response_data,
+					void *thisptr) {
+		//mydebug("IN cb JrYtGetState.");
+		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		const char *event_name = obs_data_get_string(request_data, "event_name");
+		if (!event_name)
+			return;
+		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
+		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		// handle callback
+		ytp->requestWsHandleGetState(request_data, response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "JrYtGetState", event_request_cb_JrYtGetState, this)) {
+		warn("Failed to register obs - websocket request JrYtGetState");
+	}
+
+	// register an event we send out
+}
+
+
+void JrYouTubeChat::wsShutdownWebsocketStuff() {
+	if (vendor) {
+		obs_websocket_vendor_unregister_request(vendor, "JrYtMessageGet");
+	}
+}
+
+
+
+
+void JrYouTubeChat::triggerWsSelectedMessageChangeEvent() {
+	// after a message is selected in the listview, this function is called, it will broadcast a websocket event to any listeners
+
+	// obs_websocket_vendor_emit_event(obs_websocket_vendor vendor, const char *event_name, obs_data_t *event_data)
+	obs_data_t *event_data = obs_data_create();
+	// fill it
+	checkSelectedItemStillGood();
+	requestWsSelectedMessageInfoEvent(event_data, selectedListItem, getSelectedIndex());
+	// emit it
+	obs_websocket_vendor_emit_event(vendor, "jrYtMessageChanged", event_data);
+	// release?
+	obs_data_release(event_data);
+
+	updateButtonDisableds();
+}
+
+void JrYouTubeChat::requestWsSelectedMessageInfoEvent(obs_data_t *response_data, QListWidgetItem* itemp, int index) {
+	// a websocket client can call this function to be told what the currrently selected message index is (useful on startup of client so it doesnt have to wait for next broadcast)
+	//mydebug("In requestWsSelectedMessageInfoEvent.");
+
+	// ATTN: we need to make sure itemp stays valid
+	QString msgHtml,authorName,authorImageUrl;
+	// fill it from current selection
+	int plainTextLen = 0;
+	if (msgList && itemp) {
+		// first try to parse original
+		QVariant jsonItemVar = itemp->data(Qt::UserRole);
+		if (!jsonItemVar.isValid()) {
+			msgHtml = itemp->text();
+			plainTextLen = msgHtml.length();
+		}
+		else {
+			// parse it
+			// ATTN: TEST
+			optionShowEmoticons = true;
+			QString str = jsonItemVar.toString();
+			// decode it again like in original parsing
+			QJsonDocument itemJsonDoc = QJsonDocument::fromJson(str.toUtf8());
+			QJsonObject itemJson = itemJsonDoc.object();
+			QString message = buildMessageFromChatItemJson(itemJson, optionShowEmoticons, false, false);
+			QJsonObject authorJson = itemJson.value("author").toObject();
+			authorName = authorJson.value("name").toString();
+			authorImageUrl = authorJson.value("imageUrl").toString();
+			msgHtml = message;
+			plainTextLen = itemJson.value("message").toString().length();
+			// drop down and send it
+			// ATTN: TO DO reconstruct the messageex with emoticons
+		}
+
+		if (authorImageUrl == "" && msgHtml.length()>0 && msgHtml[0]!=']') {
+			authorImageUrl = optionDefaultAvatarUrl;
+		}
+	}
+
+	// send it
+	obs_data_set_string(response_data, "msgHtml", msgHtml.toStdString().c_str());
+	obs_data_set_string(response_data, "authorName", authorName.toStdString().c_str());
+	obs_data_set_string(response_data, "authorImageUrl", authorImageUrl.toStdString().c_str());
+	obs_data_set_string(response_data, "plainTextLen", std::to_string(plainTextLen).c_str());
+	obs_data_set_int(response_data, "index", index);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::triggerWsClearMessageListEvent() {
+	// empty data
+	obs_data_t *event_data = obs_data_create();
+	// fill it
+	obs_data_set_string(event_data, "dummyvar", "dummyval");
+	// emit it
+	obs_websocket_vendor_emit_event(vendor, "jrYtMessageListCleared", event_data);
+	// release?
+	obs_data_release(event_data);
+}
+
+
+void JrYouTubeChat::triggerWsNewMessageAddedToListEvent(QListWidgetItem* itemp, int index) {
+	// after a message is selected in the listview, this function is called, it will broadcast a websocket event to any listeners
+
+	// obs_websocket_vendor_emit_event(obs_websocket_vendor vendor, const char *event_name, obs_data_t *event_data)
+	obs_data_t *event_data = obs_data_create();
+	// fill it
+	requestWsSelectedMessageInfoEvent(event_data, itemp, index);
+	// emit it
+	obs_websocket_vendor_emit_event(vendor, "jrYtMessageAdded", event_data);
+	// release?
+	obs_data_release(event_data);
+}
+
+
+void JrYouTubeChat::triggerWsStateChangeEvent_AutoToggle() {
+	// empty data
+	obs_data_t *event_data = obs_data_create();
+	// fill it
+	obs_data_set_bool(event_data, "autoToggle", optionAutoEngaged);
+	// emit it
+	obs_websocket_vendor_emit_event(vendor, "jrYtStateChange", event_data);
+	// release?
+	obs_data_release(event_data);
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::requestWsAllMessagesInListEvent(obs_data_t *response_data) {
+	// ATTN: todo there iss a lot of code repetition in here from the single result reply, we need to merge
+	// a websocket client can call this function to be told the entire list of messages currently in list (could be a big reply)
+	// returns obs_data_t*
+	//mydebug("In requestWsAllMessagesInListEvent.");
+
+	// first build a big json document
+	QJsonDocument jsonDoc;
+	QJsonArray jsonArray;
+
+	// loop all items
+	QListWidgetItem* itemp;
+
+	for (int i = 0; i < msgList->count(); ++i) {
+		itemp = msgList->item(i);
+
+		// build object
+		QString msgHtml, authorName, authorImageUrl;
+		// fill it from current selection
+		int plainTextLen = 0;
+		if (itemp != NULL) {
+			// first try to parse original
+			QVariant jsonItemVar = itemp->data(Qt::UserRole);
+			if (!jsonItemVar.isValid()) {
+				msgHtml = itemp->text();
+				plainTextLen = msgHtml.length();
+			}
+			else {
+				// parse it
+				optionShowEmoticons = true;
+				QString str = jsonItemVar.toString();
+				// decode it again like in original parsing
+				QJsonDocument itemJsonDoc = QJsonDocument::fromJson(str.toUtf8());
+				QJsonObject itemJson = itemJsonDoc.object();
+				QString message = buildMessageFromChatItemJson(itemJson, optionShowEmoticons, false, false);
+				QJsonObject authorJson = itemJson.value("author").toObject();
+				authorName = authorJson.value("name").toString();
+				authorImageUrl = authorJson.value("imageUrl").toString();
+				msgHtml = message;
+				plainTextLen = itemJson.value("message").toString().length();
+				// drop down and send it
+				// ATTN: TO DO reconstruct the messageex with emoticons
+			}
+			if (authorImageUrl == "" && msgHtml.length() > 0 && msgHtml[0] != ']') {
+				authorImageUrl = optionDefaultAvatarUrl;
+			}
+		}
+
+		// add it to array
+		QJsonObject jsonObj;
+		jsonObj.insert("msgHtml", msgHtml.toStdString().c_str());
+		jsonObj.insert("authorName", authorName.toStdString().c_str());
+		jsonObj.insert("authorImageUrl", authorImageUrl.toStdString().c_str());
+		jsonObj.insert("plainTextLen",  std::to_string(plainTextLen).c_str());
+		jsonObj.insert("index",  i);
+		jsonArray.append(jsonObj);
+	}
+
+	// now convert json to obs_data_t *
+	jsonDoc.setArray(jsonArray);
+	obs_data_set_string(response_data, "listJson", jsonDoc.toJson());
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::requestWsHandleMessageSelectedByClient(obs_data_t *request_data, obs_data_t* response_data) {
+	// find the index of the selected item then jump to it and make it active
+	int index = obs_data_get_int(request_data, "itemid");
+
+	// turn off timer
+	userDoesActionStopAutoTimer();
+
+	if (!msgList || msgList->count() <= index) {
+		return;
+	}
+
+	if (index == -1) {
+		clickClearSelectedItem();
+		return;
+	}
+
+	if (false) {
+		const char* req = obs_data_get_json(request_data);
+		mydebug("requestWsHandleMessageSelectedByClient: %s.", req);
+	}
+
+	// get it
+	QListWidgetItem* targetItemp = msgList->item(index);
+	// clear any existing (this should not trigger sending but means this will not toggle)?
+	if (false) {
+		clearSelectedItem();
+	}
+	// go to it
+	msgList->setCurrentRow(index, QItemSelectionModel::ClearAndSelect);
+	// activate it
+	doMessageSelect(targetItemp);
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::triggerWsFullListChangeEvent() {
+	// empty data
+	obs_data_t *event_data = obs_data_create();
+	// fill it
+	obs_data_set_string(event_data, "dummyvar", "dummyval");
+	// emit it
+	obs_websocket_vendor_emit_event(vendor, "jrYtMessageListChanged", event_data);
+	// release?
+	obs_data_release(event_data);
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+int JrYouTubeChat::getLastListIndex() {
+	if (!msgList) {
+		return -1;
+	}
+	return msgList->count() - 1;
+}
+
+int JrYouTubeChat::getSelectedIndex() {
+	if (selectedListItem == NULL || !msgList) {
+		return -1;
+	}
+	QListWidgetItem* itemp;
+	for (int i = 0; i < msgList->count(); ++i) {
+		itemp = msgList->item(i);
+		if (itemp == selectedListItem) {
+			return i;
+		}
+	}
+	// not found
+	return -1;
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+bool JrYouTubeChat::checkSelectedItemStillGood() {
+	bool bretv = (getSelectedIndex() != -1);
+	if (!bretv) {
+		clearSelectedItem();
+	}
+	return bretv;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void JrYouTubeChat::requestWsHandleCommandByClient(obs_data_t *request_data, obs_data_t* response_data) {
+	// find the index of the selected item then jump to it and make it active
+	const char *comStr = obs_data_get_string(request_data, "command");
+	if (!comStr) {
+		return;
+	}
+	QString commandString = QString(comStr);
+
+	// handle various commands
+	if (commandString == "toggleAuto") {
+		// it seems that trying to call this directly is failing to start the timer -- perhaps because it's coming in on a non-gui thread?
+		QMetaObject::invokeMethod(this, [=]() { toggleAutoAdvance(); }, Qt::QueuedConnection);
+	} else if (commandString == "cycleTabs") {
+		cycleParentDockTab();
+	} else if (commandString == "gotoLast") {
+		userDoesActionStopAutoTimer();
+		gotoLastMessage();
+	} else if (commandString == "gotoFirst") {
+		userDoesActionStopAutoTimer();
+		gotoFirstMessage();
+	} else {
+		mydebug("Unknown requestWsHandleCommandByClient: %s.", comStr);
+	}
+}
+
+
+void JrYouTubeChat::requestWsHandleGetState(obs_data_t* request_data, obs_data_t* response_data) {
+	// fill state
+	obs_data_set_bool(response_data, "autoToggle", optionAutoEngaged);
+}
+//---------------------------------------------------------------------------
+
+

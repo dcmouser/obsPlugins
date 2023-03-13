@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+	
+  <head>
+    <script type="text/javascript" src="lib/obs-ws.min.js"></script>
+    <script type="text/javascript" src="js/jryt.js"></script>
+		<link rel="stylesheet" type="text/css" href="css/jryt.css"/>
+  </head>
+
+		<!-- Open Developer tools in browser to see results of websocket. -->
+
+  <body onload="doStartupOverlay();">
+
+		<div id="optionsDiv">
+			<div id="versionInfo">VERSION INFO GOES HERE</div>
+		<form>
+		  <fieldset>
+		    <legend>Connection options</legend>
+		    <p>
+		      <label for="connectionAddress">Websocket connection address (ws://IP:PORT)</label>
+		      <input type="text" name="connectionAddress" id="connectionAddress" autocapitalize="none" value="ws://localhost:4466" />
+		    </p>
+		    <p>
+		      <label for="connectionPassword">Websocket connection password</label>
+		      <input type="text" name="connectionPassword" autocapitalize="none" id="connectionPassword" value="" />
+		    </p>
+		  </fieldset>
+		</form>
+			<div class="JrYtButtonBarRight">
+				<button class="JrYtButton" onclick="location.reload();"><img class="JrYtButtonImg" src="images/reload.png">Discard and reload</button>
+				<button class="JrYtButton" onclick="saveOptionsButtonClick();"><img class="JrYtButtonImg" src="images/filesave.png">Save and reload</button>
+			</div>
+		</div>
+
+  	<div id="infoDiv"></div>
+ 
+  	
+		<div class="JrYtOuterDiv JrYtOuterDivSolo">
+			<div class="JrYtInnerDiv JrYtInnerDivSolo">
+				<div id="jrYtMainDiv" class="jrYtMainDiv jrYtMainDivSolo">
+					<div id="jrYtInteriorAltDiv1">
+						<!-- SELECTED MESSAGE WILL GO HERE -->
+					</div>
+					<div id="jrYtInteriorAltDiv2">
+						<!-- SELECTED MESSAGE WILL GO HERE -->
+					</div>
+				</div>
+			</div>
+		</div>
+  </body>
+</html>

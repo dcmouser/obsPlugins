@@ -1,7 +1,0 @@
-
-#define PLUGIN_NAME "jryoutube"
-#define PLUGIN_LABEL "jr YouTube"
-#define PLUGIN_VERSION "1.0"
-#define PLUGIN_CONFIGFILENAME "jryoutube.json"
-#define PLUGIN_AUTHOR "jessereichler@gmail.com"
-#define PLUGIN_OPTIONS_LABEL PLUGIN_LABEL ## " Options"

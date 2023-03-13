@@ -1,0 +1,69 @@
+	.JrYtInnerDiv {
+		padding: 10px;
+		font-size:1em;
+	}
+	.jrYtMainDiv {
+		min-height: 75px;
+		padding: 10px;
+		border-radius: 12px;
+		font-size: 0.75em;
+	}
+	.JrYtMessageListUl img.jrYtEmoticon {
+		max-width: 24px;
+		max-height: 24px;
+	}
+
+	img.jrYtUserImage {
+		max-width: 75px;
+		max-height: 75px;
+		width: 75px;
+	}
+	
+	.jrYtMessage {
+		font-size: 1.75em;
+	}
+	
+	.jrYtMainDiv {
+		font-size: .6em;
+	}
+
+
+.JrYtToggledOff {
+	
+}
+
+.JrYtToggledOn {
+	background-color: #00FF00AA;
+}
+
+
+
+
+@media (max-height: 75em) and (max-width: 75em) {
+	html, body {
+		font-size: x-large;
+		/*background-color: #FF2299F5;*/
+	}
+	img.jrYtUserImage {
+		max-width: 50px;
+		max-height: 50px;
+		width: 50px;
+	}
+
+	.JrYtMessageList li img.jrYtUserImage {
+		max-width: 32px;
+		max-height: 32px;
+		width: 32px;
+	}
+
+	.jrYtMainDiv {
+		min-height: 50px;
+		padding: 5px;
+		border-radius: 6px;
+	}
+
+}
+
+
+
+
