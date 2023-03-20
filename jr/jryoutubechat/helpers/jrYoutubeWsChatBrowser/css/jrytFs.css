@@ -1,0 +1,28 @@
+
+.JrYtOuterDivSolo {
+	position:absolute;
+	top:0px;
+	width:100%;
+}
+
+#jrYtInteriorAltDiv1, #jrYtInteriorAltDiv2 {
+	height:100%;
+}
+
+img.jrYtUserImage {
+	max-width: 75px;
+}
+
+.JrYtTable {
+    font-size: 1.4em;
+    overflow-wrap: anywhere;
+}
+
+.JrYtTable .jrColNw {
+    overflow-wrap: normal;
+}
+
+.msgLen1 .JrYtTable, .msgLen2 .JrYtTable, .msgLen3 .JrYtTable {
+    font-size: 0.5em;
+}
+

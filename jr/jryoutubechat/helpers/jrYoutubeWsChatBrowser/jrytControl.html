@@ -12,7 +12,7 @@
 
 		<!-- Open Developer tools in browser to see results of websocket. -->
 
-  <body onload="doStartupControl();">
+  <body onload="doStartupControl();" class="JrYtShowAllMsgs JrYtShowStarMsgs">
 
 	<div class="JrYtPage">
 		
@@ -32,7 +32,7 @@
 		  </fieldset>
 		</form>
 			<div class="JrYtButtonBarRight">
-				<button class="JrYtButton" onclick="location.reload();"><img class="JrYtButtonImg" src="images/reload.png">Discard and reload</button>
+				<button class="JrYtButton" onclick="location.reload();"><img class="JrYtButtonImg" src="images/reload.png">Discard changes and reload</button>
 				<button class="JrYtButton" onclick="saveOptionsButtonClick();"><img class="JrYtButtonImg" src="images/filesave.png">Save and reload</button>
 			</div>
 		</div>
@@ -58,11 +58,12 @@
 		</div>
 
 		<div class="JrYtButtonBar">
-			<button class="JrYtButton" onclick="optionsButtonClick();"><img class="JrYtButtonImg" src="images/options.png">Options</button>
+			<button class="JrYtButton" onclick="optionsButtonClick();"><img class="JrYtButtonImgNoText" src="images/options.png"></button>
 			<button class="JrYtButton" onclick="sendWsCommand('cycleTabs');"><img class="JrYtButtonImg" src="images/reload_all_tabs.png">Cycle&nbsp;Tabs</button>
-			<button class="JrYtButton" onclick="sendWsCommand('gotoFirst');"><img class="JrYtButtonImg" src="images/resultset_first.png">Goto&nbsp;First</button>
-			<button class="JrYtButton" onclick="sendWsCommand('gotoLast');"><img class="JrYtButtonImg" src="images/resultset_last.png">Goto&nbsp;Last</button>
+			<button class="JrYtButton" onclick="sendWsCommand('gotoFirst');"><img class="JrYtButtonImg" src="images/resultset_first.png">Go&nbsp;First</button>
+			<button class="JrYtButton" onclick="sendWsCommand('gotoLast');"><img class="JrYtButtonImg" src="images/resultset_last.png">Go&nbsp;Last</button>
 			<button id="JrYtButtonAutoToggle" class="JrYtButton JrYtToggledOff" onclick="doToggleAutoButton();"><img class="JrYtButtonImg" src="images/control-play_32.png"><span>Toggle&nbsp;Auto</span></button>
+			<button class="JrYtButton" id="JrYtButtonStars" class="JrYtHideNoStars" onclick="optionsStarsViewClick();"></button>
 		</div>
 
 	</div>

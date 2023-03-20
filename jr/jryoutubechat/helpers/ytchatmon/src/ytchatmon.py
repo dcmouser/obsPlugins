@@ -329,17 +329,22 @@ def shutdownOutputFile():
 def setupPytchat(videoId, ytChatStreamContinuation):
     global chat, optionForceReplay
     #myprint("Connecting pytchat to: " + videoId + ".")
-    if (ytChatStreamContinuation):
-        #chat = pytchat.LiveChat(video_id = videoId, replay_continuation=ytChatStreamContinuation, force_replay = optionForceReplay)
-        chat = pytchat.LiveChat(video_id = videoId, replay_continuation=ytChatStreamContinuation)
-    else:
-        #chat = pytchat.LiveChat(video_id = videoId, force_replay = optionForceReplay)
-        if (optionPythonNewerPytchatKludge):
-            # new python 3.10 try
-            chat = pytchat.create(video_id = videoId)
+
+    try:
+        if (ytChatStreamContinuation):
+            #chat = pytchat.LiveChat(video_id = videoId, replay_continuation=ytChatStreamContinuation, force_replay = optionForceReplay)
+            chat = pytchat.LiveChat(video_id = videoId, replay_continuation=ytChatStreamContinuation)
         else:
-            # old good
-            chat = pytchat.LiveChat(video_id = videoId)
+            #chat = pytchat.LiveChat(video_id = videoId, force_replay = optionForceReplay)
+            if (optionPythonNewerPytchatKludge):
+                # new python 3.10 try
+                chat = pytchat.create(video_id = videoId)
+            else:
+                # old good
+                chat = pytchat.LiveChat(video_id = videoId)
+    except Exception as exp:
+        myprint("Exception connecting to video: " + str(exp));
+        return
 
     if (chat.is_alive()):
         if (True):
@@ -353,7 +358,8 @@ def setupPytchat(videoId, ytChatStreamContinuation):
 
 def shutdownPytchat():
     global chat
-    chat.terminate()
+    if (chat):
+        chat.terminate()
 
 def loopDisplayAllChatMessages():
     global chat
@@ -427,7 +433,7 @@ def loopDisplayAllChatMessages():
                 validChatMessages = validChatMessages + 1
                 # print on screen
                 if (optionBrief):
-                    print(f"{c.elapsedTime} [{c.author.name}]- {c.message}")
+                    print(f"{c.datetime} [{c.author.name}]- {c.message}")
                     #print(f"{c.datetime} [{c.author.name}]- {c.message}")
                     #print(f"{c.author.name}: {c.message}")
                 else:
@@ -436,7 +442,7 @@ def loopDisplayAllChatMessages():
                 # log to file
                 if (outFile):
                     if (optionFileBrief):
-                        print(f"{c.elapsedTime} [{c.author.name}]- {c.message}", file=outFile)
+                        print(f"{c.datetime} [{c.author.name}]- {c.message}", file=outFile)
                     else:
                         print(c.json(), file=outFile)
                 #
@@ -494,7 +500,8 @@ def main():
     myprint(appName + " v"+ appVersion)
     setup()
     # pytchat debug
-    loopDisplayAllChatMessages()
+    if (chat):
+        loopDisplayAllChatMessages()
     #myprint("Done. Exiting.")
     shutdown()
     exit()

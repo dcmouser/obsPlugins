@@ -1,0 +1,23 @@
+#include "chatvote.hpp"
+
+#include <obs-module.h>
+#include <obs.h>
+#include <string>
+
+#include <../obs-frontend-api/obs-frontend-api.h>
+#include <../qt-wrappers.hpp>
+#include <QObject>
+
+
+#include <csignal>
+#include <signal.h>
+
+
+#include <windows.h>
+#include <shellapi.h>
+
+
+
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>

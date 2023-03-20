@@ -39,6 +39,9 @@ class OptionsDialog : public JrPluginOptionsDialog {
 	QSpinBox* spinBoxFontSize;
 	QLineEdit* editAutoEnableDsk;
 	QLineEdit* editAutoEnableDskScene;
+	QTextEdit* textEdit_ignoreSceneList;
+	QCheckBox* checkboxUseAutoSceneList;
+	QTextEdit* textEdit_autoSceneList;
 	//
 	QSpinBox* spinBoxTimeMsShow;
 	QSpinBox* spinBoxTimeMsOff;
@@ -62,4 +65,9 @@ public:
 
 	void setOptionAutoTimeShow(int val) { spinBoxTimeMsShow->setValue(val); };
 	void setOptionAutoTimeOff(int val) { spinBoxTimeMsOff->setValue(val); };
+
+	void setOptionIgnoreSceneList(QString str) { textEdit_ignoreSceneList->setText(str); };
+
+	void setOptionEnableAutoAdvanceSceneList(bool val) { checkboxUseAutoSceneList->setCheckState(val ? Qt::Checked : Qt::Unchecked); };
+	void setOptionAutoAdvanceSceneList(QString str) { textEdit_autoSceneList->setText(str); };
 };

@@ -1,31 +1,39 @@
-	.JrYtInnerDiv {
+#optionsDiv {
+	font-size: 0.6em;
+	display: none;
+	padding: 10px;
+}
+
+
+
+.JrYtInnerDiv {
 		padding: 10px;
 		font-size:1em;
 	}
-	.jrYtMainDiv {
+
+.jrYtMainDiv {
 		min-height: 75px;
 		padding: 10px;
 		border-radius: 12px;
 		font-size: 0.75em;
+		font-size: .6em;
 	}
-	.JrYtMessageListUl img.jrYtEmoticon {
+
+.JrYtMessageListUl img.jrYtEmoticon {
 		max-width: 24px;
 		max-height: 24px;
 	}
 
-	img.jrYtUserImage {
+img.jrYtUserImage {
 		max-width: 75px;
 		max-height: 75px;
 		width: 75px;
 	}
 	
-	.jrYtMessage {
+.jrYtMessage {
 		font-size: 1.75em;
 	}
 	
-	.jrYtMainDiv {
-		font-size: .6em;
-	}
 
 
 .JrYtToggledOff {
@@ -34,6 +42,254 @@
 
 .JrYtToggledOn {
 	background-color: #00FF00AA;
+}
+
+
+
+
+
+
+
+
+
+
+
+.jrytListMessage {
+	display: none;
+}
+
+
+.JrYtShowAllMsgs .jrytListMessage {
+	display: block;
+}
+
+.JrYtShowStarMsgs .jrYtStarred {
+	display: block;
+}
+
+
+
+
+
+
+
+
+
+.JrYtMessageListUl {
+	overflow-y:auto;
+  border: 1px dotted black;
+  padding: 2px;
+  margin: 2px;
+	list-style: none;
+	width:100%;
+}
+
+
+
+.JrYtMessageList li {
+  border: 1px dotted black;
+  border-radius: 5px;
+  padding: 0px;
+  margin: 8px;
+	background-color: #b5cde6FF;
+  cursor: pointer;
+  caret-color: transparent;
+  font-size: 0.6em;
+}
+
+
+.JrYtMessageList li.jrytInfo  {
+	font-size: 0.25em;
+	background-color: #00000000;
+}
+
+.JrYtMessageList li.jrSelected {
+	background-color: #FFcde6FF;
+}
+
+
+
+.JrYtMessageList li img.jrYtUserImage {
+	width: 75px;
+}
+
+
+.JrYtMessageList .jrYtAuthorName {
+	padding-bottom: 0px;
+}
+
+
+
+.jrYtMsgMainFlex {
+	padding:5px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.JrYtButtonBar, .JrYtButtonBarRight {
+	margin:auto;
+	padding: 2px;
+	font-size: 0.5em;
+	line-height: 100%;
+
+	border-radius: 2px;
+	padding-bottom:10px;
+}
+
+
+
+
+.JrYtButton {
+	padding:5px;
+	padding-left:10px;
+	padding-right:10px;
+  
+  padding-left:0.75em;
+	padding-right:0.75em;
+  
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center; /* center the content horizontally */
+  align-items: center; /* center the content vertically */
+  margin-left: 2px;
+  margin-right: 2px;
+}
+
+.JrYtButtonImg {
+	float:left;
+	margin-right:0.5em;
+	width: 32px;
+}
+
+.JrYtButtonImgNoText {
+	float:left;
+	width: 32px;
+}
+
+
+
+.JrYtButtonBarRight {
+	padding-top:5px;
+}
+
+.JrYtButtonBarRight .JrYtButton {
+	float: right;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+#JrYtButtonStars {
+	display:none;
+}
+
+.JrYtHideNoStars {
+	display:none;
+}
+
+#JrYtButtonStars.JrYtShowStars {
+	display: inline-flex;
+}
+
+.JrYtShowOnlyStarMsgs #JrYtButtonStars {
+	font-weight: bold;
+	display: inline-flex;
+}
+
+#JrYtButtonStars .JrYtButtonImg {
+	margin-right:0;
+}
+
+
+.jrYtStar {
+    /*float:right;*/
+}
+
+.jrYtStar {
+		float:right;
+    margin-right:10px;
+    margin-top: -12px;
+
+    visibility:hidden;
+    font-size:30px;
+    cursor:pointer;
+
+}
+.jrYtStar:before {
+   content: "\2606";
+   visibility:visible;
+   color: #00000011;
+}
+.jrYtStar:checked:before {
+   content: "\2605";
+   color: #0000FFFF;
+}
+
+
+.jrYtListMessageOuter {
+	display: flex;
+}
+
+.jrYtMsgMainFlex {
+	flex: 1 1 auto;
+}
+
+.jrYtStarDiv {
+	flex-shrink: 2;
+	background-color: #00000006;
+	min-width: 2em;
+}
+
+.jrYtStarred .jrYtStarDiv {
+	background-color: #00DD01AA;
+	border: 1px dotted black;
+}
+
+.JrYtMessageList .JrYtTable {
+	  font-size: 0.25em;
+}
+
+.JrYtOuterControl .JrYtTable  {
+    font-size: 2.0em;
+}
+
+.JrYtOuterControl .JrYtRowCounted.jrYtAuthorName {
+	  font-size: 2.0em;
+}
+
+.JrYtOuterControl .JrYtElapsedTimer {
+	float: right;
+	font-weight: bold;
+	font-size: 5em;
+	margin-right: 0px;
+	margin-top: 0px;
 }
 
 

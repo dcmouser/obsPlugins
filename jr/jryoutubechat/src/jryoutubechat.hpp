@@ -25,11 +25,13 @@
 
 #include "../../plugins/obs-websocket/lib/obs-websocket-api.h"
 
-//#include "obs-data.h"
-//#include "../deps/jansson/src/jansson.h"
-//#include "../deps/jansson/src/jansson.h"
-//#include "../deps/jansson/src/jansson_private.h"
-//#include "../deps/jansson/src/utf.h"
+#include "chatvote.hpp"
+#include "chatStats.hpp"
+
+#include <chrono>
+#include <time.h>
+
+
 
 
 //---------------------------------------------------------------------------
@@ -37,7 +39,7 @@
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-enum JrYtWidgetListItemTypeEnum {JrYtWidgetListItemTypeEnum_Normal, JrYtWidgetListItemTypeEnum_Info, JrYtWidgetListItemTypeEnum_ManuallyAdded, JrYtWidgetListItemTypeEnum_Pending};
+enum JrYtWidgetListItemTypeEnum {JrYtWidgetListItemTypeEnum_Normal, JrYtWidgetListItemTypeEnum_Info, JrYtWidgetListItemTypeEnum_ManuallyAdded, JrYtWidgetListItemTypeEnum_Pending, JrYtWidgetListItemTypeEnum_Poll};
 enum JrYtAutoAdvanceStageEnum {JrYtAutoAdvanceStageEnum_Show, JrYtAutoAdvanceStageEnum_Hide, JrYtAutoAdvanceStageEnum_LastCheck};
 //---------------------------------------------------------------------------
 
@@ -45,6 +47,18 @@ enum JrYtAutoAdvanceStageEnum {JrYtAutoAdvanceStageEnum_Show, JrYtAutoAdvanceSta
 #define Def_MaxSleepMsOnRestartWaitForClose 2000
 #define Def_MaxSleepMsOnExitWaitForClose 2000
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+// attempting to fix a bug in qt listitem sizing
+#define DefUseCustomItemDelegate true
+// above interferes with:
+#define DefSetCustomSmallInfoFont true
+// only update stats when really streaming
+#define DefUpdateStatsEvenWhenNotStreaming true
+//---------------------------------------------------------------------------
+
 
 
 //---------------------------------------------------------------------------
@@ -67,6 +81,9 @@ class JrYouTubeChat : public QDockWidget, public jrObsPlugin {
 	// produces link error:
 	//Q_OBJECT
 protected:
+	ChatVote chatVote;
+	ChatStats chatStats;
+protected:
 	QVBoxLayout* mainLayout;
 	QProcess process;
 protected:
@@ -74,6 +91,8 @@ protected:
 protected:
 	// from scene notes plugin
 	QListWidget* msgList = NULL;
+	QListWidgetItem* selectedListItem = NULL;
+protected:
 	QLineEdit* editYouTubeId;
 	QString youTubeIdQstrFromLastLoad;
 	QString youTubeIdQstrUsedByChatUtil;
@@ -83,6 +102,8 @@ protected:
 	QPushButton* stopUtilityButton = NULL;
 	QPushButton* clearOverlayButton = NULL;
 	QPushButton* toggleAutoAdvanceButton = NULL;
+protected:
+	bool isStreaming = false;
 protected:
 	int optionListItemInfoFontSize = 10;
 protected:
@@ -94,12 +115,19 @@ protected:
 	QString optionManualLines = "";
 	QString optionAutoEnableDsk = "";
 	QString optionAutoEnableDskScene = "";
+	QString optionIgnoreScenesList = "";
 	//
 	int optionAutoDelayBetweenLastItemChecks = 1000;
 	int optionAutoTimeOff = 2000;
 	int optionAutoTimeShow = 5000;
 	int optionAutoTimeShowExtraLastItem = 10000; // note autocomputed as optionAutoTimeShow * 2
 	bool optionAutoEngaged = false;
+	//
+	QString optionAutoAdvanceScenesList = "";
+	bool optionEnableAutoAdvanceScenesList = true;
+	//
+	bool optionInitializeVoteWithRecentTalkers = true;
+	int optionRecentTalkerTimeMins = 10;
 protected:
 	QTimer autoTimer;
 	int autoAdvanceStage = 0;
@@ -107,6 +135,9 @@ protected:
 protected:
 	bool dirtyChanges = false;
 	qint64 chatExePid = 0;
+	bool ourDskLastState = false;
+	bool lastSceneWasInIgnoreList = false;
+	bool shouldTurnOffAutoOnAutoSceneLeave = false;
 protected:
 	QFont liFontInfo;
 	QBrush liBrushInfo;
@@ -121,13 +152,19 @@ protected:
 	size_t hotkeyId_cycleTab = -1;
 	size_t hotkeyId_toggleAutoAdvance = -1;
 	size_t hotkeyId_goLast = -1;
-protected:
-	QListWidgetItem* selectedListItem = NULL;
+	size_t hotkeyId_voteStart = -1;
+	size_t hotkeyId_voteStop = -1;
+	size_t hotkeyId_voteRestart = -1;
+	size_t hotkeyId_voteReopen = -1;
+	size_t hotkeyId_voteGolast = -1;
 public:
 	void destructStuff();
 public:
 	JrYouTubeChat(QWidget* parent = nullptr);
 	~JrYouTubeChat();
+public:
+	virtual void postStartup();
+	virtual void initialShutdown();
 public:
 	void setOptionChatUtilityCommandline(QString str) {chatUtilityCommandLine = str;}
 	void setOptionStartEmbedded(bool val) {optionStartEmbedded = val;};
@@ -138,8 +175,11 @@ public:
 	void setOptionManualLines(QString str) {optionManualLines = str;}
 	void setOptionAutoEnableDsk(QString str) {optionAutoEnableDsk = str;}
 	void setOptionAutoEnableDskScene(QString str) {optionAutoEnableDskScene = str;}
+	void setOptionIgnoreScenesList(QString str) {optionIgnoreScenesList = str;}
 	void setOptionAutoTimeShow(int val) {optionAutoTimeShow = val;}
 	void setOptionAutoTimeOff(int val) {optionAutoTimeOff = val;}
+	void setOptionAutoAdvanceScenesList(QString str) { optionAutoAdvanceScenesList = str; };
+	void setOptionEnableAutoAdvanceScenesList(bool val) { optionEnableAutoAdvanceScenesList = val; };
 public:
 	static void ObsFrontendEvent(enum obs_frontend_event event, void* ptr);
 	static void ObsHotkeyCallback(void* data, obs_hotkey_id id, obs_hotkey_t* key, bool pressed);
@@ -152,12 +192,12 @@ protected:
 protected:
 	virtual void registerCallbacksAndHotkeys();
 	virtual void unregisterCallbacksAndHotkeys();
+	void unRegisterHotkey(size_t& hotkeyid);
 public:
 	void setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog);
 protected:
 	virtual void loadStuff(obs_data_t* settings);
 	virtual void saveStuff(obs_data_t* settings);
-
 protected:
 	void buildUi();
 protected:
@@ -198,11 +238,12 @@ public:
 public:
 	void wsSetupWebsocketStuff();
 	void wsShutdownWebsocketStuff();
-	void requestWsSelectedMessageInfoEvent(obs_data_t *response_data, QListWidgetItem* itemp, int index);
+	void requestWsSelectedMessageInfoEvent(obs_data_t *response_data, QListWidgetItem* itemp, int index, bool forInternalUse, bool messageChanged);
 	void requestWsAllMessagesInListEvent(obs_data_t *response_data);
 	void requestWsHandleMessageSelectedByClient(obs_data_t *request_data, obs_data_t* response_data);
 	void requestWsHandleCommandByClient(obs_data_t *request_data, obs_data_t* response_data);
 	void requestWsHandleGetState(obs_data_t *request_data, obs_data_t* response_data);
+	void requestWsModifyStarState(obs_data_t* request_data, obs_data_t* response_data);
 	void triggerWsSelectedMessageChangeEvent();
 	void triggerWsClearMessageListEvent();
 	void triggerWsNewMessageAddedToListEvent(QListWidgetItem* itemp, int index);
@@ -211,7 +252,7 @@ public:
 protected:
 	void clearMessageList();
 	void doMessageSelectClick(QListWidgetItem* item);
-	void doMessageSelect(QListWidgetItem* item);
+	void doMessageSelect(QListWidgetItem* item, bool toggleOffIfOn);
 	void clearSelectedItem() { selectedListItem = NULL; };
 	void clickClearSelectedItem();
 	void clearSelectedItemTriggerUpdate();
@@ -220,23 +261,30 @@ public:
 	virtual void onModulePostLoad();
 	virtual void onModuleUnload();
 public:
-	void addItemLabel(const QString& str, JrYtWidgetListItemTypeEnum typeEnum, int index);
-	void addItemJson(const QString& str, JrYtWidgetListItemTypeEnum typeEnum, int index);
-	void doMsgListAddItemStr(const QString& str, JrYtWidgetListItemTypeEnum typeEnum, int index);
-	void doMsgListAddDebugStr(const QString& str);
+	QListWidgetItem* addYouTubeItemViaJson(const QString& str, int index, bool flagTriggerWsBroadcast, bool flagNeedsSanitizing);
+	QListWidgetItem* addGenericMessageListItem(const QString &label, QJsonObject &msgObj, JrYtWidgetListItemTypeEnum typeEnum, int index, bool flagTriggerWsBroadcast);
+	bool calcMessageDataFromYouTubeItemJson(QString& messageHtml, QString& messageSimplePlaintext, QString& authorName, QString &authorImageUrl, QJsonObject& itemJson, bool flagNeedsSanitizing);
+public:
+	bool checkScanStatementBeforeAdding(const QString& authorName, const QString& messageSimplePlaintext, bool flagManuallyAdded);
+public:
+	QListWidgetItem* doMsgListAddDebugStr(const QString& str, bool flagTriggerWsBroadcast);
+	QListWidgetItem* doMsgListAddItemSimpleStr(const QString& str, JrYtWidgetListItemTypeEnum typeEnum, int index, bool flagTriggerWsBroadcast);
+	void buildGenericMessageDataObjectForSimpleStringLabel(QString label, QJsonObject& msgObj);
+public:
+	QJsonObject getUserRoleJsonDataObjForItem(QListWidgetItem* itemp);
+	void setUserRoleDataForItem(QListWidgetItem* itemp, const QJsonObject &itemJson);
 public:
 	void fillListWithManualItems();
-	void fillListWithManualItem(QString str, int index);
+	QListWidgetItem* fillListWithManualItem(QString str, int index, bool flagTriggerWsBroadcast);
 public:
 	QListWidgetItem* makeNewListWidgetItem(const QString& str, JrYtWidgetListItemTypeEnum typeEnum);
-	QString buildMessageFromChatItemJson(QJsonObject& itemJson, bool resolveEmoticons, bool useEmoticonText, bool forInternalUse);
+	QString buildMessageFromChatItemJson(QJsonObject& itemJson, bool resolveEmoticons, bool useEmoticonText, bool forInternalUse, bool flagNeedsSanitizing);
+
 public:
 	virtual void optionsFinishedChanging();
 public:
-	QString splitOffRightWord(QString& str, QString splitPattern);
-	QString splitOffLeftWord(QString& str, QString splitPattern);
-public:
-	void updateDskState(bool val);
+	void updateDskStateAfterCheckingIgnoreList();
+	void updateDskState(bool showDsk);
 public:
 	void deleteInitialManualItems();
 	void refillManualItems();
@@ -257,46 +305,50 @@ public:
 	void gotoMessageByIndex(int rowIndex);
 	void gotoNewLastIfOnNextToLast();
 	bool isOnLastRow();
+	bool isOnLastNonInfoRow();
+	void gotoItemByPointer(QListWidgetItem* itemp, bool flagTrigger, bool flagToggle);
 public:
 	void updateButtonDisableds();
 public:
 	int getLastListIndex();
 	int getSelectedIndex();
+	int getItemIndex(QListWidgetItem* targetItemp);
 	bool checkSelectedItemStillGood();
 //signals:
 public slots:
 	void toggleAutoSignal() {toggleAutoAdvance();};
+public:
+	QListWidgetItem* getItemByIndex(int index);
+public:
+	void voteStartNew();
+	void voteStop();
+	void voteReopen(bool flagClear);
+	void voteUpdateResults(bool pushChanges);
+	void voteGotoLastOrCurrent();
+	void initializeVoteWithRecentTalkers();
+public:
+	void updateVoteItemWithTextAndLabel(QListWidgetItem* itemp, QString htmlResults, QString plainResults, int rowcount, int maxrowwidth, bool isOpen);
+	void pushChangeToItem(QListWidgetItem* item);
+protected:
+	void testVoting();
+protected:
+	bool currentSceneIsInIgnoreList();
+	bool currentSceneIsInAutoAdvanceList();
+	void onSceneChange();
+protected:
+	void reIndexItems();
+protected:
+	time_t getNowTime();
+protected:
+	void turnGoLastAndEnableAutoAdvance();
+	void turnOffPreviousAutoAdvanceOnSceneLeave();
+	void clearAutoEnableSceneMemory() { shouldTurnOffAutoOnAutoSceneLeave = false; };
+public:
+	QString getStatsActive();
+	QString getStatsAll();
 };
 //---------------------------------------------------------------------------
 
 
 
 
-
-
-
-//---------------------------------------------------------------------------
-// UNUSED
-// see https://forum.qt.io/topic/65588/wordwrap-true-problem-in-listview/9
-class MyQtWordWrappedListItemDelegate : public QStyledItemDelegate {
- public:
-  MyQtWordWrappedListItemDelegate(QObject* parent)
-    : QStyledItemDelegate(parent) {}
-
-  QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {    
-    QFontMetrics fm(option.font);
-    const QAbstractItemModel* model = index.model();
-    QString extraString = ".....";
-    QString Text = model->data(index, Qt::DisplayRole).toString() + extraString;
-    QRect itemRect = QRect(option.rect);
-    itemRect.setWidth(itemRect.width() - 30);
-    QRect neededsize = fm.boundingRect( itemRect, Qt::TextWordWrap,Text );
-    if (itemRect.height() > neededsize.height()) {
-	    itemRect.setHeight(neededsize.height());
-    }
-    int extraWidth = 0;
-    int extraHeight = 20;
-    return QSize(itemRect.width()+extraWidth, itemRect.height()+extraHeight);
-  }
-};
-//---------------------------------------------------------------------------

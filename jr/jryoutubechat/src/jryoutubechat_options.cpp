@@ -104,6 +104,29 @@ void OptionsDialog::buildUi() {
 	mainLayout->addWidget(editAutoEnableDskScene, idx, 1);
 	editAutoEnableDskScene->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 	++idx;
+	//
+	label = new QLabel(obs_module_text("Scenes to ignore DSK\nEach on it's own line\nSpecify full scene names"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	textEdit_ignoreSceneList = new QTextEdit;
+	mainLayout->addWidget(textEdit_ignoreSceneList, idx, 1, Qt::AlignLeft);
+	textEdit_ignoreSceneList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	textEdit_ignoreSceneList->setAcceptRichText(false);
+	++idx;
+
+	//
+	label = new QLabel(obs_module_text("Auto advance+show for scenes below"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	checkboxUseAutoSceneList = new QCheckBox;
+	mainLayout->addWidget(checkboxUseAutoSceneList, idx, 1);
+	++idx;
+	//
+	label = new QLabel(obs_module_text("Auto-advance Scene List\nEach on it's own line\nSpecify full scene names"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	textEdit_autoSceneList = new QTextEdit;
+	mainLayout->addWidget(textEdit_autoSceneList, idx, 1, Qt::AlignLeft);
+	textEdit_autoSceneList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	textEdit_autoSceneList->setAcceptRichText(false);
+	++idx;
 
 	//
 	label = new QLabel(obs_module_text("Auto-advance show time (ms):"));
@@ -186,6 +209,9 @@ void OptionsDialog::onClickApply() {
 	pluginp->setOptionManualLines(textEditManualLines->toPlainText());
 	pluginp->setOptionAutoEnableDsk(editAutoEnableDsk->text());
 	pluginp->setOptionAutoEnableDskScene(editAutoEnableDskScene->text());
+	pluginp->setOptionIgnoreScenesList(textEdit_ignoreSceneList->toPlainText());
+	pluginp->setOptionEnableAutoAdvanceScenesList(checkboxUseAutoSceneList->checkState() == Qt::Checked);
+	pluginp->setOptionAutoAdvanceScenesList(textEdit_autoSceneList->toPlainText());
 	pluginp->setOptionAutoTimeShow(spinBoxTimeMsShow->value());
 	pluginp->setOptionAutoTimeOff(spinBoxTimeMsOff->value());
 

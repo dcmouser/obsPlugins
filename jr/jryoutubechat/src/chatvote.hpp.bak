@@ -1,0 +1,48 @@
+#pragma once
+
+#include <obs.hpp>
+#include <util/platform.h>
+#include <obs-frontend-api.h>
+#include <../obs-app.hpp>
+#include <QDockWidget>
+#include <QPointer>
+#include <QWidget>
+#include <QTimer>
+#include <QLabel>
+#include <QList>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QProcess>
+#include <QDesktopServices>
+#include <QStyledItemDelegate>
+
+#include <map>
+
+
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+
+
+class ChatVote {
+protected:
+	bool isRunning = false;
+	time_t startTime;
+	int voteListItemIndex = -1;
+	void *msgList = NULL;
+public:
+	ChatVote() {;};
+	virtual ~ChatVote() {;}
+public:
+	void setMsgList(void *p) {msgList=p;}
+public:
+	void start();
+	void stop();
+	void restart();
+	void reopen();
+public:
+	bool scanLineForVote(std::string line);
+	std::string buildVoteTallyHtml();
+protected:
+	void addUserVote(std::string userName, std::string choiceStr);
+};
