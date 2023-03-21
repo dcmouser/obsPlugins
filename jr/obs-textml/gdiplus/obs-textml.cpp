@@ -25,22 +25,6 @@
 
 
 
-//---------------------------------------------------------------------------
-class TextModifier {
-public:
-	float fontSizeAdjustment;
-	float lineSpaceAdjustment;
-	int hueShift;
-	int valueShift;
-	int saturationShift;
-	float wordWrapAdjustment;
-	int xoff, yoff;
-	uint32_t color1, color2;
-public:
-	TextModifier() { reset(); };
-	void reset() { fontSizeAdjustment = 1.0f; lineSpaceAdjustment = 1.0f; hueShift = 0; valueShift = 0; saturationShift = 0; wordWrapAdjustment = 1.0f; xoff = 0; yoff = 0; color1 = 0; color2 = 0; };
-};
-//---------------------------------------------------------------------------
 
 
 
@@ -210,6 +194,38 @@ using namespace Gdiplus;
 
 
 
+
+
+
+
+
+//---------------------------------------------------------------------------
+class TextModifier {
+public:
+	float fontSizeAdjustment;
+	float lineSpaceAdjustment;
+	int hueShift;
+	int valueShift;
+	int saturationShift;
+	float wordWrapAdjustment;
+	int xoff, yoff;
+	uint32_t color1, color2;
+	int fontWeight;
+	int fontStyleMask;
+	std::wstring modifiedFace;
+public:
+	TextModifier() { reset(); };
+	void reset() {  modifiedFace = L"";  fontStyleMask = -1;  fontWeight = 0; fontSizeAdjustment = 1.0f; lineSpaceAdjustment = 1.0f; hueShift = 0; valueShift = 0; saturationShift = 0; wordWrapAdjustment = 1.0f; xoff = 0; yoff = 0; color1 = 0; color2 = 0; };
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
 static inline DWORD get_alpha_val(uint32_t opacity)
 {
 	return ((opacity * 255 / 100) & 0xFF) << 24;
@@ -292,6 +308,12 @@ enum class VAlign {
 };
 
 struct TextSource {
+// new attempt to add some padding
+	int paddingLeft = 20;
+	int paddingRight = 20;
+	int paddingTop = 25;
+	int paddingBottom = 20;
+//
 	obs_source_t *source = nullptr;
 
 	gs_texture_t *tex = nullptr;
@@ -358,7 +380,7 @@ struct TextSource {
 	//
 	float lineHeightOrig[DEF_MAX_LINES];
 	float lineHeight[DEF_MAX_LINES];
-	int lastFontSize;
+	std::string lastFontUpdateString;
 	bool flagClearNextLineFontSizeAdjustment;
 
 	/* --------------------------- */
@@ -401,6 +423,7 @@ protected:
 	bool jrSplitWStringLine(std::wstring& mainstr, std::wstring &oneline, TextModifier &tmodifier);
 	void setCurrentBrushColorUsingHsvShift(LinearGradientBrush* brushp, uint32_t cl1, uint32_t cl2, TextModifier &tmodifier);
 	uint32_t parseColorStr(std::wstring ws);
+	void wstrim(std::wstring& s);
 };
 
 static time_t get_modified_timestamp(const char *filename)
@@ -413,34 +436,72 @@ static time_t get_modified_timestamp(const char *filename)
 
 void TextSource::UpdateFont(TextModifier &tmodifier, bool flagForceUpdate)
 {
+	// computed modified values
 	int fontSize = (int) ((float)face_size * tmodifier.fontSizeAdjustment * fontSizeQuickScale);
-	if (!flagForceUpdate && fontSize == lastFontSize) {
+	int fontWeight = bold ? FW_BOLD : FW_DONTCARE;
+	fontWeight += tmodifier.fontWeight;
+	if (fontWeight < 0) fontWeight = 0;
+	if (fontWeight > 1000) fontWeight = 1000;
+	// italic, underline, strikeout
+	bool fitalic = italic;
+	bool funderline = underline;
+	bool fstrikeout = strikeout;
+	if (tmodifier.fontStyleMask != -1) {
+		fitalic = (tmodifier.fontStyleMask & OBS_FONT_ITALIC) != 0;
+		funderline = (tmodifier.fontStyleMask & OBS_FONT_UNDERLINE) != 0;
+		fstrikeout = (tmodifier.fontStyleMask & OBS_FONT_STRIKEOUT) != 0;
+	}
+
+	// see https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-logfonta
+	// create a string summarizing font details so we can tell when it has changed
+	std::string fontUpdateString = "FS:" + std::to_string(fontSize);
+	fontUpdateString += "|FW=" + std::to_string(fontWeight);
+	fontUpdateString += "|FM=" + std::to_string(tmodifier.fontStyleMask);
+	//
+	wstring fontFace = face;
+	if (tmodifier.modifiedFace != L"") {
+		// convert from our stdstring font face to wstring used fontFace and then add it to updatestring
+		fontFace = tmodifier.modifiedFace;
+		//
+		std::string fontFaceHashed(fontFace.length(), 0);
+		std::transform(fontFace.begin(), fontFace.end(), fontFaceHashed.begin(), [] (wchar_t c) { return (char)c; });
+		fontUpdateString += "|FF=" + fontFaceHashed;
+	}
+
+	//
+	if (!flagForceUpdate && fontUpdateString == lastFontUpdateString) {
 		// unchanged, nothing to do
 		return;
 	}
-	// update
-	lastFontSize = fontSize;
-	//
+
+	// remeber this config
+	lastFontUpdateString = fontUpdateString;
+
+	// create font
 	hfont = nullptr;
 	font.reset(nullptr);
 
 	LOGFONT lf = {};
 	lf.lfHeight = fontSize;
-	lf.lfWeight = bold ? FW_BOLD : FW_DONTCARE;
-	lf.lfItalic = italic;
-	lf.lfUnderline = underline;
-	lf.lfStrikeOut = strikeout;
+	lf.lfWeight = fontWeight;
+	lf.lfItalic = fitalic;
+	lf.lfUnderline = funderline;
+	lf.lfStrikeOut = fstrikeout;
 	lf.lfQuality = ANTIALIASED_QUALITY;
 	lf.lfCharSet = DEFAULT_CHARSET;
 
-	//blog(LOG_WARNING, "In UpdateFont with adjustment= %f and face_size = %d, and lfHeight = %d.", tmodifier.fontSizeAdjustment, face_size, lf.lfHeight);
-
-	if (!face.empty()) {
-		wcscpy(lf.lfFaceName, face.c_str());
+	if (!fontFace.empty()) {
+		wcscpy(lf.lfFaceName, fontFace.c_str());
 		hfont = CreateFontIndirect(&lf);
 	}
 
 	if (!hfont) {
+		// fallback to non modified font face
+		wcscpy(lf.lfFaceName, face.c_str());
+		hfont = CreateFontIndirect(&lf);
+	}
+	if (!hfont) {
+		// fallback to arial
 		wcscpy(lf.lfFaceName, L"Arial");
 		hfont = CreateFontIndirect(&lf);
 	}
@@ -552,13 +613,25 @@ bool TextSource::jrSplitWStringOnChar(std::wstring& mainstr, std::wstring& oneli
 	size_t pos = mainstr.find(wc);
 	if (pos == std::wstring::npos) {
 		oneline = mainstr;
+		wstrim(oneline);
 		mainstr = L"";
 		return true;
 	}
 	// split it
 	oneline = mainstr.substr(0,pos);
 	mainstr = mainstr.substr(pos + 1);
+	//
+	wstrim(oneline);
+	wstrim(mainstr);
 	return true;
+}
+
+
+void TextSource::wstrim(std::wstring& s) {
+	// Remove leading and trailing whitespace
+	static const wchar_t whitespace[] = L" \n\t\v\r\f";
+	s.erase( 0, s.find_first_not_of(whitespace) );
+	s.erase( s.find_last_not_of(whitespace) + 1U );
 }
 
 
@@ -653,6 +726,23 @@ void TextSource::parseLineSplitModString(std::wstring modString, TextModifier &t
 						parseColorStr(amt);
 				}
 			}
+		} else if (oneline[0] == L'b' || oneline[0] == L'B') {
+			if (oneline[1] == L'+') {
+				tmodifier.fontWeight =
+					_wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.fontWeight =
+					0 - _wtoi(amt.c_str());
+			}
+		} else if (oneline[0] == L'i' || oneline[0] == L'I') {
+			if (oneline[1] == L'+') {
+				tmodifier.fontStyleMask =
+					_wtoi(amt.c_str());
+			} else if (oneline[1] == L'-') {
+				tmodifier.fontStyleMask = -1;
+			}
+		} else if (oneline[0] == L'a' && oneline[1] == L'=') {
+			tmodifier.modifiedFace = amt;
 		}
 	}
 }
@@ -809,6 +899,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 					bounding_box_temp.Width += outline_size;
 					bounding_box_temp.Height += outline_size;
 				}
+
 				// adjust total height (sum of all adjusted lines) and width (max of all)
 				bounding_box.Width = max(bounding_box.Width, bounding_box_temp.Width);
 				lineHeightOrig[lineNumber] = (float)bounding_box_temp.Height;
@@ -823,7 +914,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 				}
 				else {
 					// attn attempt to give it some extra height from first line
-					bounding_box.Height = bounding_box.Height + bounding_box_temp.Height;
+					// bounding_box.Height = bounding_box.Height + bounding_box_temp.Height;
 				}
 				if (lineNumber < DEF_MAX_LINES) {
 					++lineNumber;
@@ -835,19 +926,34 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 
 
 			// we make the bounding box height use the full height of the last line
-			if (lineNumber > 1) {
+			if (lineNumber > 1 && (true || tempText.length()>0)) {
 				//bounding_box.Height += (float)bounding_box_temp.Height * (1.0f - tweakHeightAdjust);
 				// extra padding? use last line info? is this 0?
-				float extraY = bounding_box_temp.Height * 0.25f;
-				float extraX = extraY;
-				bounding_box.Height += extraY;
-				bounding_box.Width += extraX;
-				// kludge for first line offset used to move entire text up or down
-				bounding_box.Height += (lineHeight[0] - 1.0f) * lineHeight[1];
+				if (true) {
+					//float extraY = bounding_box_temp.Height * 0.25f;
+					float extraY = bounding_box_temp.Height * 0.15f;
+					float extraX = extraY;
+					bounding_box.Height += extraY;
+					bounding_box.Width += extraX;
+					// kludge for first line offset used to move entire text up or down
+					// ATTN: we now 3/21/23 have a y offset option that i think should eliminate need for this kludge?
+					if (false) {
+						bounding_box.Height += (lineHeight[0] - 1.0f) * lineHeight[1];
+					}
+				}
 			}
+
+			// new padding
+			bounding_box.Width += paddingLeft+paddingRight;
+			bounding_box.Height += paddingTop+paddingBottom;
+			// extra kludge of space
+			int fontSize = (int) ((float)face_size * tmodifier.fontSizeAdjustment * fontSizeQuickScale);
+			bounding_box.Height += (float) fontSize * 0.25f;
+
 			temp_box = bounding_box;
 		}
 		else if (use_extents && wrap) {
+			// extents not used??
 			layout_box.X = layout_box.Y = 0;
 			layout_box.Width = float(extents_cx);
 			layout_box.Height = float(extents_cy);
@@ -883,10 +989,6 @@ void TextSource::CalculateTextSizes(const StringFormat &format,
 			}
 		}
 	}
-
-
-	// test
-	//bounding_box.Height += 200;
 
 	if (vertical) {
 		if (bounding_box.Width < face_size) {
@@ -1031,12 +1133,14 @@ void TextSource::RenderText()
 			int lastValueShift = 0;
 			//
 			float marginFontSizeOffsetScale = 0.055f;
-			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;// 0.10f;
+			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;
 			box.X = leftMarginX;
 			//
 			uint32_t rcolor1 = color;
 			uint32_t rcolor2 = color2;
 			//
+			// padding
+			currentY += paddingTop;
 			//
 			while (jrSplitWStringLine(tempText, oneLine, tmodifier)) {
 				if (oneLine.length() >= 2 && oneLine[0] == L'/' && oneLine[1] == L'/') {
@@ -1049,6 +1153,7 @@ void TextSource::RenderText()
 				float fsize = (float)face_size * tmodifier.fontSizeAdjustment;
 				float leftMarginX = fsize * marginFontSizeOffsetScale;
 				currentX = box.X - leftMarginX;
+				currentX += paddingLeft;
 				currentX += tmodifier.xoff;
 				currentY += tmodifier.yoff;
 				// we clear yoff each time
@@ -1056,7 +1161,8 @@ void TextSource::RenderText()
 
 
 				// a kludge for first line spacing adjustment, so user can use lineheight adjustment on first line to shift entire text up or down
-				if (lineNumber == 1) {
+				// ATTN: we now 3/21/23 have a y offset option that i think should eliminate need for this kludge?
+				if (false && lineNumber == 1) {
 					currentY += (lineHeight[0] - 1.0f) * lineHeight[1];
 				}
 
