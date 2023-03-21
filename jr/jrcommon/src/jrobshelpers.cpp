@@ -154,3 +154,44 @@ bool WindowPositionValid(QRect rect)
 
 
 
+
+
+//---------------------------------------------------------------------------
+QString splitOffRightWord(QString &str, QString splitPattern) {
+	// if pattern not found, return original
+	// otherwise return the split word and set str to remainder, trimming both
+	int pos = str.indexOf(splitPattern);
+	if (pos == -1) {
+		return "";
+	}
+	QString splitPart = str.sliced(pos+1);
+	str = str.sliced(0,pos);
+	//
+	splitPart = splitPart.trimmed();
+	str = str.trimmed();
+	return splitPart;
+}
+
+QString splitOffLeftWord(QString &str, QString splitPattern) {
+	// if pattern not found, return original
+	// otherwise return the split word and set str to remainder, trimming both
+	int pos = str.lastIndexOf(splitPattern);
+	if (pos == -1) {
+		return "";
+	}
+	QString splitPart = str.sliced(0, pos);
+	str = str.sliced(pos+1);
+	//
+	splitPart = splitPart.trimmed();
+	str = str.trimmed();
+	return splitPart;
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+QString sanitizeMessageString(const QString &str) {
+	return str.toHtmlEscaped();
+}
+//---------------------------------------------------------------------------

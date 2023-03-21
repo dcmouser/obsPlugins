@@ -314,7 +314,8 @@ bool jrTimestamper::openTimestampFileIfAppropriate() {
 		return true;
 	}
 	// filename
-	std::string filePath = calcTimestampFilePath(timestampFileSuffix);
+	std::string prefix = "";
+	std::string filePath = calcTimestampFilePath(prefix, timestampFileSuffix);
 	//blog(LOG_WARNING, "Timestamp file path: %s.", filePath.c_str());
 	// open file
 	timestampFilep = os_fopen(filePath.c_str(), "w");

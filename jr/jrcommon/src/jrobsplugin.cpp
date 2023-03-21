@@ -168,7 +168,7 @@ void jrObsPlugin::setupOptionsDialog() {
 
 
 //---------------------------------------------------------------------------
-std::string jrObsPlugin::calcTimestampFilePath(std::string suffix) {
+std::string jrObsPlugin::calcTimestampFilePath(std::string prefix, std::string suffix) {
 	// ATTN: TODO - open file
 	// see https://github.com/upgradeQ/OBS-Studio-Python-Scripting-Cheatsheet-obspython-Examples-of-API#get-current-profile-settings-via-ffi
 	// see https://github.com/obsproject/obs-studio/blob/master/UI/window-basic-main-outputs.cpp
@@ -196,8 +196,40 @@ std::string jrObsPlugin::calcTimestampFilePath(std::string suffix) {
 	timeptr = localtime(&temp);
 	strftime(timestr, 254, "%Y-%m-%d %H-%M-%S", timeptr);
 	//
-	std::string filePath = recordPathStr + std::string(timestr) + suffix;
+	std::string filePath = recordPathStr + prefix + std::string(timestr) + suffix;
 	//
 	return filePath;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void jrObsPlugin::saveHotkey(obs_data_t *settings, const std::string keyName, const size_t& hotkeyref) {
+	obs_data_array_t *hotkeys = obs_hotkey_save(hotkeyref);
+	std::string fullKeyname = buildHotkeySettingPath(keyName);
+	obs_data_set_array(settings, fullKeyname.c_str(), hotkeys);
+	obs_data_array_release(hotkeys);
+}
+
+void jrObsPlugin::loadHotkey(obs_data_t *settings, const std::string keyName, size_t& hotkeyref) {
+	std::string fullKeyname = buildHotkeySettingPath(keyName);
+	obs_data_array_t *hotkeys = obs_data_get_array(settings, fullKeyname.c_str());
+	if (obs_data_array_count(hotkeys) && hotkeyref != -1) {
+		obs_hotkey_load(hotkeyref, hotkeys);
+	}
+	obs_data_array_release(hotkeys);
+}
+
+std::string jrObsPlugin::buildHotkeySettingPath(const std::string keyName) {
+	return std::string(getPluginName()) + std::string(".hotkey.") + keyName;
+}
+
+
+void jrObsPlugin::registerHotkey(FpObsHotkeyCallbackT fp, void* objp, const std::string keyName, size_t& hotkeyref, const std::string label) {
+	std::string fullKeyname = buildHotkeySettingPath(keyName);
+	std::string fullLabel = std::string(getPluginLabel()) + ": " + label;
+	if (hotkeyref==-1) hotkeyref = obs_hotkey_register_frontend(fullKeyname.c_str(), fullLabel.c_str(), fp, objp);
 }
 //---------------------------------------------------------------------------

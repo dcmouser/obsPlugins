@@ -38,8 +38,14 @@ target_sources(
 		jryoutubechat.rc
 		src/jryoutubechat.cpp
 		src/jryoutubechat.hpp
+		src/jryoutubechatItems.cpp
 		src/jryoutubechat_options.cpp
 		src/jryoutubechat_options.hpp
+		src/chatvote.hpp
+		src/chatvote.cpp
+		src/chatstats.hpp
+		src/chatstats.cpp
+		src/myQtItemDelegate.hpp
 		../jrcommon/src/jrobshelpers.cpp
 		../jrcommon/src/jrobshelpers.hpp
 		../jrcommon/src/jrobsplugin.cpp

@@ -61,6 +61,8 @@ void OptionsDialog::buildUi() {
 	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
 	textEdit_breakPatternString = new QTextEdit;
 	mainLayout->addWidget(textEdit_breakPatternString, idx, 1, Qt::AlignLeft);
+	textEdit_breakPatternString->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	textEdit_breakPatternString->setAcceptRichText(false);
 	++idx;
 	//
 	mainLayout->setColumnStretch(1, 1);

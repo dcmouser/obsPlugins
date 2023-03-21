@@ -36,3 +36,8 @@ void addLineSeparatorToLayout(QLayout* layout, int paddingTop, int paddingBot);
 
 void setThemeID(QWidget* widget, const QString& themeID);
 bool WindowPositionValid(QRect rect);
+
+QString splitOffRightWord(QString& str, QString splitPattern);
+QString splitOffLeftWord(QString& str, QString splitPattern);
+
+QString sanitizeMessageString(const QString& str);

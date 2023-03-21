@@ -62,6 +62,7 @@ void OptionsDialog::buildUi() {
 		bottomLayout->addWidget(closeApplyButton, 0, Qt::AlignRight);
 		connect(closeApplyButton, &QPushButton::clicked, [this]() { onClickApply(); close(); });
 		//
+		vlayout->addStretch();
 		vlayout->addLayout(bottomLayout);
 	}
 

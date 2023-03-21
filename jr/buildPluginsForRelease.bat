@@ -114,3 +114,20 @@ copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
+
+
+set pluginName=jryoutubechat
+set fname=%pluginName%.%zformat%
+set builddir=%pluginName%\release
+mkdir "%builddir%"
+mkdir "%builddir%\obs-plugins"
+mkdir "%builddir%\obs-plugins\64bit"
+mkdir "%builddir%\data"
+mkdir "%builddir%\data\obs-plugins"
+mkdir "%builddir%\data\obs-plugins\%pluginName%"
+mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
+copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
+copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+cd %builddir%
+call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
+cd ..\..

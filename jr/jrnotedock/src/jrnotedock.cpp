@@ -103,8 +103,6 @@ jrNoteDock::jrNoteDock(QWidget* parent)
 
 jrNoteDock::~jrNoteDock()
 {
-	blog(LOG_WARNING, "deleting.");
-
 	destructNoteStuff();
 
 	finalShutdown();

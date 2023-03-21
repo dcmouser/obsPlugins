@@ -676,6 +676,8 @@ void jrStats::buildUi() {
 
 	resize(640, 480);
 
+	setMinimumSize(240, 480);
+
 	setWindowTitle(QTStr(PLUGIN_NAME));
 
 #ifdef __APPLE__
