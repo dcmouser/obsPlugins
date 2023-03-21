@@ -310,9 +310,9 @@ enum class VAlign {
 struct TextSource {
 // new attempt to add some padding
 	int paddingLeft = 20;
-	int paddingRight = 20;
+	int paddingRight = 30;
 	int paddingTop = 25;
-	int paddingBottom = 20;
+	int paddingBottom = 40;
 //
 	obs_source_t *source = nullptr;
 
@@ -493,6 +493,10 @@ void TextSource::UpdateFont(TextModifier &tmodifier, bool flagForceUpdate)
 	if (!fontFace.empty()) {
 		wcscpy(lf.lfFaceName, fontFace.c_str());
 		hfont = CreateFontIndirect(&lf);
+
+		std::string fontFaceHashed(fontFace.length(), 0);
+		std::transform(fontFace.begin(), fontFace.end(), fontFaceHashed.begin(), [] (wchar_t c) { return (char)c; });
+		//blog(LOG_WARNING,"Setting to textml font: %s.", fontFaceHashed.c_str());
 	}
 
 	if (!hfont) {
@@ -658,7 +662,7 @@ void TextSource::parseLineSplitModString(std::wstring modString, TextModifier &t
 				std::string str1, str2;
 				std::transform(oneline.begin(), oneline.end(), std::back_inserter(str1), [](wchar_t c) {	return (char)c;	});
 				std::transform(amt.begin(), amt.end(), std::back_inserter(str2), [](wchar_t c) {	return (char)c;	});
-				blog(LOG_WARNING, "font size adjust is online (%s vs %s) maps to '%f'.", str1.c_str(), str2.c_str(), tmodifier.fontSizeAdjustment);
+				//blog(LOG_WARNING, "font size adjust is online (%s vs %s) maps to '%f'.", str1.c_str(), str2.c_str(), tmodifier.fontSizeAdjustment);
 			}
 		} else if (oneline[0] == L'l' || oneline[0] == L'L') {
 			if (oneline[1] == L'+') {
@@ -715,15 +719,15 @@ void TextSource::parseLineSplitModString(std::wstring modString, TextModifier &t
 					0 - _wtoi(amt.c_str());
 			}
 		} else if (oneline[0] == L'c' || oneline[0] == L'C') {
-			if (oneline.length() >= 10) {
+			if (oneline.length() >= 8) {
 				amt = oneline.substr(3);
 				if (oneline[1] == L'1' && oneline[2] == L'=') {
-					tmodifier.color1 =
-						parseColorStr(amt);
+					amt = oneline.substr(3);
+					tmodifier.color1 = parseColorStr(amt);
 				}
 				else if (oneline[1] == L'2' && oneline[2] == L'=') {
-					tmodifier.color2 =
-						parseColorStr(amt);
+					amt = oneline.substr(3);
+					tmodifier.color2 = parseColorStr(amt);
 				}
 			}
 		} else if (oneline[0] == L'b' || oneline[0] == L'B') {
@@ -1107,10 +1111,6 @@ void TextSource::RenderText()
 	graphics_bitmap.SetCompositingMode(CompositingModeSourceOver);
 	SetAntiAliasing(graphics_bitmap);
 
-
-
-
-
 	if (!text.empty()) {
 
 		if (multineTweakEnable) {
@@ -1128,16 +1128,14 @@ void TextSource::RenderText()
 			float currentY = 0.0f;
 			bool flagDeleteBrush = false;
 			//
-			int lastHueShift = 0;
-			int lastSaturationShift = 0;
-			int lastValueShift = 0;
-			//
 			float marginFontSizeOffsetScale = 0.055f;
 			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;
 			box.X = leftMarginX;
 			//
 			uint32_t rcolor1 = color;
 			uint32_t rcolor2 = color2;
+			uint32_t lastColor1 = rcolor1;
+			uint32_t lastColor2 = rcolor2;
 			//
 			// padding
 			currentY += paddingTop;
@@ -1171,6 +1169,11 @@ void TextSource::RenderText()
 
 				rcolor1 = (tmodifier.color1 != 0) ? tmodifier.color1 : color;
 				rcolor2 = (tmodifier.color2 != 0) ? tmodifier.color2 : color2;
+				if (!gradient) {
+					rcolor2 = rcolor1;
+				}
+
+
 
 				int fHue = tmodifier.hueShift + hueQuickShift;
 				int fSaturation = tmodifier.saturationShift + saturationQuickShift;
@@ -1183,13 +1186,12 @@ void TextSource::RenderText()
 						gradient_dir, 1);
 					flagDeleteBrush = true;
 				} else {
-					if (fHue != lastHueShift || fSaturation != lastSaturationShift || fValue != lastValueShift) {
+					if (lastColor1 != rcolor1 || lastColor2 != rcolor2) {
 						setCurrentBrushColorUsingHsvShift(brushp, rcolor1, rcolor2, tmodifier);
 						}
 				}
-				lastHueShift = fHue;
-				lastSaturationShift = fSaturation;
-				lastValueShift = fValue;
+				lastColor1 = rcolor1;
+				lastColor2 = rcolor2;
 
 				if (use_outline) {
 					// too close to left margin
@@ -1357,7 +1359,7 @@ inline void TextSource::Update(obs_data_t *s)
 	const char *valign_str = obs_data_get_string(s, S_VALIGN);
 	uint32_t new_color = obs_data_get_uint32(s, S_COLOR);
 	uint32_t new_opacity = obs_data_get_uint32(s, S_OPACITY);
-	bool gradient = obs_data_get_bool(s, S_GRADIENT);
+	bool new_gradient = obs_data_get_bool(s, S_GRADIENT);
 	uint32_t new_color2 = obs_data_get_uint32(s, S_GRADIENT_COLOR);
 	uint32_t new_opacity2 = obs_data_get_uint32(s, S_GRADIENT_OPACITY);
 	float new_grad_dir = (float)obs_data_get_double(s, S_GRADIENT_DIR);
@@ -1427,6 +1429,7 @@ inline void TextSource::Update(obs_data_t *s)
 	new_o_color = rgb_to_bgr(new_o_color);
 	new_bk_color = rgb_to_bgr(new_bk_color);
 
+	gradient = new_gradient;
 	color = new_color;
 	opacity = new_opacity;
 	color2 = new_color2;
@@ -1554,12 +1557,17 @@ uint32_t TextSource::parseColorStr(std::wstring ws) {
 
 	//blog(LOG_WARNING, "parseColorStr: %ls", ws);
 
+	//int r, g, b;
 	int r, g, b;
 	int parsedCount = swscanf(ws.c_str(), L"#%02x%02x%02x", &r, &g, &b);
 	if (parsedCount != 3) {
 		return 0;
 	}
+	//blog(LOG_WARNING, " parsed %d, %d, %d.", r, g, b);
 	uint32_t cl = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+	//uint32_t cl = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+	//uint32_t cl = 0xFF000000 | (uint32_t)r | ((uint32_t)b << 16) | ((uint32_t)g << 8);
+	//blog(LOG_WARNING, " color: #%08x", cl);
 	return cl;
 }
 
