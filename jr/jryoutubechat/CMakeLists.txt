@@ -46,6 +46,10 @@ target_sources(
 		src/chatstats.hpp
 		src/chatstats.cpp
 		src/myQtItemDelegate.hpp
+		../jrcommon/src/jrhelpers.cpp
+		../jrcommon/src/jrhelpers.hpp
+		../jrcommon/src/jrqthelpers.cpp
+		../jrcommon/src/jrqthelpers.hpp
 		../jrcommon/src/jrobshelpers.cpp
 		../jrcommon/src/jrobshelpers.hpp
 		../jrcommon/src/jrobsplugin.cpp

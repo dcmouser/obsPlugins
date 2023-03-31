@@ -40,6 +40,10 @@ target_sources(
 		src/jrnotedock.hpp
 		src/jrnotedock_options.cpp
 		src/jrnotedock_options.hpp
+		../jrcommon/src/jrhelpers.cpp
+		../jrcommon/src/jrhelpers.hpp
+		../jrcommon/src/jrqthelpers.cpp
+		../jrcommon/src/jrqthelpers.hpp
 		../jrcommon/src/jrobshelpers.cpp
 		../jrcommon/src/jrobshelpers.hpp
 		../jrcommon/src/jrobsplugin.cpp

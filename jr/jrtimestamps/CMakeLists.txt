@@ -16,11 +16,14 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrtimes
 target_sources(
 	jrtimestamps
 	PRIVATE
-		jrtimestamps.rc
 		src/jrtimestamps.cpp
 		src/jrtimestamps.hpp
 		src/jrtimestamps_options.cpp
 		src/jrtimestamps_options.hpp
+		../jrcommon/src/jrhelpers.cpp
+		../jrcommon/src/jrhelpers.hpp
+		../jrcommon/src/jrqthelpers.cpp
+		../jrcommon/src/jrqthelpers.hpp
 		../jrcommon/src/jrobshelpers.cpp
 		../jrcommon/src/jrobshelpers.hpp
 		../jrcommon/src/jrobsplugin.cpp

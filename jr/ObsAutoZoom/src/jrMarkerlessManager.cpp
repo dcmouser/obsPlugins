@@ -1,6 +1,7 @@
 #include "jrMarkerlessManager.h"
-#include "jrfuncs.h"
-#include "obshelpers.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,18 +10,6 @@
 #include <string.h>
 
 
-
-/*
-JrMarkerlessEntry* JrMarkerlessManager::findFirstEntryMatchingSourceIndex(int index) {
-	return NULL;
-}
-
-
-
-void JrMarkerlessManager::computeCoordinatesForEntryWithSource(JrMarkerlessEntry* entryp, int& x1, int& y1, int& x2, int& y2) {
-	// ATTN: TODO
-}
-*/
 
 
 bool JrMarkerlessManager::parseSettingString(const char* settingBuf) {

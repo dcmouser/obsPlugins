@@ -1,4 +1,8 @@
-#include "jrPlugin.h"
+#include "ObsScreenFlip.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 
 #include <../UI/obs-frontend-api/obs-frontend-api.h>
 
@@ -12,13 +16,9 @@
 
 
 //---------------------------------------------------------------------------
-void JrPlugin::doRender() {
-	// for filter here is our source
-	if (!getIsPluginTypeFilter()) {
-		// we are a source just used for configuring callback, we don't actually render
-		return;
-	}
-
+/*
+FUNCTION TO SUPPORT THIS PLUGIN ACTING AS FILTER
+void jrScreenFlip::doRender() {
 	obs_source_t* source = getThisPluginParentSource();
 
 	bool flagRenderedFlip = renderSourceFlip(false, source);
@@ -31,6 +31,7 @@ void JrPlugin::doRender() {
 		jrRenderSourceOut(source, sourceWidth, sourceHeight, sourceWidth, sourceHeight, jrBlendClearOverwite);
 	}
 }
+*/
 //---------------------------------------------------------------------------
 
 
@@ -43,7 +44,7 @@ void JrPlugin::doRender() {
 
 
 //---------------------------------------------------------------------------
-bool JrPlugin::renderSourceFlip(bool flagRenderCurrentScene, obs_source_t* source) {
+bool jrScreenFlip::renderSourceFlip(bool flagRenderCurrentScene, obs_source_t* source) {
 	// initial checks
 	if (source == NULL) {
 		return false;
@@ -85,7 +86,7 @@ bool JrPlugin::renderSourceFlip(bool flagRenderCurrentScene, obs_source_t* sourc
 
 
 //---------------------------------------------------------------------------
-bool JrPlugin::renderFlipScreen() {
+bool jrScreenFlip::renderFlipScreen() {
 	// draw source into texture first with default effect
 	jrRenderSourceIntoTexture(renderSource, texrender, sourceWidth, sourceHeight, jrBlendClearOverwite);
 
@@ -96,7 +97,7 @@ bool JrPlugin::renderFlipScreen() {
 }
 
 
-bool JrPlugin::renderFlipScreenMainDisplay() {
+bool jrScreenFlip::renderFlipScreenMainDisplay() {
 	// this could be called in place of "obs_render_main_texture_src_color_only()" in "void OBSBasic::RenderMain(void *data, uint32_t cx, uint32_t cy)"
 	obs_video_info ovi;
 	obs_get_video_info(&ovi);

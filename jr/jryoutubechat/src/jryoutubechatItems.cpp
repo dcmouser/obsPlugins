@@ -1,6 +1,11 @@
 #include "jryoutubechat.hpp"
 #include "jryoutubechat_options.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
+
+
 
 #include <obs-module.h>
 #include <obs.h>

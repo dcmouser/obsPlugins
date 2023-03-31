@@ -1,6 +1,13 @@
+
+#include "pluginInfo.hpp"
+//
 #include "jrstats.hpp"
 #include "jrstats_options.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
+
 
 #include <obs-module.h>
 
@@ -148,7 +155,7 @@ jrStats::jrStats(QWidget* parent)
 
 jrStats::~jrStats()
 {
-	blog(LOG_WARNING, "deleting.");
+	//blog(LOG_WARNING, "deleting.");
 
 	//delete shortcutFilter;
 	os_cpu_usage_info_destroy(cpu_info);
@@ -274,16 +281,13 @@ void jrStats::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 //---------------------------------------------------------------------------
 void jrStats::registerCallbacksAndHotkeys() {
 	obs_frontend_add_event_callback(ObsFrontendEvent, this);
-	if (hotkeyId_triggerStatsReset==-1) hotkeyId_triggerStatsReset = obs_hotkey_register_frontend("jrStats.resetStatsTrigger", "jrStats - Reset stats", ObsHotkeyCallback, this);
+	registerHotkey(ObsHotkeyCallback, this, "resetStatsTrigger", hotkeyId_triggerStatsReset, "Reset stats");
 }
 
 void jrStats::unregisterCallbacksAndHotkeys() {
 	obs_frontend_remove_event_callback(ObsFrontendEvent, this);
 	//
-	if (hotkeyId_triggerStatsReset != -1) {
-		obs_hotkey_unregister(hotkeyId_triggerStatsReset);
-		hotkeyId_triggerStatsReset = -1;
-	}
+	unRegisterHotkey(hotkeyId_triggerStatsReset);
 }
 //---------------------------------------------------------------------------
 
@@ -302,11 +306,7 @@ void jrStats::loadStuff(obs_data_t *settings) {
 	obs_data_set_default_int(settings, "jjrstats.fontSizeHeadline", fontSizeHeadline);
 	fontSizeHeadline = obs_data_get_int(settings, "jrstats.fontSizeHeadline");
 	//
-	obs_data_array_t *hotkeys = obs_data_get_array(settings, "jrstats.resetStatsTrigger");
-	if (hotkeyId_triggerStatsReset!=-1 && obs_data_array_count(hotkeys)) {
-		obs_hotkey_load(hotkeyId_triggerStatsReset, hotkeys);
-	}
-	obs_data_array_release(hotkeys);
+	loadHotkey(settings, "resetStatsTrigger", hotkeyId_triggerStatsReset);
 }
 
 void jrStats::saveStuff(obs_data_t *settings) {
@@ -314,9 +314,7 @@ void jrStats::saveStuff(obs_data_t *settings) {
 	obs_data_set_int(settings, "jrstats.fontSizeNormal", fontSizeNormal);
 	obs_data_set_int(settings, "jrstats.fontSizeHeadline", fontSizeHeadline);
 	//
-	obs_data_array_t *hotkeys = obs_hotkey_save(hotkeyId_triggerStatsReset);
-	obs_data_set_array(settings, "jrstats.resetStatsTrigger", hotkeys);
-	obs_data_array_release(hotkeys);
+	saveHotkey(settings, "resetStatsTrigger", hotkeyId_triggerStatsReset);
 }
 //---------------------------------------------------------------------------
 

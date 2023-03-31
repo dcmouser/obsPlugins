@@ -30,14 +30,34 @@ protected:
 	void saveSettings();
 	void loadSettings();
 	void createSettingsDir();
+
+
+// ATTN: for SOURCES, which we are not
+/*
+public:
+	// obs pointer should be initialized on creation of a source item
+	obs_source_t *context = NULL;
+public:
+	const char* getPluginIdCharp() { return obs_source_get_id(context); }
+	// note sure if this is right way to get the source represented by this plugin
+	obs_source_t* getThisPluginContextSource() { return context; }
+	obs_source_t* getThisPluginParentSource() { return obs_filter_get_parent(context); }
+	obs_source_t* getThisPluginTargetSource() { return obs_filter_get_target(context); }
+	bool getIsPluginTypeFilter() { return (obs_source_get_type(context) == OBS_SOURCE_TYPE_FILTER); }
+*/
+
 protected:
 	virtual const char* getPluginName() { return "getPluginName"; };
 	virtual const char* getPluginLabel() { return "getPluginLabel"; };
 	virtual const char* getPluginConfigFileName() { return "getPluginConfigFileName"; };
 	virtual const char* getPluginOptionsLabel() { return "getPluginOptionsLabel"; };
-protected:
-	virtual void registerCallbacksAndHotkeys() { ; };
-	virtual void unregisterCallbacksAndHotkeys() { ; };
+public:
+	virtual void registerCallbacksAndHotkeys() =0; // these MUST be overridden
+	virtual void unregisterCallbacksAndHotkeys() =0;
+	//
+	virtual void handleObsFrontendEvent(enum obs_frontend_event event);
+	virtual void handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t* key) { ; };
+public:
 	virtual void loadStuff(obs_data_t* settings) { ; };
 	virtual void saveStuff(obs_data_t* settings) { ; };
 protected:
@@ -45,14 +65,12 @@ protected:
 	void loadHotkey(obs_data_t *settings, const std::string keyName, size_t& hotkeyref);
 	std::string buildHotkeySettingPath(const std::string keyName);
 	void registerHotkey(FpObsHotkeyCallbackT fp, void* objp, const std::string keyName, size_t& hotkeyref, const std::string label);
-public:
-	virtual void handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t* key) { ; };
-	virtual void setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialog) { ; };
+	void unRegisterHotkey(size_t& hotkeyid);
 public:
 	virtual void optionsFinishedChanging() { ; };
 	virtual JrPluginOptionsDialog* createNewOptionsDialog() { return NULL; };
+	virtual void setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialog) { ; };
 protected:
-	virtual void handleObsFrontendEvent(enum obs_frontend_event event);
 	virtual void onObsExiting();
 	virtual void setupOptionsDialog();
 public:
@@ -68,15 +86,3 @@ public:
 
 
 
-
-//---------------------------------------------------------------------------
-#define do_log(level, format, ...) blog(level, "[" ## PLUGIN_LABEL ## "] " format, ##__VA_ARGS__)
-//
-#define warn(format, ...) do_log(LOG_WARNING, format, ##__VA_ARGS__)
-#define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
-#define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
-#define obserror(format, ...) do_log(LOG_ERROR, format, ##__VA_ARGS__)
-//
-#define mydebug(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
-//#define mydebug(format, ...) 
-//---------------------------------------------------------------------------

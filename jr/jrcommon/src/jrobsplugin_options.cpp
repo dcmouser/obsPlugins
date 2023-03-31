@@ -1,8 +1,9 @@
+#include "jrobsplugin_options.hpp"
+
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 
 #include <QCompleter>
-
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
@@ -13,7 +14,7 @@
 #include <QtWidgets/QColorDialog>
 
 
-#include "jrobsplugin_options.hpp"
+
 
 
 

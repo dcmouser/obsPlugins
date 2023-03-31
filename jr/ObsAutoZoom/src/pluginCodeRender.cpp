@@ -2,7 +2,10 @@
 #include <cstdio>
 //
 #include "jrPlugin.h"
-#include "jrazcolorhelpers.h"
+//
+#include "plugininfo.h"
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
@@ -292,6 +295,8 @@ void JrPlugin::doRender() {
 
 		//mydebug("In dorender stage 5.");
 
+		// ATTN: do we still need to do this 3/30/23 now that we have an obs kludge fix for this?
+		// //
 		// this is a kludge needed for some obs bug(?) which does not update sources when we do a one-shot peek at them, so we have to continuously poll them on every cycle
 		// new 9/7/22 im only doing this when we are on an updatecycle, so update rate will slow this down too
 		if (DefKludgeTouchAllSourcesOnRenderCycle && shouldUpdateTrackingBox) {
@@ -320,6 +325,17 @@ void JrPlugin::doRender() {
 	if (isPluginTypeFilter()) {
 		// clear the no-longer-trustworthy filter pointer to our source
 		stracker.setExternallyManagedTrackedSource(0, NULL);
+	}
+	
+	
+	// new test
+	if (tsourcepView) {
+		if (!tsourcepView->validForRender) {
+			// if the source is not ready, then we shouldnt try to show it
+			setJrBadSourceRenderFlagPerSource(true);
+			setJrBadSourceRenderFlagMain(true);
+			//blog(LOG_WARNING, "jrattn: SourceStutterKludge Setting plugincoderender for autozoom to bad render.");
+		}
 	}
 }
 //---------------------------------------------------------------------------

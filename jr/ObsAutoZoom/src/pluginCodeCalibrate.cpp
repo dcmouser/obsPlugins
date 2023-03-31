@@ -1,6 +1,8 @@
 #include "jrPlugin.h"
-#include "jrfuncs.h"
 #include "jrRegionDetector.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 
 
 

@@ -192,7 +192,6 @@ protected:
 protected:
 	virtual void registerCallbacksAndHotkeys();
 	virtual void unregisterCallbacksAndHotkeys();
-	void unRegisterHotkey(size_t& hotkeyid);
 public:
 	void setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog);
 protected:

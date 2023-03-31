@@ -28,6 +28,7 @@ OptionsDialog::OptionsDialog(QMainWindow* parent, jrNoteDock* inpluginp)
 
 OptionsDialog::~OptionsDialog()
 {
+
 }
 //---------------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ void OptionsDialog::buildUi() {
 	int idx = 0;
 
 	// main layout of controls
-	mainLayout = new QGridLayout;
+	mainLayout = new QGridLayout();
 	//
 	//mainLayout->setColumnStretch(1, 1);
 	//

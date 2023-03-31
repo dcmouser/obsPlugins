@@ -1,5 +1,11 @@
+
+#include "pluginInfo.hpp"
+//
 #include "jrnotedock.hpp"
 #include "jrnotedock_options.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
 
 #include <obs-module.h>

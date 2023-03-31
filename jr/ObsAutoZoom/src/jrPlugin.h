@@ -11,14 +11,14 @@
 #include <graphics/vec2.h>
 #include <graphics/vec4.h>
 //
-#include "obsHelpers.h"
+//#include "obsHelpers.h"
 //
 #include "jrPluginDefs.h"
 //
 #include "jrSourceTracker.h"
 #include "jrMarkerlessManager.h"
 //
-#include "source_list.h"
+//#include "source_list.h"
 //---------------------------------------------------------------------------
 
 
@@ -29,23 +29,23 @@
 
 //---------------------------------------------------------------------------
 enum EnumJrPluginType {EnumJrPluginTypeUnknown, EnumJrPluginTypeSource, EnumJrPluginTypeFilter};
-extern char* markerMultiColorModeRenderTechniques[];
+extern const char* markerMultiColorModeRenderTechniques[];
 //---------------------------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
 // GLOBAL CHAR* ARRAYS USED IN SETTINGS PROPERTIES (would be better to have these as simple defines but awkward)
-extern char* SETTING_zcMarkerPos_choices[];
-extern char* SETTING_zcAlignment_choices[];
-extern char* SETTING_zcMode_choices[];
-extern char* SETTING_zcCropStyle_choices[];
-extern char* SETTING_zcEasing_choices[];
-extern char* SETTING_fadeMode_choices[];
-extern char* SETTING_markerMultiColorMode_choices[];
-extern char* SETTING_zcKeyMode_choices[];
-extern char* SETTING_zcKeyColor_choicesFull[];
-extern char* SETTING_zcKeyColor_choicesReduced[];
-extern char* SETTING_zcMarkerlessMode_choices[];
+extern const char* SETTING_zcMarkerPos_choices[];
+extern const char* SETTING_zcAlignment_choices[];
+extern const char* SETTING_zcMode_choices[];
+extern const char* SETTING_zcCropStyle_choices[];
+extern const char* SETTING_zcEasing_choices[];
+extern const char* SETTING_fadeMode_choices[];
+extern const char* SETTING_markerMultiColorMode_choices[];
+extern const char* SETTING_zcKeyMode_choices[];
+extern const char* SETTING_zcKeyColor_choicesFull[];
+extern const char* SETTING_zcKeyColor_choicesReduced[];
+extern const char* SETTING_zcMarkerlessMode_choices[];
 //---------------------------------------------------------------------------
 
 
@@ -54,8 +54,9 @@ extern char* SETTING_zcMarkerlessMode_choices[];
 
 
 
-
-
+//---------------------------------------------------------------------------
+#define manualZoomInOutHoldResistanceTarget 1
+//---------------------------------------------------------------------------
 
 
 
@@ -239,8 +240,14 @@ public:
 	int opt_manualZoomAlignment;
 	char opt_manualZoomTransitionsString[80];
 	float opt_manualZoomMinZoom = 0.5;
+	//
+	// see pluginCodeMisc.cpp; we want to hold at max+min zoom levels for a hotkey press or two
+	//const int manualZoomInOutHoldResistanceTarget = 1;
+	int manualZoomInOutHoldCount = 0;
+	int manualZoomInOutHoldDirection = 0;
 public:
 	int kludgeTouchCounter;
+	int kludgeTouchCounterHidden;
 
 	bool opt_avoidTrackingInTransitions;
 	float opt_fadeDuration;
@@ -317,7 +324,7 @@ public:
 	bool enableAutoSwitchingSources() { return (opt_enableAutoSourceHunting && !opt_filterBypass); };
 	//
 	int getOptMarkerMultiColorMode() { return opt_markerMultiColorMode; };
-	char* getOptMarkerMultiColorModeStr() { return markerMultiColorModeRenderTechniques[opt_markerMultiColorMode]; };
+	const char* getOptMarkerMultiColorModeStr() { return markerMultiColorModeRenderTechniques[opt_markerMultiColorMode]; };
 	bool getOptKeyMode() { return opt_keyMode; }
 public:
 	obs_properties_t* doPluginAddProperties();
@@ -332,6 +339,8 @@ public:
 	void doTick();
 	void doRender();
 	//
+	void doShow();
+	void doHide();
 
 	bool doCalculationsForZoomCropEffect(TrackedSource* tsourcep);
 
@@ -430,6 +439,10 @@ public:
 	bool triggerVisibleActionSignal(uint32_t actionSignalKey);
 	bool sendVisibleActionSignal(uint32_t actionSignalKey);
 	bool receiveVisibleActionSignal(uint32_t actionSignalKey);
+public:
+	void touchKludgeAllSourcesOnHidden();
+public:
+	void adjustChildSourcesVisibility(bool isVisible);
 };
 //---------------------------------------------------------------------------
 

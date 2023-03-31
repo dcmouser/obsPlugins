@@ -2,7 +2,10 @@
 #include <cstdio>
 //
 #include "jrPlugin.h"
-#include "jrazcolorhelpers.h"
+//
+#include "plugininfo.h"
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
@@ -27,22 +30,22 @@ extern "C" {
 
 //---------------------------------------------------------------------------
 // GLOBAL CHAR* ARRAYS USED IN SETTINGS PROPERTIES (would be better to have these as simple defines but awkward)
-char* SETTING_zcMarkerPos_choices[] =			{ "outer", "innner", "center", NULL };
-char* SETTING_zcAlignment_choices[] =			{ "topLeft", "topCenter", "topRight", "middleLeft", "center", "middleRight", "bottomLeft", "bottomCenter", "bottomRight", NULL };
-char* SETTING_zcMode_choices[] =			{ "zoom and crop", "only crop", "only zoom", NULL };
-char* SETTING_zcEasing_choices[] = 			{ "nstant","eased", NULL };
-char* SETTING_fadeMode_choices[] = 			{ "none","normal", NULL };
-char* SETTING_zcCropStyle_choices[] = 			{ "black bars", "blur", NULL};
+const char* SETTING_zcMarkerPos_choices[] =			{ "outer", "innner", "center", NULL };
+const char* SETTING_zcAlignment_choices[] =			{ "topLeft", "topCenter", "topRight", "middleLeft", "center", "middleRight", "bottomLeft", "bottomCenter", "bottomRight", NULL };
+const char* SETTING_zcMode_choices[] =			{ "zoom and crop", "only crop", "only zoom", NULL };
+const char* SETTING_zcEasing_choices[] = 			{ "nstant","eased", NULL };
+const char* SETTING_fadeMode_choices[] = 			{ "none","normal", NULL };
+const char* SETTING_zcCropStyle_choices[] = 			{ "black bars", "blur", NULL};
 //
-char* SETTING_zcKeyMode_choices[] = 			{ "chroma", "hsv", NULL};
-char* SETTING_markerMultiColorMode_choices[] = 		{ "color 1", "color 2", "dual color", NULL};
-char* SETTING_zcKeyColor_choicesReduced[] =		{ "green", "magenta", NULL};
-char* SETTING_zcKeyColor_choicesFull[] =		{ "green", "blue", "magenta", "custom", NULL};
-char* SETTING_zcMarkerlessMode_choices[] =		{ "manualZoom", "presetZooms", "none", NULL};
+const char* SETTING_zcKeyMode_choices[] = 			{ "chroma", "hsv", NULL};
+const char* SETTING_markerMultiColorMode_choices[] = 		{ "color 1", "color 2", "dual color", NULL};
+const char* SETTING_zcKeyColor_choicesReduced[] =		{ "green", "magenta", NULL};
+const char* SETTING_zcKeyColor_choicesFull[] =		{ "green", "blue", "magenta", "custom", NULL};
+const char* SETTING_zcMarkerlessMode_choices[] =		{ "manualZoom", "presetZooms", "none", NULL};
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-char* markerMultiColorModeRenderTechniques[] = {"DrawColor1", "DrawColor2", "DrawDualSep", NULL};
+const char* markerMultiColorModeRenderTechniques[] = {"DrawColor1", "DrawColor2", "DrawDualSep", NULL};
 //---------------------------------------------------------------------------
 
 

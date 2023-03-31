@@ -1,15 +1,16 @@
 #pragma once
 
 //---------------------------------------------------------------------------
-#define DefMyPluginName			"ObsAutoZoom"
-#define DefMyPluginAuthor		"mouser@donationcoder.com"
-#define DefMyPluginVersion		"v2.2"
-#define DefMyPluginVersionDate	"Dec 7, 2022"
+#define PLUGIN_NAME "ObsAutoZoom"
+#define PLUGIN_LABEL "ObsAutoZoom"
+#define PLUGIN_VERSION "2.5"
+#define PLUGIN_VERSIONDATE "April 1, 2023"
+#define PLUGIN_CONFIGFILENAME "ObsAutoZoom.json"
+#define PLUGIN_AUTHOR "jessereichler@gmail.com"
+#define PLUGIN_OPTIONS_LABEL PLUGIN_LABEL ## " Options"
 
-#define DefMyPluginLabel		DefMyPluginName ## " " ## DefMyPluginVersion
-
-#define DefMyPluginNameSource	DefMyPluginName ## "Source"
-#define DefMyPluginNameFilter	DefMyPluginName ## "Filter"
-#define DefMyPluginLabelSource	DefMyPluginNameSource ## " " ## DefMyPluginVersion
-#define DefMyPluginLabelFilter	DefMyPluginNameFilter ## " " ## DefMyPluginVersion
+#define PLUGIN_NAME_Source	PLUGIN_NAME ## "Source"
+#define PLUGIN_NAME_Filter	PLUGIN_NAME ## "Filter"
+#define PLUGIN_LABEL_Source	PLUGIN_LABEL ## "Source"
+#define PLUGIN_LABEL_Filter	PLUGIN_LABEL ## "Filter"
 //---------------------------------------------------------------------------

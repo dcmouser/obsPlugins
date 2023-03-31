@@ -1,7 +1,10 @@
 //---------------------------------------------------------------------------
 #include "jrRegionDetector.h"
-#include "obsHelpers.h"
 #include "jrPluginDefs.h"
+#include "plugininfo.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //
 #include <cmath>
 #include <algorithm>

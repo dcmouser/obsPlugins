@@ -12,10 +12,15 @@ b) streaming start time
 c) BROADCAST start time; this is not used by all people and can come well after streaming starts; it also relies on a new event submitted by me to obs code; if broadcaststart event is detected, newer timestamps will reset to 0:00
 */
 
+#include "pluginInfo.hpp"
+//
 #include "jrtimestamps.hpp"
 #include "jrtimestamps_options.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
-#include "pluginInfo.hpp"
+
 
 #include <obs-module.h>
 
@@ -94,7 +99,7 @@ jrTimestamper::jrTimestamper() {
 }
 
 jrTimestamper::~jrTimestamper() {
-	blog(LOG_WARNING, "deleting.");
+	//blog(LOG_WARNING, "deleting.");
 
 	finalizeTimestampFileIfAppropriate(true);
 
@@ -174,6 +179,9 @@ void jrTimestamper::handleObsFrontendEvent(enum obs_frontend_event event) {
 
 
 void jrTimestamper::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
+	// let parent handle some cases? there are no base class cases that i know of
+	jrObsPlugin::handleObsHotkeyPress(id, key);
+
 	if (id == hotkeyId_triggerTimestamp) {
 		writeTimestamp("Hotkey triggered", true);
 	}
@@ -420,11 +428,7 @@ void jrTimestamper::writeInitialCommentsToTimestampFile() {
 //---------------------------------------------------------------------------
 
 void jrTimestamper::loadStuff(obs_data_t *settings) {
-	obs_data_array_t *hotkeys = obs_data_get_array(settings, "jrTimestamps.timestampTrigger");
-	if (hotkeyId_triggerTimestamp!=-1 && obs_data_array_count(hotkeys)) {
-		obs_hotkey_load(hotkeyId_triggerTimestamp, hotkeys);
-	}
-	obs_data_array_release(hotkeys);
+	loadHotkey(settings, "timestampTrigger", hotkeyId_triggerTimestamp);
 	//
 	const char* charp = obs_data_get_string(settings, "jrTimestamps.breakPatterns");
 	if (charp != NULL && strcmp(charp,"")!=0) {
@@ -440,9 +444,7 @@ void jrTimestamper::loadStuff(obs_data_t *settings) {
 }
 
 void jrTimestamper::saveStuff(obs_data_t *settings) {
-	obs_data_array_t *hotkeys = obs_hotkey_save(hotkeyId_triggerTimestamp);
-	obs_data_set_array(settings, "jrTimestamps.timestampTrigger", hotkeys);
-	obs_data_array_release(hotkeys);
+	saveHotkey(settings, "timestampTrigger", hotkeyId_triggerTimestamp);
 	//
 	obs_data_set_string(settings, "jrTimestamps.breakPatterns", breakPatternStringNewlined.c_str());
 	//
@@ -475,15 +477,13 @@ void jrTimestamper::saveStuff(obs_data_t *settings) {
 void jrTimestamper::registerCallbacksAndHotkeys() {
 	obs_frontend_add_event_callback(ObsFrontendEvent, this);
 	//
-	if (hotkeyId_triggerTimestamp==-1) hotkeyId_triggerTimestamp = obs_hotkey_register_frontend("jrTimestamps.timestampTrigger", "jrTimestamps - Record a timestamp entry in file", ObsHotkeyCallback, this);
+	registerHotkey(ObsHotkeyCallback, this, "timestampTrigger", hotkeyId_triggerTimestamp, "Record a timestamp entry in file");
 }
 
 void jrTimestamper::unregisterCallbacksAndHotkeys() {
 	obs_frontend_remove_event_callback(ObsFrontendEvent, this);
 	//
-	if (hotkeyId_triggerTimestamp != -1) {
-		obs_hotkey_unregister(hotkeyId_triggerTimestamp);
-	}
+	unRegisterHotkey(hotkeyId_triggerTimestamp);
 }
 //---------------------------------------------------------------------------
 

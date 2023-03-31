@@ -1,15 +1,31 @@
 //---------------------------------------------------------------------------
 #include "jrSourceTracker.h"
 #include "jrPlugin.h"
-#include "obsHelpers.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
+//
+#include <obs.h>
 //---------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------
+// ATTN: JR flag for a failed source render (see obs-video.c)
 
-
+//---------------------------------------------------------------------------
+extern "C" {
+	// prototype for custom obs function we need to export from obs
+	extern bool getJrBadSourceRenderFlagPerSource();
+	extern void setJrBadSourceRenderFlagPerSource(bool val);
+};
+//---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
 void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source) {
 	JrPlugin* plugin = getPluginp();
+
+	// trying to find if this source errors on render
+	setJrBadSourceRenderFlagPerSource(false);
+	validForRender = true;
 
 	//mydebug("In doRenderWorkFromEffectToStageTexRender1.");
 
@@ -38,7 +54,7 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source)
 
 	// STAGE 2 - render effect from this holdingSpaceTexrender to stagingTexRender, with chroma effect applied
 	blendClearMode = jrBlendClearOverwite;
-	char* drawTechnique = markerMultiColorModeRenderTechniques[plugin->getOptMarkerMultiColorMode()];
+	const char* drawTechnique = markerMultiColorModeRenderTechniques[plugin->getOptMarkerMultiColorMode()];
 	int optKeyMode = plugin->getOptKeyMode();
 	if (optKeyMode == 0) {
 		// chroma key
@@ -57,6 +73,13 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source)
 
 	//mydebug("In doRenderWorkFromEffectToStageTexRender 3.");
 	//mydebug("In doRenderWorkFromEffectToStageTexRender 3 (%d,%d) format %d.", stagingTexrender->width, stagingTexrender->height, stagingTexrender->format);;
+
+	// trying to find if this source errors on render
+	if (getJrBadSourceRenderFlagPerSource()) {
+		//blog(LOG_WARNING, "jrattn: SourceStutterKludge Tracked source bad render alert!");
+		validForRender = false;
+	}
+
 }
 //---------------------------------------------------------------------------
 
@@ -69,11 +92,17 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source)
 
 
 //---------------------------------------------------------------------------
-// we are getting an obs crash here regarding state surface
-// the function called before us that might be corrupting the stage is doRenderWorkFromEffectToStageTexRender(
 bool TrackedSource::doRenderWorkFromStageToInternalMemory() {
 	JrPlugin* plugin = getPluginp();
-	bool stageMemoryReady = false;
+
+	// clear this each time
+	stageMemoryReady = false;
+
+	// should we set this to true or rely on it being set by prior call to doRenderWorkFromEffectToStageTexRender()
+	//validForRender = true;
+
+	// trying to find if this source errors on render
+	setJrBadSourceRenderFlagPerSource(false);
 
 	//mydebug("doRenderWorkFromStageToInternalMemory START");
 
@@ -122,14 +151,27 @@ bool TrackedSource::doRenderWorkFromStageToInternalMemory() {
 		//mydebug("ERROR ---> doRenderWorkFromStageToInternalMemory stagedata is NULL.");
 	}
 
+	// trying to find if this source errors on render
+	bool forceClear = false;
+	if (getJrBadSourceRenderFlagPerSource()) {
+		// this doesnt seem to trigger
+		//blog(LOG_WARNING, "jrattn: SourceStutterKludge Tracked source bad render 2222 alert!");
+		stageMemoryReady = false;
+		forceClear = true;
+	}
+
+
 	//mydebug("doRenderWorkFromStageToInternalMemory 10");
 	if (!stageMemoryReady) {
+		validForRender = false;
 		//mydebug("ERROR ---> stageMemoryReady is false.");
 		// clear it to help debugger not see old version
-		if (DefDebugClearDrawingSpaced && stagedData) {
+		if ((DefDebugClearDrawingSpaced || forceClear) && stagedData) {
 			memset(stagedData, 0xFF, (stageWidth + 32) * stageHeight * 4);
 		}
 	}
+
+
 
 	//mydebug("doRenderWorkFromStageToInternalMemory DONE");
 	//return true;

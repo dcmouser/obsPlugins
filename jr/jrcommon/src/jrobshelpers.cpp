@@ -1,79 +1,90 @@
 #include "jrobshelpers.hpp"
 
 #include <../obs-frontend-api/obs-frontend-api.h>
-#include <../qt-wrappers.hpp>
 
-#include <ctime>
+
+
+//---------------------------------------------------------------------------
+#include <vector>
+#include <string>
+#include <algorithm>
+//#include <obs-module.h>
+//---------------------------------------------------------------------------
+
+
 
 
 
 
 //---------------------------------------------------------------------------
-// see https://www.techiedelight.com/split-a-string-on-newlines-in-cpp/
-std::vector<std::string> splitString(const std::string& str, bool skipBlankLines)
-{
-    std::vector<std::string> tokens;
-    std::string astr;
- 
-    std::string::size_type pos = 0;
-    std::string::size_type prev = 0;
-    while ((pos = str.find('\n', prev)) != std::string::npos) {
-	    astr = str.substr(prev, pos - prev);
-	    if (astr != "" || !skipBlankLines) {
-		    tokens.push_back(astr);
-	    }
-        prev = pos + 1;
-    }
-    astr = str.substr(prev);
-    if (astr != "" || !skipBlankLines) {
-	    tokens.push_back(astr);
-    }
- 
-    return tokens;
+int jrSourceCalculateWidth(obs_source_t* src) {
+	//return obs_source_get_base_width(src);
+	return obs_source_get_width(src);
+}
+
+int jrSourceCalculateHeight(obs_source_t* src) {
+	//return obs_source_get_base_height(src);
+	return obs_source_get_height(src);
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+// for debugging
+void jrRgbaDrawPixel(uint32_t *textureData, int ilinesize, int x, int y, int pixelVal) {
+	textureData[y * (ilinesize/4) + x] = pixelVal;
+}
+
+void jrRgbaDrawRectangle(uint32_t *textureData, int ilinesize, int x1, int y1, int x2, int y2, int pixelVal) {
+	for (int iy=y1; iy<=y2; ++iy) {
+		jrRgbaDrawPixel(textureData, ilinesize, x1, iy, pixelVal);
+		jrRgbaDrawPixel(textureData, ilinesize, x2, iy, pixelVal);
+	}
+	for (int ix=x1; ix<=x2; ++ix) {
+		jrRgbaDrawPixel(textureData, ilinesize, ix, y1, pixelVal);
+		jrRgbaDrawPixel(textureData, ilinesize, ix, y2, pixelVal);
+	}
 }
 //---------------------------------------------------------------------------
 
 
 
 
-//---------------------------------------------------------------------------
-std::string calcSecsAsNiceTimeString(unsigned long secs, bool flagPadLeadingZeros) {
-	unsigned long mins = (unsigned long) (secs / 60L);
-	secs = secs % 60;
-	unsigned long hours = (unsigned long) (mins / 60L);
-	mins = mins % 60;
-	//
-	char str[24];
-	if (hours > 0) {
-		if (flagPadLeadingZeros) {
-			sprintf(str, "%02lu:%02lu:%02lu", hours, mins, secs);
-		} else {
-			sprintf(str, "%lu:%02lu:%02lu", hours, mins, secs);
 
-		}
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrSetBlendClear(jrBlendClearMode blendClearMode) {
+	// see https://learnopengl.com/Advanced-OpenGL/Blending
+	gs_reset_blend_state();
+	if (blendClearMode == jrBlendOverwriteMerge) {
+		// debug mode needs to not clear, but it also doesnt want its partial alpha to show through
+		// this blend does NOT dim the colors according to alpha, as we want, so we instead do it in the filter; if we can do it at render time it would be more efficient to not have effect do the extra work of dimming the rgb
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+	} else if (blendClearMode == jrBlendDebugOverlay) {
+		// debug mode needs to not clear, but it also doesnt want its partial alpha to show through
+		// this blend does NOT dim the colors according to alpha, as we want, so we instead do it in the filter; if we can do it at render time it would be more efficient to not have effect do the extra work of dimming the rgb
+		//gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+	} else if (blendClearMode == jrBlendPassthroughMerge) {
+		// we want to merge onto another texture
+		gs_blend_function(GS_BLEND_SRCALPHA, GS_BLEND_INVDSTALPHA);
 	} else {
-		if (flagPadLeadingZeros) {
-			sprintf(str, "%02lu:%02lu", mins, secs);
-		} else {
-			sprintf(str, "%lu:%02lu", mins, secs);
-		}
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 	}
 	//
-	return std::string(str);
-}
-//---------------------------------------------------------------------------
-
-
-
-//---------------------------------------------------------------------------
-std::string getCurrentDateTimeAsNiceString() {
-	char timestr[80];
-	time_t temp;
-	struct tm *timeptr;
-	temp = time(NULL);
-	timeptr = localtime(&temp);
-	strftime(timestr, 80, "%A, %d %b %Y at %I:%M %p", timeptr);
-	return std::string(timestr);
+	if (blendClearMode == jrBlendClearOverwite) {
+		struct vec4 clear_color;
+		vec4_zero(&clear_color);
+		gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -82,116 +93,532 @@ std::string getCurrentDateTimeAsNiceString() {
 
 
 
+//---------------------------------------------------------------------------
+void jrRenderSourceIntoTexture(obs_source_t* source, gs_texrender_t* tex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode) {
+	jrRenderSourceIntoTextureAtSizeLoc(source, tex, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight, blendClearMode, false);
+}
+
+
+
+// see source_render
+void jrRenderSourceOut(obs_source_t* source, uint32_t sourceWidth, uint32_t sourceHeight, int outWidth, int outHeight, jrBlendClearMode blendClearMode) {
+	if (sourceWidth == 0 || sourceHeight == 0) {
+		return;
+	}
+	// render it out
+	jrRenderSourceIntoTextureAtSizeLoc(source, NULL, sourceWidth, sourceHeight, 0,0, outWidth, outHeight, blendClearMode, false);
+}
+
+
+
+
+void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *tex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, bool forceResizeToScreen) {
+	// render source onto a texture
+
+	//mydebug("myRenderSourceIntoTexture source=(%d,%d) out=(%d,%d).", sourceWidth, sourceHeight, outWidth, outHeight);
+
+	// setup rendering to texture
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+
+	if (tex) {
+		// only if TEX is being used as recipient of our drawing do we resize to fill tex, otherwise we are going to screen and do NOT want to do this
+		// So for example if we use this gs_ortho, the output will scale to fill the entire screen exactly.. but that's not what we want.  we want the screen to stay as it is, and this output to take extent outWidth on the SCREEN
+		// so when rendering to a SCREEN, we do NOT use gs_ortho.. when rendering to a TEXTURE that we want to fill, we do it
+		gs_ortho(0.0f, (float)sourceWidth, 0.0f, (float)sourceHeight, -100.0f, 100.0f);
+	}
+
+	//offset in so we can debug multiple sources on same screen
+	gs_matrix_translate3f((float)x1, (float)y1, 0.0f);
+
+	// do we need to do this? because we cant ask sprite to render at target size
+	// maybe only if going to screen
+	if (forceResizeToScreen) {
+		//gs_ortho(0.0f, (float)sourceWidth, 0.0f, (float)sourceHeight, -100.0f, 100.0f);
+		gs_matrix_scale3f((float)outWidth / (float)sourceWidth, (float)outHeight / (float)sourceHeight, 0);
+	}
+
+
+	// RENDER THE SOURCE
+	obs_source_video_render(source);
+
+
+	// restore state and finalize texture
+	JrRenderTextureRenderEnd(tex);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //---------------------------------------------------------------------------
-bool doesStringMatchAnyItemsInPatternList(const std::string needle, std::vector<std::string> *haystackVectorp) {
-	const char* needleCharp = needle.c_str();
-	for (std::vector<std::string>::iterator t = haystackVectorp->begin(); t != haystackVectorp->end(); ++t) {
-		const char* patternCharp = t->c_str();
-		if (strcmp(patternCharp, "") == 0) {
-			continue;
+void jrRenderEffectIntoTexture(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
+	// let's try using our new function
+	jrRenderEffectIntoTextureAtSizeLoc(tex, effect, inputTex, NULL, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight, blendClearMode, drawTechnique);
+	return;
+}
+
+
+
+
+void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, int outx1, int outy1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
+	// render effect onto texture using an input texture (set effect params before invoking)
+
+	// setup rendering to texture
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+
+	//offset location
+	gs_matrix_translate3f((float)outx1, (float)outy1, 0.0f);
+
+	// specify the image texture to use when running this effect
+	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+	if (!image) {
+		//mydebug("ERROR jrRenderEffectIntoTexture null image!!");
+	}
+	if (inputTex && !obsInputTex) {
+		obsInputTex = gs_texrender_get_texture(inputTex);
+		if (!obsInputTex) {
+			//mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
 		}
-		if (strstr(needleCharp, patternCharp) != NULL) {
-			return true;
+	}
+	if (obsInputTex) {
+		gs_effect_set_texture(image, obsInputTex);
+	}
+
+	if (tex) {
+		// only if TEX is being used as recipient of our drawing do we resize to fill text, otherwise we are going to screen and do NOT want to do this
+		// So for example if we use this gs_ortho, the output will scale to fill the entire screen exactly.. but that's not what we want.  we want the screen to stay as it is, and this output to take extent outWidth on the SCREEN
+		// so when rendering to a SCREEN, we do NOT use gs_ortho.. when rendering to a TEXTURE that we want to fill, we do it
+		gs_ortho(0.0f, (float)outWidth, 0.0f, (float)outHeight, -100.0f, 100.0f);
+	}
+
+	// do the drawing
+	while (gs_effect_loop(effect, drawTechnique)) {
+		gs_draw_sprite(obsInputTex, 0, outWidth, outHeight);
+	}
+
+	// restore state and finalize texture
+	JrRenderTextureRenderEnd(tex);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t *tex, gs_effect_t* effect, int sourceWidth, int sourceHeight, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
+	// render effect onto texture using an input texture (set effect params before invoking)
+	// drawTechnique should be "FadeLinear"
+
+
+	// setup rendering to texture
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+
+	if (tex) {
+		// if rendering into texture force output size
+		gs_ortho(0.0f, (float)outWidth, 0.0f, (float)outHeight, -100.0f, 100.0f);
+	}
+
+	while (gs_effect_loop(effect, drawTechnique)) {
+		gs_draw_sprite(NULL, 0, outWidth, outHeight);
+	}
+
+	// restore state and finalize texture
+	JrRenderTextureRenderEnd(tex);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRender, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode) {
+	bool flagDirectCopy = false;
+
+	if (flagDirectCopy) {
+		// simpler way -- but does it work?
+		if (tex) {
+			// texture to texture
+			gs_copy_texture(gs_texrender_get_texture(tex), gs_texrender_get_texture(srcTexRender));
+			return;
+		} else {
+			// to screen??
+			// is there a faster way to do this other than using a default effect below?
+			// obs_source_draw(gs_texrender_get_texture(srcTexRender), 0, 0, outWidth, outHeight, false);
+		}
+	}
+
+	// setup rendering to texture
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+
+	if (tex) {
+		// if rendering into texture force output size
+		gs_ortho(0.0f, (float)outWidth, 0.0f, (float)outHeight, -100.0f, 100.0f);
+	}
+
+	// default effect for rendering
+	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
+
+	// specify the image texture to use when running this effect
+	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+	if (!image) {
+		//mydebug("ERROR jrRenderTextureIntoTexture null image!!");
+	}
+	gs_texture_t* obsInputTex = NULL;
+	if (srcTexRender) {
+		obsInputTex = gs_texrender_get_texture(srcTexRender);
+		if (!obsInputTex) {
+			//mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
+		}
+	}
+	if (obsInputTex) {
+		gs_effect_set_texture(image, obsInputTex);
+	}
+
+	// render it
+	while (gs_effect_loop(effect, "Draw")) {
+		gs_draw_sprite(NULL, 0, outWidth, outHeight);
+	}
+
+	// restore state and finalize texture
+	JrRenderTextureRenderEnd(tex);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode) {
+	if (tex) {
+		if (true) {
+			gs_texrender_reset(tex);
+		}
+		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
+			//mydebug("ERROR ----> failure in jrRenderTextureRenderStart to gs_texrender_begin %d,%d.", outWidth, outHeight);
+			return;
+		}
+	}
+
+	// save state
+	gs_viewport_push();
+	gs_projection_push();
+	gs_matrix_push();
+	gs_blend_state_push();
+
+	// blend mode and clear
+	jrSetBlendClear(blendClearMode);
+}
+
+
+void JrRenderTextureRenderEnd(gs_texrender_t* tex) {
+	// restore state and finalize texture
+	gs_blend_state_pop();
+	gs_matrix_pop();
+	gs_projection_pop();
+	gs_viewport_pop();
+	//
+	if (tex) {
+		gs_texrender_end(tex);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrAddPropertListChoices(obs_property_t* comboString, const char** choiceList) {
+	for (int i = 0;; ++i) {
+		if (choiceList[i] == NULL || strcmp(choiceList[i], "") == 0) {
+			break;
+		}
+	obs_property_list_add_string(comboString, choiceList[i],choiceList[i]);
+	}
+}
+
+int jrPropertListChoiceFind(const char* strval, const char** choiceList, int defaultIndex) {
+	for (int i = 0;; ++i) {
+		if (choiceList[i] == NULL || strcmp(choiceList[i], "") == 0) {
+			break;
+		}
+		if (strcmp(choiceList[i], strval) == 0) {
+			return i;
 		}
 	}
 	// not found
-	return false;
-}
-//---------------------------------------------------------------------------
-
-
-
-
-//---------------------------------------------------------------------------
-void addSpacerToLayout(QLayout *layout) {
-	QSpacerItem* qspacer = new QSpacerItem(1,12);
-	layout->addItem(qspacer);
+	return defaultIndex;
 }
 
 
-void addLineSeparatorToLayout(QLayout *layout, int paddingTop, int paddingBot) {
-	QFrame* line = new QFrame();
-	line->setFrameShape(QFrame::HLine);
-	line->setFrameShadow(QFrame::Sunken);
-
-	QSpacerItem* qspacerTop = new QSpacerItem(1,paddingTop);
-	layout->addItem(qspacerTop);
-	//
-	layout->addWidget(line);
-	//
-	QSpacerItem* qspacerBot = new QSpacerItem(1,paddingBot);
-	layout->addItem(qspacerBot);
-}
-//---------------------------------------------------------------------------
-
-
-
-
-//---------------------------------------------------------------------------
-void setThemeID(QWidget *widget, const QString &themeID) {
-	if (widget->property("themeID").toString() != themeID) {
-		widget->setProperty("themeID", themeID);
-
-		/* force style sheet recalculation */
-		QString qss = widget->styleSheet();
-		widget->setStyleSheet("/* */");
-		widget->setStyleSheet(qss);
+const char* jrStringFromListChoice(int index, const char** choiceList) {
+	for (int i = 0;; ++i) {
+		if (choiceList[i] == NULL || strcmp(choiceList[i], "") == 0) {
+			break;
+		}
+		if (i==index) {
+			return choiceList[i];
+		}
 	}
+	return "";
 }
+//---------------------------------------------------------------------------
 
-bool WindowPositionValid(QRect rect)
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+struct add_sources_s
 {
-	//QCefWidget *browser;
+	obs_source_t *self;
+	std::vector<std::string> source_names;
+};
 
-	for (QScreen *screen : QGuiApplication::screens()) {
-		if (screen->availableGeometry().intersects(rect))
-			return true;
+bool add_sources(void *data, obs_source_t *source)
+{
+	auto &ctx = *(add_sources_s*)data;
+
+	if (source == ctx.self)
+		return true;
+
+	uint32_t caps = obs_source_get_output_flags(source);
+	if (~caps & OBS_SOURCE_VIDEO)
+		return true;
+
+	if (obs_source_is_group(source))
+		return true;
+
+	const char *name = obs_source_get_name(source);
+	ctx.source_names.push_back(name);
+	return true;
+}
+
+void property_list_add_sources(obs_property_t *prop, obs_source_t *self)
+{
+	// scenes, same order as the scene list
+	obs_frontend_source_list sceneList = {};
+	obs_frontend_get_scenes(&sceneList);
+	for (size_t i = 0; i < sceneList.sources.num; i++) {
+		obs_source_t *source = sceneList.sources.array[i];
+		const char *c_name = obs_source_get_name(source);
+		std::string name = obs_module_text("Scene: "); name += c_name;
+		obs_property_list_add_string(prop, name.c_str(), c_name);
 	}
-	return false;
-}
-//---------------------------------------------------------------------------
+	obs_frontend_source_list_free(&sceneList);
 
+	// sources, alphabetical order
+	add_sources_s ctx;
+	ctx.self = self;
+	obs_enum_sources(add_sources, &ctx);
 
+	std::sort(ctx.source_names.begin(), ctx.source_names.end());
 
-
-
-//---------------------------------------------------------------------------
-QString splitOffRightWord(QString &str, QString splitPattern) {
-	// if pattern not found, return original
-	// otherwise return the split word and set str to remainder, trimming both
-	int pos = str.indexOf(splitPattern);
-	if (pos == -1) {
-		return "";
+	for (size_t i=0; i<ctx.source_names.size(); i++) {
+		const std::string name = obs_module_text("Source: ") + ctx.source_names[i];
+		obs_property_list_add_string(prop, name.c_str(), ctx.source_names[i].c_str());
 	}
-	QString splitPart = str.sliced(pos+1);
-	str = str.sliced(0,pos);
-	//
-	splitPart = splitPart.trimmed();
-	str = str.trimmed();
-	return splitPart;
-}
-
-QString splitOffLeftWord(QString &str, QString splitPattern) {
-	// if pattern not found, return original
-	// otherwise return the split word and set str to remainder, trimming both
-	int pos = str.lastIndexOf(splitPattern);
-	if (pos == -1) {
-		return "";
-	}
-	QString splitPart = str.sliced(0, pos);
-	str = str.sliced(pos+1);
-	//
-	splitPart = splitPart.trimmed();
-	str = str.trimmed();
-	return splitPart;
 }
 //---------------------------------------------------------------------------
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //---------------------------------------------------------------------------
-QString sanitizeMessageString(const QString &str) {
-	return str.toHtmlEscaped();
+
+// Copyright (c) 2014, Jan Winkler <winkler@cs.uni-bremen.de>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of Universität Bremen nor the names of its
+//       contributors may be used to endorse or promote products derived from
+//       this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+/* Author: Jan Winkler */
+
+/*! \brief Convert RGB to HSV color space
+  
+  Converts a given set of RGB values r,g,b into HSV
+  coordinates. The input RGB values are in the range [0, 1], and the
+  output HSV values are in the ranges h = [0, 360], and s, v = [0,
+  1], respectively.
+  
+  \param fR Red component, used as input, range: [0, 1]
+  \param fG Green component, used as input, range: [0, 1]
+  \param fB Blue component, used as input, range: [0, 1]
+  \param fH Hue component, used as output, range: [0, 360]
+  \param fS Hue component, used as output, range: [0, 1]
+  \param fV Hue component, used as output, range: [0, 1]
+  
+*/
+
+void jrazUint32ToRgbVec(uint32_t color, struct vec3 &clvec) {
+	BYTE red = GetRValue(color);
+	BYTE green = GetGValue(color);
+	BYTE blue = GetBValue(color);
+
+	// convert rgb to hsv
+	clvec.x = (float)red / 255.0f;
+	clvec.y = (float)green / 255.0f;
+	clvec.z = (float)blue / 255.0f;
+}
+
+void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec) {
+	BYTE red = GetRValue(color);
+	BYTE green = GetGValue(color);
+	BYTE blue = GetBValue(color);
+
+	// convert rgb to hsv
+	clvec.x = (float)red / 255.0f;
+	clvec.y = (float)green / 255.0f;
+	clvec.z = (float)blue / 255.0f;
+	clvec.w = 1.0f;
+}
+
+
+void jrazUint32ToHsvVec(uint32_t color, struct vec3& clvec) {
+	// first convert to rgb
+	jrazUint32ToRgbVec(color, clvec);
+	// now from rgb to hsv
+	float fR, fG, fB, fH, fS, fV;
+	fR = clvec.x;
+	fG = clvec.y;
+	fB = clvec.z;
+	RGBtoHSV(fR, fG, fB, fH, fS, fV);
+	clvec.x = (float)(fH / 360.0f);
+	clvec.y = fS;
+	clvec.z = fV;
+}
+
+
+void RGBtoHSV(float& fR, float& fG, float fB, float& fH, float& fS, float& fV) {
+  float fCMax = max(max(fR, fG), fB);
+  float fCMin = min(min(fR, fG), fB);
+  float fDelta = fCMax - fCMin;
+  
+  if (fDelta > 0) {
+    if(fCMax == fR) {
+      fH = 60 * (float)(fmod(((fG - fB) / fDelta), 6));
+    } else if(fCMax == fG) {
+      fH = 60 * (((fB - fR) / fDelta) + 2);
+    } else if(fCMax == fB) {
+      fH = 60 * (((fR - fG) / fDelta) + 4);
+    }
+    
+    if(fCMax > 0) {
+      fS = fDelta / fCMax;
+    } else {
+      fS = 0;
+    }
+    
+    fV = fCMax;
+  } else {
+    fH = 0;
+    fS = 0;
+    fV = fCMax;
+  }
+  
+  if(fH < 0) {
+    fH = 360 + fH;
+  }
+}
+
+
+void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float alpha) {
+	colorvec.x = red;
+	colorvec.y = green;
+	colorvec.z = blue;
+	colorvec.w = alpha;
 }
 //---------------------------------------------------------------------------
+

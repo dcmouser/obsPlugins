@@ -1,7 +1,14 @@
+#include "pluginInfo.hpp"
+//
 #include "jryoutubechat.hpp"
 #include "jryoutubechat_options.hpp"
-#include "myQtItemDelegate.hpp"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
+//
+#include "myQtItemDelegate.hpp"
+
 
 #include <obs-module.h>
 #include <obs.h>
@@ -479,12 +486,6 @@ void JrYouTubeChat::unregisterCallbacksAndHotkeys() {
 	unRegisterHotkey(hotkeyId_voteGolast);
 }
 
-void JrYouTubeChat::unRegisterHotkey(size_t& hotkeyid) {
-	if (hotkeyid != -1) {
-		obs_hotkey_unregister(hotkeyid);
-		hotkeyid = -1;
-	}
-}
 //---------------------------------------------------------------------------
 
 
@@ -2448,9 +2449,9 @@ void JrYouTubeChat::onSceneChange() {
 
 //---------------------------------------------------------------------------
 void JrYouTubeChat::turnGoLastAndEnableAutoAdvance() {
-	mydebug("In turnGoLastAndEnableAutoAdvance1.");
+	//mydebug("In turnGoLastAndEnableAutoAdvance1.");
 	if (!optionAutoEngaged) {
-		mydebug("In turnGoLastAndEnableAutoAdvance2.");
+		//mydebug("In turnGoLastAndEnableAutoAdvance2.");
 		gotoLastMessage();
 		startAutoAdvance();
 		shouldTurnOffAutoOnAutoSceneLeave = true;
@@ -2458,11 +2459,11 @@ void JrYouTubeChat::turnGoLastAndEnableAutoAdvance() {
 }
 
 void JrYouTubeChat::turnOffPreviousAutoAdvanceOnSceneLeave() {
-	mydebug("In turnGoLastAndEnableAutoAdvance1 3.");
+	//mydebug("In turnGoLastAndEnableAutoAdvance1 3.");
 	clearAutoEnableSceneMemory();
 	if (optionAutoEngaged) {
 		// this will also clear the selection
-		mydebug("In turnGoLastAndEnableAutoAdvance4.");
+		//mydebug("In turnGoLastAndEnableAutoAdvance4.");
 		stopAutoAdvance();
 	}
 }

@@ -365,9 +365,28 @@
 
 
 //---------------------------------------------------------------------------
-#define DefKludgeTouchAllSourcesOnRenderCycle			true
+// attempt to fix a weird problem where top down (4k) camera seems to uncache if it doesn't get used in a while (5min) and thus misses frames
+// i currently kludge this using a source dock to ALWAYS show a tiny dock of the 4k top down camera on screen, which seems extremely wasteful of cpu and desktop space
+// but i'd like to find out a way to kludge a hidden refresh of it every so often
+//
+// this works and is needed (not sure if rate needs to be so high); this affects when we are actually rendering our view
+// ATTN: 3/30/23
+//#define DefKludgeTouchAllSourcesOnRenderCycle			true
+#define DefKludgeTouchAllSourcesOnRenderCycle			false
 #define DefKludgeTouchAllSourcesOnRenderCycleRate		2
 //
+// new 2/25/23 -- new attempt to keep it cached even in tick() cycle - this CRASHES if set true, AND doesnt seem to help??
+// ATTN: 3/30/23
+//#define DefKludgeTouchAllSourcesOnNonRenderCycle		true
+#define DefKludgeTouchAllSourcesOnNonRenderCycle		false
+#define DefKludgeTouchAllSourcesOnNonRenderCycleRate		2
+//
+// experimental:
+#define DefToggleChildSourcesHiddenShow				true
+//---------------------------------------------------------------------------
+
+ 
+//---------------------------------------------------------------------------
 // i made a change in the algorithm to fix what appeared to be a bug; now coming back weeks later it seems the original code was good?
 #define DefUseJesseCounterTraceFix						false
 //---------------------------------------------------------------------------
@@ -388,8 +407,10 @@
 //---------------------------------------------------------------------------
 // ones we use long term:
 #define DefDebugDisableChromaCalibrate					true
-#define DefDebugDontEnumerateSourceOnRequest			true
 #define	DefDebugComplainBadIndexInRegionDetector		false
+// trying to change from true to false on 2/25/23, doesnt seem to make any difference
+#define DefDebugDontEnumerateSourceOnRequest			true
+//#define DefDebugDontEnumerateSourceOnRequest			false
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------

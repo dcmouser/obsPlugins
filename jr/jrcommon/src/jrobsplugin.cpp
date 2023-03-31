@@ -77,26 +77,49 @@ void jrObsPlugin::regetMainConfigIfNeeded() {
 //---------------------------------------------------------------------------
 // from https://github.com/Davidj361/OBS-ChapterMarker/blob/master/src/plugin-main.cpp
 void jrObsPlugin::saveSettings() {
-	if (!os_file_exists(obs_module_config_path("")))
+	char* file = obs_module_config_path("");
+	if (!os_file_exists(file))
 		createSettingsDir();
+	bfree(file);
+	//
 	obs_data_t* obj = obs_data_create();
 	saveStuff(obj);
-	char* file = obs_module_config_path(getPluginConfigFileName());
+	//
+	file = obs_module_config_path(getPluginConfigFileName());
 	obs_data_save_json(obj, file);
 	obs_data_release(obj);
+	bfree(file);
 }
 
 void jrObsPlugin::loadSettings() {
 	char* file = obs_module_config_path(getPluginConfigFileName());
 	obs_data_t* obj = obs_data_create_from_json_file(file);
 	loadStuff(obj);
+	obs_data_release(obj);
+	bfree(file);
 }
 
 void jrObsPlugin::createSettingsDir() {
 	char* file = obs_module_config_path("");
 	os_mkdir(file);
+	bfree(file);
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -183,8 +206,8 @@ std::string jrObsPlugin::calcTimestampFilePath(std::string prefix, std::string s
 		// error?
 	} else {
 		// add / to end
-		int slen = (int)recordPathStr.length();
-		if (recordPathStr[slen - 1] != '/' && recordPathStr[slen - 1] != '\\') {
+		int lastcharpos = (int)recordPathStr.length()-1;
+		if (lastcharpos>0 && recordPathStr[lastcharpos] != '/' && recordPathStr[lastcharpos] != '\\') {
 			recordPathStr += "/";
 		}
 	}
@@ -231,5 +254,13 @@ void jrObsPlugin::registerHotkey(FpObsHotkeyCallbackT fp, void* objp, const std:
 	std::string fullKeyname = buildHotkeySettingPath(keyName);
 	std::string fullLabel = std::string(getPluginLabel()) + ": " + label;
 	if (hotkeyref==-1) hotkeyref = obs_hotkey_register_frontend(fullKeyname.c_str(), fullLabel.c_str(), fp, objp);
+}
+
+
+void jrObsPlugin::unRegisterHotkey(size_t& hotkeyid) {
+	if (hotkeyid != -1) {
+		obs_hotkey_unregister(hotkeyid);
+		hotkeyid = -1;
+	}
 }
 //---------------------------------------------------------------------------

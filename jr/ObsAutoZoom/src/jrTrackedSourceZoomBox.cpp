@@ -1,8 +1,9 @@
 //---------------------------------------------------------------------------
 #include "jrSourceTracker.h"
 #include "jrPlugin.h"
-#include "jrfuncs.h"
-#include "obsHelpers.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 

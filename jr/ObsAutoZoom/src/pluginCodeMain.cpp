@@ -1,6 +1,8 @@
 //---------------------------------------------------------------------------
 #include "jrPlugin.h"
-#include "jrazcolorhelpers.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
@@ -25,6 +27,20 @@ void JrPlugin::doTick() {
 	if (sourcesHaveChanged) {
 		onSourcesHaveChanged();
 	}
+
+	if (DefKludgeTouchAllSourcesOnNonRenderCycle) {
+		bool isHidden = !(obs_source_active(context) || obs_source_showing(context));
+		if (isHidden) {
+			// we are not rendering, so we might do this kludge occasionally
+			//blog(LOG_INFO, "ATTN: doing kludge hidden render.");
+			touchKludgeAllSourcesOnHidden();
+		}
+		else {
+			// reset when visible
+			//blog(LOG_INFO, "ATTN: skipping kludge hidden render.");
+			kludgeTouchCounterHidden = 0;
+		}
+	}
 }
 
 
@@ -33,7 +49,6 @@ void JrPlugin::onSourcesHaveChanged() {
 	sourcesHaveChanged = false;
 }
 //---------------------------------------------------------------------------
-
 
 
 
@@ -257,6 +272,7 @@ bool JrPlugin::initFilterOutsideGraphicsContext() {
 	firstRender = true;
 	sourcesHaveChanged = false;
 	kludgeTouchCounter = 0;
+	kludgeTouchCounterHidden = 0;
 	trackingUpdateCounter = 0;
 	sourceDetailsHaveChanged = false;
 	opt_markerlessCycleIndex = 0;
@@ -489,3 +505,65 @@ bool JrPlugin::checkIsTransitioning() {
 	return isTransitioning;
 }
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::doShow() {
+	if (DefToggleChildSourcesHiddenShow) {
+		adjustChildSourcesVisibility(true);
+	}
+}
+
+void JrPlugin::doHide() {
+	if (DefToggleChildSourcesHiddenShow) {
+		adjustChildSourcesVisibility(false);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::touchKludgeAllSourcesOnHidden() {
+	if (firstRender || currentlyTransitioning || forceAllAnalyzeMarkersOnNextRender) {
+		// any times we shouldn't run this?
+		return;
+	}
+
+	if (++kludgeTouchCounterHidden >= DefKludgeTouchAllSourcesOnNonRenderCycleRate) {
+		kludgeTouchCounterHidden = 0;
+		// this is a test to see if "touching" all other sources every cycle keeps them from getting stuck in old frames
+		int sourceCount = stracker.getSourceCount();
+		for (int i = 0; i < sourceCount; ++i) {
+			TrackedSource *tsp = stracker.getTrackedSourceByIndex(i);
+			if (tsp) {
+				tsp->touchKludgeDuringNonRenderTickToKeepAlive();
+			}
+		}
+	}
+}
+
+
+void JrPlugin::adjustChildSourcesVisibility(bool isVisible) {
+	int sourceCount = stracker.getSourceCount();
+	for (int i = 0; i < sourceCount; ++i) {
+		TrackedSource *tsp = stracker.getTrackedSourceByIndex(i);
+		if (tsp) {
+			obs_source_t* childSource = tsp->borrowFullSourceFromWeakSource();
+			if (isVisible) {
+				obs_source_inc_showing(childSource);
+				//blog(LOG_WARNING, "Incrementing use of source %d.", i);
+			}
+			else {
+				obs_source_dec_showing(childSource);
+				//blog(LOG_WARNING, "Decrementing use of source %d.", i);
+			}
+			tsp->releaseBorrowedFullSource(childSource);
+		}
+	}
+}
+//---------------------------------------------------------------------------
+

@@ -1,6 +1,9 @@
 //---------------------------------------------------------------------------
 #include <cstdio>
 #include "jrPlugin.h"
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
@@ -269,6 +272,8 @@ void JrPlugin::doManualZoomInOutByPercent(float scalePercent) {
 	float zoomLevel = opt_manualZoomSourceScale;
 	int alignmentMode = opt_manualZoomAlignment;
 
+	float zoomLevelPre = zoomLevel;
+
 	// ok now adjust zoom level by a certain percent
 	// note that this MIGHT cause us to transition to a wider or closer source if multiple camera source, based on 	float opt_manualZoomTransitions[DefMaxSources];
 
@@ -294,12 +299,29 @@ void JrPlugin::doManualZoomInOutByPercent(float scalePercent) {
 			zoomLevel = minZoom;
 		}
 		else {
-			// drop to wider source
-			--sourceIndex;
-			// and now init the zoom level
-			zoomLevel = opt_manualZoomTransitions[sourceIndex];
-			if (zoomLevel <= 0) {
-				zoomLevel = 2;
+			// hold at minmax for a bit before switching?
+			if (manualZoomInOutHoldDirection != -1) {
+				manualZoomInOutHoldDirection = -1;
+				manualZoomInOutHoldCount = 0;
+			} else {
+				++manualZoomInOutHoldCount;
+			}
+			if (manualZoomInOutHoldResistanceTarget == 0 || manualZoomInOutHoldCount >= manualZoomInOutHoldResistanceTarget) {
+				// drop to wider source
+				blog(LOG_WARNING, "Zooming outwider, with dir = %d and count: %d >= %d.", manualZoomInOutHoldDirection, manualZoomInOutHoldCount, manualZoomInOutHoldResistanceTarget);
+				--sourceIndex;
+				// and now init the zoom level
+				zoomLevel = opt_manualZoomTransitions[sourceIndex];
+				if (zoomLevel <= 0) {
+					zoomLevel = 2;
+				}
+			}
+			else {
+				// stay at min for a beat
+				zoomLevel = minZoom;
+				if (zoomLevelPre == zoomLevel) {
+					++manualZoomInOutHoldCount;
+				}
 			}
 		}
 	} else if (scalePercent >= 0.0 && sourceIndex < stracker.getSourceCount()-1) {
@@ -309,10 +331,33 @@ void JrPlugin::doManualZoomInOutByPercent(float scalePercent) {
 			zoomLimit = 2.0;
 		}
 		if (zoomLevel > zoomLimit) {
-			// move to closer source
-			++sourceIndex;
-			zoomLevel = 1.0;
+			// hold at minmax for a bit before switching?
+			if (manualZoomInOutHoldDirection != 1) {
+				manualZoomInOutHoldDirection = 1;
+				manualZoomInOutHoldCount = 0;
+			} else {
+				++manualZoomInOutHoldCount;
+			}
+			if (manualZoomInOutHoldResistanceTarget == 0 || manualZoomInOutHoldCount >= manualZoomInOutHoldResistanceTarget) {
+				// move to closer source
+				blog(LOG_WARNING, "Zooming in to closer, with dir = %d and count: %d >= %d.", manualZoomInOutHoldDirection, manualZoomInOutHoldCount, manualZoomInOutHoldResistanceTarget);
+				++sourceIndex;
+				zoomLevel = 1.0;
+			}
+			else {
+				// stay at max for a beat
+				zoomLevel = zoomLimit;
+				if (zoomLevelPre == zoomLevel) {
+					++manualZoomInOutHoldCount;
+				}
+			}
+		} else {
+			// reset for next move
+			manualZoomInOutHoldDirection = 0;
 		}
+	} else {
+		// reset for next move
+		manualZoomInOutHoldDirection = 0;
 	}
 
 	// save new values

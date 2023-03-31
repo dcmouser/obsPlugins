@@ -30,6 +30,8 @@ public:
 	SourceTracker* sourceTrackerp;
 	JrPlugin* plugin;
 	JrRegionDetector regionDetector;
+	bool stageMemoryReady = false;
+	bool validForRender = false;
 
 	obs_weak_source_t* src_ref;
 	char src_name[DefNameLenSource];
@@ -169,6 +171,7 @@ public:
 	void updateAfterHuntCheck();
 public:
 	void touchRefreshDuringRenderCycle();
+	void touchKludgeDuringNonRenderTickToKeepAlive();
 public:
 	void setExternallyManagedSource(obs_source_t* sourcep);
 public:

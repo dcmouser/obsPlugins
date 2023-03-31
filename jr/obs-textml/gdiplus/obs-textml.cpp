@@ -1131,6 +1131,11 @@ void TextSource::RenderText()
 			float marginFontSizeOffsetScale = 0.055f;
 			float leftMarginX = (float)face_size * marginFontSizeOffsetScale;
 			box.X = leftMarginX;
+
+			if (align == Align::Right) {
+				box.X = 0-leftMarginX;
+				box.X = box.X - paddingLeft;
+			}
 			//
 			uint32_t rcolor1 = color;
 			uint32_t rcolor2 = color2;

@@ -1,9 +1,9 @@
 //---------------------------------------------------------------------------
 #include "jrTrackedSource.h"
 #include "jrPlugin.h"
-#include "obsHelpers.h"
-#include "jrfuncs.h"
-
+//
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
@@ -409,7 +409,7 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 	} else {
 		// we found exactly 2 valid regions; get pointers to them
 		int validRegionCounter = 0;
-		int validRegionIndices[2];
+		int validRegionIndices[2]{ 0,0 };
 		for (int i = 0; i < rd->foundRegions; ++i) {
 			region = &rd->regions[i];
 			if (region->valid) {
@@ -958,5 +958,51 @@ bool TrackedSource::isViewNearLocation(int x1, int y1, int x2, int y2) {
 	double dst2 = jrPointDist(x2, y2, lookingx2, lookingy2);
 	double dstmax = max(dst1, dst2);
 	return (dstmax < SavedMarkerCheckSameDistance);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void TrackedSource::touchKludgeDuringNonRenderTickToKeepAlive() {
+	JrPlugin* plugin = getPluginp();
+
+	// lease it
+	obs_source_t* osp = borrowFullSourceFromWeakSource();
+
+	if (osp == NULL) {
+		releaseBorrowedFullSource(osp);
+		return;
+	}
+
+	//mydebug("For tracked source, in touchKludgeDuringNonRenderTickToKeepAlive.");
+
+	// ??
+	//activate_source(osp);
+	// crashes:
+	//obs_source_video_render(osp);
+	// what about trying:
+	//obs_source_update_async_video(osp);
+
+
+	// this has no matching dec_ so its not good for permanent fix but lets see
+	//obs_source_inc_showing(osp);
+	//obs_source_inc_active(osp);
+
+	/*
+	// does not help keep source loaded..
+	struct obs_source_frame *frame = obs_source_get_frame(osp);
+	if (frame) {
+		obs_source_release_frame(osp, frame);
+	}
+	*/
+
+	// release it
+	releaseBorrowedFullSource(osp);
 }
 //---------------------------------------------------------------------------

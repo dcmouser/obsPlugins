@@ -10,15 +10,18 @@
 #include <util/dstr.h>
 //
 #include "jrPlugin.h"
-#include "jrfuncs.h"
 #include "jrPluginDefs.h"
+//
+#include "plugininfo.h"
+#include "../../jrcommon/src/jrhelpers.hpp"
+#include "../../jrcommon/src/jrobshelpers.hpp"
 //---------------------------------------------------------------------------
 
 
 
 //---------------------------------------------------------------------------
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE(DefMyPluginName, "en-US")
+OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 //---------------------------------------------------------------------------
 
 
@@ -344,6 +347,19 @@ void plugin_render(void* data, gs_effect_t* obsoleteFilterEffect) {
 
 
 
+//---------------------------------------------------------------------------
+void plugin_show(void *data) {
+	JrPlugin* plugin = (JrPlugin*) data;
+	plugin->doShow();
+}
+
+void plugin_hide(void *data) {
+	JrPlugin* plugin = (JrPlugin*) data;
+	plugin->doHide();
+}
+//---------------------------------------------------------------------------
+
+
 
 
 
@@ -357,7 +373,6 @@ void plugin_render(void* data, gs_effect_t* obsoleteFilterEffect) {
 
 //---------------------------------------------------------------------------
 void plugin_enum_sources(void *data, obs_source_enum_proc_t enum_callback, void *param) {
-
 	if (DefDebugDontEnumerateSourceOnRequest) {
 		return;
 	}
@@ -475,7 +490,7 @@ const char *plugin_get_name(void *data)
 	// this should be ok since its just text name for nice display, though it would be nice for debugging to have the Source or Filter suffix at end of name
 	//struct obs_source_info* si = (obs_source_info*)data;
 	//return si->id;
-	return obs_module_text(DefMyPluginName);
+	return obs_module_text(PLUGIN_NAME);
 }
 //---------------------------------------------------------------------------
 
@@ -549,6 +564,9 @@ void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	// note that the OBS_SOURCE_COMPOSITE flag below is supposed to be used by sources that composite multiple children, which we seem to do -- not sure its needed though
 	// note that we need the OBS_SOURCE_INTERACTION flag so we can use our internal signaling system
 	pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_INTERACTION; /* | OBS_SOURCE_COMPOSITE */
+	// trying composite on 2/25/23
+	//pluginInfo->output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_INTERACTION | OBS_SOURCE_COMPOSITE;
+	//
 	pluginInfo->get_name = plugin_get_name;
 	pluginInfo->create = plugin_create;
 	pluginInfo->destroy = plugin_destroy;
@@ -567,6 +585,9 @@ void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 	pluginInfo->icon_type = OBS_ICON_TYPE_CAMERA;
 	// this is really used for our internal signaling system
 	pluginInfo->key_click = pluginOnKeyClick;
+	//
+	pluginInfo->show = plugin_show;
+	pluginInfo->hide = plugin_hide;
 }
 
 
@@ -575,7 +596,7 @@ void setObsPluginSourceInfoGeneric(obs_source_info *pluginInfo) {
 struct obs_source_info autoZoomSourcePlugin;
 bool registerAutoZoomSourcePlugin() {
 	// set params
-	autoZoomSourcePlugin.id = DefMyPluginNameSource;
+	autoZoomSourcePlugin.id = PLUGIN_NAME_Source;
 	autoZoomSourcePlugin.type = OBS_SOURCE_TYPE_INPUT;
 	setObsPluginSourceInfoGeneric(&autoZoomSourcePlugin);
 	// register it with obs
@@ -588,7 +609,7 @@ bool registerAutoZoomSourcePlugin() {
 struct obs_source_info autoZoomFilterPlugin;
 bool registerAutoZoomFilterPlugin() {
 	// set params
-	autoZoomFilterPlugin.id = DefMyPluginNameFilter;
+	autoZoomFilterPlugin.id = PLUGIN_NAME_Filter;
 	autoZoomFilterPlugin.type = OBS_SOURCE_TYPE_FILTER;
 	setObsPluginSourceInfoGeneric(&autoZoomFilterPlugin);
 	// register it with obs
