@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+	
+  <head>
+
+    <script type="text/javascript" src="lib/obs-ws.min.js"></script>
+    <script type="text/javascript" src="config/config.js"></script>
+    <script type="text/javascript" src="js/jryt.js"></script>
+		<link rel="stylesheet" type="text/css" href="css/jryt.css"/>
+		<link rel="manifest" href="./manifest.json" crossorigin="use-credentials"> 
+
+		<script type="text/javascript">
+
+		</script>
+
+  </head>
+
+		<!-- Open Developer tools in browser to see results of websocket. -->
+
+  <body onload="doStartupControl();">
+
+	<div class="JrYtPage">
+
+  	<div id="errorDiv"></div>
+
+		<div class = "JrYtPageMain JrYtMessageList" id="JrYtPageMain">
+			<ul id="JrYtMessageListUl" class="JrYtMessageListUl" zzdata-overlayscrollbars-initialize="true">
+				<li>Start OBS and refresh page</li>
+			</ul>
+		</div>
+		
+		<div class="JrYtButtonBar">
+		</div>
+
+		<div class="JrYtOuterDiv JrYtPageFooter">
+			<div class="JrYtInnerDivFlex">
+				<div id="jrYtMainDiv" class="jrYtMainDiv" onclick="clickOverlayDiv();">
+					<div id="jrYtInteriorAltDiv1">
+						<!-- SELECTED MESSAGE WILL GO HERE -->
+					</div>
+					<div id="jrYtInteriorAltDiv2">
+						<!-- SELECTED MESSAGE WILL GO HERE -->
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+  </body>
+</html>

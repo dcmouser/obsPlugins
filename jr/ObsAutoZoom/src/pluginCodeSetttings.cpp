@@ -1,11 +1,16 @@
 //---------------------------------------------------------------------------
 #include <cstdio>
+#include <QFileDialog>
 //
 #include "jrPlugin.h"
 //
 #include "plugininfo.h"
 #include "../../jrcommon/src/jrhelpers.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
+#include "../../jrcommon/src/jrqthelpers.hpp"
+//
+
+#include <obs-frontend-api.h>
 //---------------------------------------------------------------------------
 
 
@@ -23,6 +28,9 @@ extern "C" {
 	bool OnPropertyButtonClickCalibrateMarkerSizesCallback(obs_properties_t *props, obs_property_t *property, void *data);
 	bool OnPropertyButtonClickCalibrateChromaCallback(obs_properties_t *props, obs_property_t *property, void *data);
 	bool OnPropertyButtonClickCalibrateZoomScaleCallback(obs_properties_t *props, obs_property_t *property, void *data);
+	//
+	bool OnPropertyButtonClickImportCallback(obs_properties_t *props, obs_property_t *property, void *data);
+	bool OnPropertyButtonClickExportCallback(obs_properties_t *props, obs_property_t *property, void *data);
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -88,9 +96,21 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	comboString = obs_properties_add_list(propgroup, SETTING_zcAlignment, TEXT_zcAlignment, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcAlignment_choices);
 	obs_properties_add_int_slider(propgroup, SETTING_zcMaxZoom, TEXT_zcMaxZoom, 0, 1000, 1);
+
+
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupBlur", "Display options - Blurring (set crop mode to blur above)", OBS_GROUP_NORMAL, propgroup);
+	obs_properties_add_int_slider(propgroup, SETTING_blurPasses, TEXT_blurPasses, 1, 30, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_blurSizeReduce, TEXT_blurSizeReduce, 1, 30, 1);
+	obs_properties_add_int_slider(propgroup, SETTING_blurExteriorDull, TEXT_blurExteriorDull, 0, 30, 1);
+
+	propgroup = obs_properties_create();
+	obs_properties_add_group(props, "groupDisplayMarkers", "Display options - markers", OBS_GROUP_NORMAL, propgroup);
 	comboString = obs_properties_add_list(propgroup, SETTING_zcMarkerPos, TEXT_zcMarkerPos, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcMarkerPos_choices);
 	obs_properties_add_int_slider(propgroup, SETTING_zcBoxMargin, TEXT_zcBoxMargin, -100, 200, 1);
+
+
 
 	propgroup = obs_properties_create();
 	obs_properties_add_group(props, "groupBehavior", "Behavior options", OBS_GROUP_NORMAL, propgroup);
@@ -206,9 +226,13 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	obs_properties_add_int_slider(propgroup, SETTING_rmMaxColor2Percent, TEXT_rmMaxColor2Percent, 0, 1000, 1);
 	//
 	obs_properties_add_int_slider(propgroup, SETTING_rmTooCloseDist, TEXT_rmTooCloseDist, 0, 400, 1);
-	// calibrate
-	obs_properties_add_button(propgroup, "UpdateAllSources", "FIRST: Update all source tracking", OnPropertyButtonClickTrackOnAllSources);
-	obs_properties_add_button(propgroup, "CalibrateMarkers", "THEN: Auto-calibrate marker sizes, etc.", OnPropertyButtonClickCalibrateMarkerSizesCallback);
+
+
+	if (false) {
+		// calibrate
+		obs_properties_add_button(propgroup, "UpdateAllSources", "FIRST: Update all source tracking", OnPropertyButtonClickTrackOnAllSources);
+		obs_properties_add_button(propgroup, "CalibrateMarkers", "THEN: Auto-calibrate marker sizes, etc.", OnPropertyButtonClickCalibrateMarkerSizesCallback);
+	}
 
 	propgroup = obs_properties_create();
 	obs_properties_add_group(props, "groupSource", "Sources", OBS_GROUP_NORMAL, propgroup);
@@ -231,9 +255,12 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 		snprintf(label, sizeof(label), TEXT_sourceZoomScaleWithArg, i);
 		obs_properties_add_int(propgroup, name, label, 1, 1000, 1);
 	}
-	// calibrate
-	obs_properties_add_button(propgroup, "UpdateAllSources2", "1. FIRST: Update all source tracking", OnPropertyButtonClickTrackOnAllSources);
-	obs_properties_add_button(propgroup, "CalibrateZoomScales", "THEN: Auto-calibrate other sources based on source 0", OnPropertyButtonClickCalibrateZoomScaleCallback);
+
+	if (false) {
+		// calibrate
+		obs_properties_add_button(propgroup, "UpdateAllSources2", "1. FIRST: Update all source tracking", OnPropertyButtonClickTrackOnAllSources);
+		obs_properties_add_button(propgroup, "CalibrateZoomScales", "THEN: Auto-calibrate other sources based on source 0", OnPropertyButtonClickCalibrateZoomScaleCallback);
+	}
 
 
 
@@ -271,16 +298,18 @@ obs_properties_t* JrPlugin::doPluginAddProperties() {
 	jrAddPropertListChoices(comboString, (const char**)SETTING_zcAlignment_choices);
 
 
-	propgroup = obs_properties_create();
-	obs_properties_add_group(props, "groupBlur", "Blurring options (set crop mode to blur above)", OBS_GROUP_NORMAL, propgroup);
-	obs_properties_add_int_slider(propgroup, SETTING_blurPasses, TEXT_blurPasses, 1, 30, 1);
-	obs_properties_add_int_slider(propgroup, SETTING_blurSizeReduce, TEXT_blurSizeReduce, 1, 30, 1);
-	obs_properties_add_int_slider(propgroup, SETTING_blurExteriorDull, TEXT_blurExteriorDull, 0, 30, 1);
+
+	if (true) {
+		// import and export
+		propgroup = obs_properties_create();
+		obs_properties_add_group(props, "groupImportExport", "Import and Export", OBS_GROUP_NORMAL, propgroup);
+		obs_properties_add_button(propgroup, "Import", "Import settings from file", OnPropertyButtonClickImportCallback);
+		obs_properties_add_button(propgroup, "Export", "Export settings to file", OnPropertyButtonClickExportCallback);
+	}
 
 	return props;
 }
 //---------------------------------------------------------------------------
-
 
 
 
@@ -831,4 +860,161 @@ void JrPlugin::saveVolatileMarkerZoomScaleSettings(bool isCustomColor) {
 }
 //---------------------------------------------------------------------------
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+bool JrPlugin::doImport(bool flagPreserveDisplayOptions) {
+	// get filename
+	QString defaultDir = QString(getModuleConfigPath().c_str());
+	void *mainWin = obs_frontend_get_main_window();
+	auto fileName = QFileDialog::getOpenFileName((QWidget *)mainWin, "Import file", defaultDir, "ObsAutoZoom Setting Files (*.json)");
+	if (fileName == "") {
+		return false;
+	}
+
+	// load json string from file and create new data structure from it
+	obs_data_t* datap = obs_data_create_from_json_file(fileName.toStdString().c_str());
+
+	if (false || datap == NULL) {
+		mydebug("Error importing source data file %s.", fileName.toStdString().c_str());
+		QString msg = QString("Failed importing source data from file " + fileName);
+		showModalQtDialogError(msg);
+
+		if (datap) {
+			// free data
+			obs_data_release(datap);
+		}
+
+		return false;
+	}
+
+	if (flagPreserveDisplayOptions) {
+		// remove some imported options so they dont overwrite some values that we want to leave alone and not overwrite (display values)
+		obs_data_erase(datap, SETTING_zcAlignment);
+		obs_data_erase(datap, SETTING_zcCropStyle);
+		obs_data_erase(datap, SETTING_zcMode);
+		obs_data_erase(datap, SETTING_zcOutputSize);
+		obs_data_erase(datap, SETTING_zcPreserveAspectRatio);
+		obs_data_erase(datap, SETTING_zcMaxZoom);
+
+		obs_data_erase(datap, SETTING_blurExteriorDull);
+		obs_data_erase(datap, SETTING_blurPasses);
+		obs_data_erase(datap, SETTING_blurSizeReduce);
+
+		obs_data_erase(datap, SETTING_debugAllUpdate);
+		obs_data_erase(datap, SETTING_debugRegions);
+		obs_data_erase(datap, SETTING_debugChroma);
+	}
+
+	// merge data into source
+	obs_source_t* sourcep = getThisPluginSource();
+	obs_source_update(sourcep, datap);
+
+	// free data
+	obs_data_release(datap);
+
+	// clean up unused old properties?
+	bool flagCleanOldUnusedSettings = true;
+	if (flagCleanOldUnusedSettings) {
+		cleanOldUnusedSettingsForSource();
+	}
+
+	// success
+	return true;
+}
+
+
+bool JrPlugin::doExport() {
+	// 1. get filename
+	QString defaultDir = QString(getModuleConfigPath().c_str());
+	void *mainWin = obs_frontend_get_main_window();
+	auto fileName = QFileDialog::getSaveFileName((QWidget *)mainWin, "Export file", defaultDir, "ObsAutoZoom Setting Files (*.json)");
+	if (fileName == "") {
+		return false;
+	}
+
+	// get settings
+	obs_source_t* sourcep = getThisPluginSource();
+	obs_data_t* datap = obs_source_get_settings(sourcep);
+
+	// ATTN: a slight problem we have here has to do with defaults; obs does not save default values to config file export
+	// so if file has no setting we want it to go to default, but it will be left untouched
+	// so we need to start with current defaults, merge in source values, and export THAT to get a file with all current values including defaults
+	obs_data_t *datapWithDefaults = obs_data_get_defaults(datap);
+	// merge in custom over defaults
+	obs_data_apply(datapWithDefaults, datap);
+
+	// convert settings to json string and save to file
+	bool bretv = obs_data_save_json_safe(datapWithDefaults, fileName.toStdString().c_str(),".tmp",".bak");
+
+	// free data
+	obs_data_release(datap);
+	obs_data_release(datapWithDefaults);
+
+	if (!bretv) {
+		mydebug("Error exporting source data file %s.", fileName.toStdString().c_str());
+		QString msg = QString("Failed to export source data to file " + fileName);
+		showModalQtDialogError(msg);
+	}
+
+	// success
+	return bretv;
+}
+
+
+std::string JrPlugin::getModuleConfigPath() {
+	// return  QString(obs_get_module_data_path(obs_current_module()));
+	char* cfgpath = obs_module_config_path(getThisPluginSourceName());
+	std::string path = std::string(cfgpath)+".json";
+	bfree(cfgpath);
+	return path;
+}
+
+
+void JrPlugin::cleanOldUnusedSettingsForSource() {
+	// get settings
+	obs_source_t* sourcep = getThisPluginSource();
+	obs_data_t* datap = obs_source_get_settings(sourcep);
+
+	// erase unused properties that we used to use and no longer do
+	obs_data_erase(datap, "ChromaThreshold");
+	obs_data_erase(datap, "dbgDisplay");
+	obs_data_erase(datap, "dualColorGapFill");
+	obs_data_erase(datap, "enableAutoUpdate");
+	obs_data_erase(datap, "enableMarkerlessCoordinates");
+	obs_data_erase(datap, "filterBypass");
+	obs_data_erase(datap, "ignoreMarkers");
+	//
+	obs_data_erase(datap, "key_color");
+	obs_data_erase(datap, "key_color_1");
+	obs_data_erase(datap, "key_color_2");
+	obs_data_erase(datap, "key_color_type");
+	obs_data_erase(datap, "key_color_type1");
+	obs_data_erase(datap, "key_color_type2");
+	//
+	obs_data_erase(datap, "manualZoomEnableMarkerless");
+	obs_data_erase(datap, "markerChromaMode");
+	obs_data_erase(datap, "resizeOutput");
+	obs_data_erase(datap, "rmTSizeMax");
+	obs_data_erase(datap, "rmTSizeMin");
+	obs_data_erase(datap, "similarity");
+	obs_data_erase(datap, "updateRate");
+
+	// free data
+	obs_data_release(datap);
+}
+//---------------------------------------------------------------------------
 

@@ -3,6 +3,7 @@
 //---------------------------------------------------------------------------
 #include <windows.h>
 #include <ctime>
+#include <string>
 //
 // obs
 #include <obs-module.h>
@@ -315,6 +316,7 @@ public:
 	// note sure if this is right way to get the source represented by this plugin
 	obs_source_t* getThisPluginSource() { return context; }
 	obs_source_t* getThisPluginFiltersAttachedSource() { return isPluginTypeFilter() ? obs_filter_get_parent(context) : NULL; };
+	const char* getThisPluginSourceName() { return obs_source_get_name(context); }
 	//
 	int getPluginOutputWidth() { return outputWidthPlugin; };
 	int getPluginOutputHeight() { return outputHeightPlugin; };
@@ -443,6 +445,11 @@ public:
 	void touchKludgeAllSourcesOnHidden();
 public:
 	void adjustChildSourcesVisibility(bool isVisible);
+public:
+	bool doImport(bool flagPreserveDisplayOptions);
+	bool doExport();
+	std::string getModuleConfigPath();
+	void cleanOldUnusedSettingsForSource();
 };
 //---------------------------------------------------------------------------
 

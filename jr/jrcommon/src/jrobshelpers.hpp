@@ -84,9 +84,6 @@ void JrRenderTextureRenderEnd(gs_texrender_t* tex);
 	#define do_log(level, format, ...) blog(level, "[" ## PLUGIN_LABEL ## "] " format, ##__VA_ARGS__)
 #endif
 
-
-
-//
 #define warn(format, ...) do_log(LOG_WARNING, format, ##__VA_ARGS__)
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
@@ -120,4 +117,11 @@ void jrazUint32ToHsvVec(uint32_t color, struct vec3& clvec);
 void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec);
 void RGBtoHSV(float& fR, float& fG, float fB, float& fH, float& fS, float& fV);
 void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float alpha);
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+enum JrForceSourceStateEnum {JrForceSourceStateVisible, JrForceSourceStateHidden, JrForceSourceStateToggle};
+void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, JrForceSourceStateEnum forceState);
 //---------------------------------------------------------------------------

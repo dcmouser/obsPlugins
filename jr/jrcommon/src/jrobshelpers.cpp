@@ -8,7 +8,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-//#include <obs-module.h>
+
+//#include <../qt-wrappers.hpp>
 //---------------------------------------------------------------------------
 
 
@@ -621,4 +622,110 @@ void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float a
 	colorvec.w = alpha;
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+struct SouceVisibilityChangeDataT {
+	bool forceVisible;
+	JrForceSourceStateEnum forceState;
+	const char* targetSourceName;
+};
+
+void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, JrForceSourceStateEnum forceState) {
+	const bool flagMarryToFirstFine = false;
+	// callback used on each scene item
+	auto cb = [](obs_scene_t *, obs_sceneitem_t *sceneItem, void *param) {
+		SouceVisibilityChangeDataT* forceStructp = reinterpret_cast<SouceVisibilityChangeDataT*>(param);
+		OBSSource itemSource = obs_sceneitem_get_source(sceneItem);
+		auto sourceName = obs_source_get_name(itemSource);
+		//auto sourceType = obs_source_get_type(itemSource);
+		//auto source_id = obs_source_get_unversioned_id(itemSource);
+		if (strcmp(sourceName, forceStructp->targetSourceName)==0) {
+			// matching source name
+			bool visible = false;
+			switch (forceStructp->forceState) {
+				case JrForceSourceStateVisible:
+					visible = true;
+					break;
+				case JrForceSourceStateHidden:
+					visible = false;
+					break;
+				case JrForceSourceStateToggle:
+					// toggle based on state of FIRST match we find
+					visible = !obs_sceneitem_visible(sceneItem);;
+					// sync all future discovery states to state of this one, or toggle them all individually?
+					if (flagMarryToFirstFine) {
+						if (visible) {
+							forceStructp->forceState = JrForceSourceStateVisible;
+						}
+						else {
+							forceStructp->forceState = JrForceSourceStateHidden;
+						}
+					}
+					break;
+			}
+			// force it
+			obs_sceneitem_set_visible(sceneItem, visible);
+		}
+		return true;
+	};
+
+
+	// helper data structure used to pass info on what to do to the callback
+	SouceVisibilityChangeDataT forceStruct{ 0 };
+	forceStruct.forceVisible = false;
+	forceStruct.forceState = forceState;
+	forceStruct.targetSourceName = targetSourceName;
+
+	if (flagAllScenes) {
+		// iterate all scenes 
+		obs_frontend_source_list sceneList = {};
+		obs_frontend_get_scenes(&sceneList);
+		for (size_t i = 0; i < sceneList.sources.num; i++) {
+			obs_source_t* sceneSource = sceneList.sources.array[i];
+			obs_scene_t* scene = obs_scene_from_source(sceneSource);
+			if (scene) {
+				// enumerate items in scene
+				obs_scene_enum_items(scene, cb, &forceStruct);
+			}
+		}
+		// free scene list
+		obs_frontend_source_list_free(&sceneList);
+	} else {
+		// just current scene
+		obs_source_t* sceneSource = obs_frontend_get_current_scene();
+		obs_scene_t* scene = obs_scene_from_source(sceneSource);
+		if (scene) {
+			// enumerate items in scene
+			obs_scene_enum_items(scene, cb, &forceStruct);
+		}
+		// free scene
+		obs_source_release(sceneSource);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
 

@@ -168,7 +168,25 @@ bool OnPropertyButtonClickCalibrateZoomScaleCallback(obs_properties_t *props, ob
 	plugin->calibrateSourceZoomScales();
 	return true;
 }
+//---------------------------------------------------------------------------
 
+
+
+
+//---------------------------------------------------------------------------
+bool OnPropertyButtonClickImportCallback(obs_properties_t* props, obs_property_t* property, void* data) {
+	JrPlugin *plugin = (JrPlugin*) data;
+	bool flagPreserveDisplayOptions = true;
+	plugin->doImport(flagPreserveDisplayOptions);
+	return true;
+}
+
+
+bool OnPropertyButtonClickExportCallback(obs_properties_t* props, obs_property_t* property, void* data) {
+	JrPlugin *plugin = (JrPlugin*) data;
+	plugin->doExport();
+	return true;
+}
 //---------------------------------------------------------------------------
 
 

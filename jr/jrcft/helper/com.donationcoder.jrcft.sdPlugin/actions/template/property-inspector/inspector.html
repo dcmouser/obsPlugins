@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta
+          name="viewport"
+          content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,minimal-ui,viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <title>com.elgato.template Property Inspector</title>
+    <link rel="stylesheet" href="../../../libs/css/sdpi.css" />
+</head>
+
+<body>
+    <div class="sdpi-wrapper">
+        <div type="tabs" class="sdpi-item">
+            <div class="sdpi-item-label empty"></div>
+            <div class="tabs">
+                <div class="tab selected" data-target="#tab1" title="Configuration">Websocket Message</div>
+                <div class="tab" data-target="#tab2" title="Connection">Connection</div>
+            </div>
+        </div>
+        <hr class="tab-separator">
+
+            <div id="tab1" class="tab-container">
+        			<form id="property-inspector">
+                <div class="sdpi-item">
+                    <div data-localize class="sdpi-item-label" title="vendor">Vendor</div>
+                    <input class="sdpi-item-value" name="vendor" id="vendor" type="text" value="JrCft[REMOVEME]" placeholder="Click Me" />
+                </div>
+                <div class="sdpi-item">
+                    <div data-localize class="sdpi-item-label" title="request">request</div>
+                    <input class="sdpi-item-value" name="request" id="request" type="text" value="JrCftCommand[REMOVEME]" placeholder="Click Me" />
+                </div>
+
+                <div type="textarea" class="sdpi-item">
+                    <div class="sdpi-item-label" data-localize title="JSON Payload">JSON Payload</div>
+                    <div class="sdpi-item-value textarea">
+                        <textarea
+                                  name="jsonPayloadStr"
+                                  id="jsonPayloadStr"
+                                  type="textarea"
+                                  class="five-lines">[REMOVEME]{"command": "toggleSourceVisibility", "sourceName": "Overlay - Front Inset", "optionAllScenes": false}</textarea>
+                    </div>
+                </div>
+        			</form>
+
+				        <div class="sdpi-item">
+				            <div class="sdpi-item-label" title="Actions">Actions</div>
+				            <!--<button class="sdpi-item-value" value="Configure" id="configureObsWebsocket">Configure</button>-->
+					          <!--<button class="sdpi-item-value" value="checkRequest" id="checkRequest"> Test Command</button>-->
+					      		<button class="sdpi-item-value" value="testAction" id="testAction">Test action</button>
+				        </div>
+
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="Status">Status</div>
+                 	<div class="sdpi-item-value textarea">
+             	  		<div id="statuInfoDiv2"></div>
+             	  	</div>
+             	  </div>
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="LastErr">LastErr</div>
+                 	<div class="sdpi-item-value textarea">
+             	  		<div id="lastErrorInfoDiv2"></div>
+             	  	</div>
+             	  </div>
+             	  
+            </div>
+            <div id="tab2" class="tab-container">
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="ConfigAddress">Address</div>
+                    <input class="sdpi-item-value" name="wsAddress" id="wsAddress" type="text" value=""/>
+             	  </div>
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="Password">Password</div>
+                    <input class="sdpi-item-value" name="wsPassword" id="wsPassword" type="password" value=""/>
+             	  </div>
+
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="Status">Status</div>
+                 	<div class="sdpi-item-value textarea">
+             	  		<div id="statuInfoDiv"></div>
+             	  	</div>
+             	  </div>
+                <div class="sdpi-item">
+                 	<div data-localize class="sdpi-item-label" title="LastErr">LastErr</div>
+                 	<div class="sdpi-item-value textarea">
+             	  		<div id="lastErrorInfoDiv"></div>
+             	  	</div>
+             	  </div>
+
+				        <div class="sdpi-item">
+				            <div class="sdpi-item-label" title="Actions">Actions</div>
+				            <!--<button class="sdpi-item-value" value="Configure" id="configureObsWebsocket">Configure</button>-->
+					          <!--<button class="sdpi-item-value" value="checkRequest" id="checkRequest"> Test Command</button>-->
+					      		<button class="sdpi-item-value" value="saveConfig" id="saveConfig">Save connection info / Connect</button>
+				        </div>
+              </div>
+            </div>
+
+
+    </div>
+
+
+
+
+    <div class="sdpi-info-label hidden" style="top: -1000" value=""></div>
+
+    <!-- Stream Deck Libs -->
+    <script src="../../../libs/js/constants.js"></script>
+    <script src="../../../libs/js/prototypes.js"></script>
+    <script src="../../../libs/js/timers.js"></script>
+    <script src="../../../libs/js/utils.js"></script>
+    <script src="../../../libs/js/events.js"></script>
+    <script src="../../../libs/js/api.js"></script>
+    <script src="../../../libs/js/property-inspector.js"></script>
+    <script src="../../../libs/js/dynamic-styles.js"></script>
+
+    <!-- Property Inspector Source -->
+    <script src="inspector.js"></script>
+
+  <!-- ws helper -->
+    <script src="../../../jrws/lib/obs-ws.min.js"></script>   
+    <script src="../../../jrws/js/jrws.js"></script>
+ 
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+{
+  "Description": "JrCft Streamdeck Plugin", 
+  "Name": "JrCft OBS Streamdeck Plugin", 
+  "Category": "JrCft OBS", 
+  "com.donationcoder.jrcft.action_wscommand": {
+    "Name": "OBS Websocket Vendor Command", 
+    "Tooltip": "Send a command to an OBS websocket vendor"
+  },
+  "Localization": {
+    "Button": "Button"
+  }
+}

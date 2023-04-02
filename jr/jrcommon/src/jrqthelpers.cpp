@@ -100,3 +100,16 @@ QString sanitizeMessageString(const QString &str) {
 	return str.toHtmlEscaped();
 }
 //---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+void showModalQtDialog(const QString& title, const QString& msg) {
+	QMessageBox msgBox;
+	msgBox.setText(title + ": "+ msg);
+	msgBox.exec();
+}
+
+void showModalQtDialogError(const QString& msg) {
+	showModalQtDialog(QString("ERROR"), msg);
+}
+//---------------------------------------------------------------------------

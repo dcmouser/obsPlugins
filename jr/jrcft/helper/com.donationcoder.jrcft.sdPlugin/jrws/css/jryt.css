@@ -1,0 +1,307 @@
+
+
+html, body {
+	background-color: rgba(0, 0, 0, 0);
+	margin: 0px;
+	overflow: hidden;
+	
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: xx-large; font-style: normal; font-variant: normal; font-weight: 700;
+
+  height: 100%;
+  line-height: normal;
+}
+
+
+#infoDiv {
+	color: red;
+	font-size: 0.6em;
+	padding: 10px;
+	max-height: 20em;
+	overflow: auto;
+	/*display: none;*/
+}
+
+
+
+.JrYtOuterDiv {
+	background-color: rgba(0, 0, 0, 0);
+	color: white;
+}
+
+
+.JrYtOuterDivSolo {
+	position:absolute;
+	bottom:0px;
+	width:100%;
+}
+
+
+.JrYtInnerDiv {
+	padding: 20px;
+	font-size:2em;
+}
+
+.JrYtInnerDivFlex {
+	padding: 10px;
+	width:100%;
+}
+
+
+
+
+.jrYtMainDiv {
+	border: 3px solid #BCC6CCAA;
+	box-shadow: 3px 4px #111111AA;
+	padding: 20px;
+	background-color: #2B547EF5;
+	border-radius: 25px;
+	min-height: 160px;
+  display: grid;
+  cursor: pointer;
+  caret-color: transparent;
+  display: none;
+}
+
+
+#jrYtInteriorAltDiv1 {
+  grid-column: 1;
+  grid-row: 1;
+	animation: fadeInJrYt 0.5s;
+}
+
+#jrYtInteriorAltDiv2 {
+  grid-column: 1;
+  grid-row: 1;
+	animation: fadeInJrYt 0.5s;
+}
+
+
+
+.jrYtAuthorName {
+  color: #C11B17;
+	font-weight: bolder;
+	font-size: 1em;
+	display: block;
+	text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+	padding-bottom: 5px;
+	padding-top: 0px;
+	padding-left: 2px;
+}
+
+
+img.jrYtUserImage {
+  float: left;
+  padding: 4px;
+  padding-right:20px;
+  border-radius: 8px;
+	width: 150px;
+	max-width: 150px;
+	max-height: 150px;
+	filter: drop-shadow(3px 3px 4px black); 
+}
+
+.jrYtMessage {
+	/*overflow: visible;*/
+}
+
+.jrYtMessage p {
+overflow:hidden;
+line-height: normal;
+line-height: 1.1;
+}
+
+img.jrYtEmoticon {
+	width:1em;
+	max-width: 48px;
+	max-height: 48px;
+	vertical-align: baseline;
+}
+
+#versionInfo {
+	padding:5px;
+	font-weight: bold;
+}
+
+@keyframes fadeInJrYt {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
+.msgLen1 {
+	font-size: 1em;
+	font-weight: 700;
+}
+.msgLen2 {
+	font-size: 0.75em;
+	font-weight: 600;
+}
+.msgLen3 {
+	font-size: 0.65em;
+	font-weight: 500;
+}
+.msgLen4 {
+	font-size: 0.4em;
+	font-weight: 400;
+}
+.msgLen5 {
+	font-size: 0.25em;
+	font-weight: 300;
+}
+.msgLen6 {
+	font-size: 0.20em;
+	font-weight: 100;
+}
+
+
+.msgLen6 .jrYtAuthorName, .msgLen5 .jrYtAuthorName {
+	text-shadow: none;
+	color: #FFFFFFFF;
+	font-weight: bold;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.JrYtPage {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  min-height: 100%;
+  cursor: default;
+}
+
+.JrYtPageMain {
+ display: flex;
+ flex-grow: 1;
+ flex-basis: auto;
+ flex-shrink: 1;
+ margin-top: auto;
+ overflow-y:auto;
+}
+
+.JrYtPageFooter {
+ display: flex;
+ flex-grow: 0;
+ flex-basis: content;
+ flex-shrink: 0;
+ width: 100%;
+}
+
+
+
+
+
+
+
+
+.imgClearing {
+	 clear: both;
+}
+
+
+
+
+
+
+
+p {
+	overflow: hidden;
+	padding:0px;
+	margin:0px;
+}
+
+
+
+
+.JrYtTable {
+    border-collapse: collapse;
+    font-size: 1.0em;
+    font-family: sans-serif;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    font-weight: normal;
+}
+.JrYtTable thead tr {
+    background-color: #009879;
+    color: #ffffff;
+    text-align: left;
+}
+.JrYtTable th,
+.JrYtTable td {
+    padding: 3px 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+.JrYtTable tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+
+.JrYtTable tbody tr:last-of-type {
+    border-bottom: 2px solid #009879;
+}
+
+.JrYtTable tfoot tr {
+    background-color: #009879;
+    padding-top:0;
+    padding-bottom:0;
+}
+.JrYtTable tfoot td {
+    padding-top:0;
+    padding-bottom:0;
+    font-weight: bold;
+}
+
+.JrYtTable .jrColR {
+    text-align: right;
+}
+
+.JrYtTable .jrColM {
+	text-align: center;
+}
+
+
+
+
+
+
+
+.JrYtElapsedTimer {
+	float: right;
+	font-weight: bold;
+	font-size: 2em;
+	margin-right: -6px;
+	margin-top: -12px;
+}
+
+
+
+.JrYtInstructions {
+	font-size: 0.7em;
+	font-style: italic;
+}
+
+.JrYtInstructions .JrYtInstructionsType {
+}

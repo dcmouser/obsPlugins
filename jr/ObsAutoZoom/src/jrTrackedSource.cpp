@@ -505,7 +505,9 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 	float aspectBonus = disty / distx;
 	float distThresh = (float)(avgRegionSize * (1.0f + 5.0f * min(aspectBonus, 20.0) / 20.0f));
 	//info("minpointdist = %f  Avg RegionSize = %f  aspectbonus = %f distthresh = %f (distx = %f, disty=%f)", midpointDist, avgRegionSize, aspectBonus, distThresh,distx,disty);
-	if (midpointDist <= distThresh) {
+	// ATTN: 3/31/23 trying to make it less sensitive less likely to trigger
+	//if (midpointDist <= distThresh) {
+	if (midpointDist <= distThresh/2) {
 		vertInline = true;
 	}
 
@@ -516,7 +518,9 @@ bool TrackedSource::findNewCandidateTrackingBox(bool debugPreviewOnly) {
 	disty = (float)max(abs(markery2 - markery1), 1.0f);
 	aspectBonus = distx / disty;
 	distThresh = (float)(avgRegionSize * (1.0f + 5.0f * min(aspectBonus, 20.0) / 20.0f));
-	if (midpointDist <= distThresh) {
+	// ATTN: 3/31/23 trying to make it less sensitive less likely to trigger
+	//if (midpointDist <= distThresh) {
+	if (midpointDist <= distThresh/2) {
 		horzInline = true;
 	}
 

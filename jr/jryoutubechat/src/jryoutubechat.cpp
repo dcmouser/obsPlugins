@@ -364,12 +364,13 @@ void JrYouTubeChat::handleObsFrontendEvent(enum obs_frontend_event event) {
 			autoStartChatUtility();
 			// also trigger scene change auto stuff
 			onSceneChange();
+			break;
 		case OBS_FRONTEND_EVENT_SCENE_CHANGED:
 			onSceneChange();
 			break;
 		case OBS_FRONTEND_EVENT_TRANSITION_STOPPED:
 			//onSceneChange();
-		break;
+			break;
 	}
 
 	// let parent handle some cases
@@ -1886,11 +1887,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->checkSelectedItemStillGood();
 		ytp->requestWsSelectedMessageInfoEvent(response_data, ytp->selectedListItem, ytp->getSelectedIndex(), false, false);
@@ -1906,11 +1910,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb event_request_cb_JrYtListGet.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->requestWsAllMessagesInListEvent(response_data);
 	};
@@ -1924,11 +1931,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtMessageSelect.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->requestWsHandleMessageSelectedByClient(request_data, response_data);
 	};
@@ -1943,11 +1953,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtCommand.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->requestWsHandleCommandByClient(request_data, response_data);
 	};
@@ -1962,11 +1975,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtGetState.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->requestWsHandleGetState(request_data, response_data);
 	};
@@ -1980,11 +1996,14 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtMsgStarState.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
+		/*
 		const char *event_name = obs_data_get_string(request_data, "event_name");
 		if (!event_name)
 			return;
 		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
 		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
+		obs_data_release(event_data);
+		*/
 		// handle callback
 		ytp->requestWsModifyStarState(request_data, response_data);
 	};

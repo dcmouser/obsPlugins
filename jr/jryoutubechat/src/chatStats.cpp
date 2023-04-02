@@ -1,23 +1,21 @@
+#include "plugininfo.hpp"
 #include "chatStats.hpp"
 #include "../../jrcommon/src/jrobshelpers.hpp"
-#include "plugininfo.hpp"
 #include "../../jrcommon/src/jrobsplugin.hpp"
-
+#include "jryoutubechat.hpp"
 
 #include <obs-module.h>
 #include <obs.h>
 #include <string>
-
 #include <../obs-frontend-api/obs-frontend-api.h>
 #include <../qt-wrappers.hpp>
+
 #include <QObject>
 #include <QFile>
 #include <QIODevice>
-
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
-
 
 #include <windows.h>
 #include <shellapi.h>

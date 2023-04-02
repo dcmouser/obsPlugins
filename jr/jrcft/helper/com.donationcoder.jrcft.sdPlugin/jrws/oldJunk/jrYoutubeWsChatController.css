@@ -1,0 +1,256 @@
+@import url(https://fonts.googleapis.com/css?family=Open+Sans:400,300);
+@import url(https://fonts.googleapis.com/css?family=Arimo:400,700);
+
+html, body {
+	background-color: rgba(0, 0, 0, 0);
+	margin: 0px;
+	overflow: hidden;
+	
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	/*font-family: "Arimo";*/
+	font-size: 56px; font-style: normal; font-variant: normal; font-weight: 700;
+
+  height: 100%;
+  line-height: 1;
+}
+
+
+
+
+.JrYtOuterDiv {
+	background-color: rgba(0, 0, 0, 0);
+	color: white;
+
+
+}
+
+
+.JrYtOuterDivSolo {
+	position:absolute;
+	bottom:0px;
+}
+
+
+.JrYtInnerDivSolo {
+	padding: 20px;
+}
+
+
+.JrYtInnerDivFlex {
+	padding: 10px;
+	width:100%;
+}
+
+
+.jrYtMainDiv {
+	border: 3px solid #BCC6CCAA;
+	box-shadow: 3px 4px #111111AA;
+	padding: 20px;
+	background-color: #2B547EF5;
+	border-radius: 25px;
+	min-height: 160px;
+  display: grid;
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+
+#jrYtInteriorAltDiv1 {
+  grid-column: 1;
+  grid-row: 1;
+	animation: fadeInJrYt 0.5s;
+}
+
+#jrYtInteriorAltDiv2 {
+  grid-column: 1;
+  grid-row: 1;
+	animation: fadeInJrYt 0.5s;
+}
+
+
+
+.jrYtAuthorName {
+  color: #C11B17;
+	font-weight: bolder;
+	/*font-size: 110%;*/
+	font-size: 1em;
+	display: block;
+	text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+}
+
+
+img.jrYtUserImage {
+  float: left;
+  padding: 4px;
+  padding-right:20px;
+  border-radius: 8px;
+	width: 150px;
+	filter: drop-shadow(3px 3px 4px black); 
+  overflow: 
+}
+
+.jrYtMessage {
+	overflow: hidden;
+}
+
+img.jrYtEmoticon {
+	max-width: 48px;
+	max-height: 48px;
+	vertical-align: middle;
+}
+
+
+@keyframes fadeInJrYt {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
+.msgLen1 {
+	font-size: 1em;
+	font-weight: 700;
+}
+.msgLen2 {
+	font-size: 0.75em;
+	font-weight: 600;
+}
+.msgLen3 {
+	font-size: 0.60em;
+	font-weight: 500;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.JrYtPage {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  min-height: 100%;
+}
+
+.JrYtPageMain {
+ display: flex;
+ flex-grow: 1;
+ flex-basis: auto;
+ flex-shrink: 1;
+ margin-top: auto;
+ overflow-y:auto;
+}
+
+.JrYtPageFooter {
+ display: flex;
+ flex-grow: 0;
+ flex-basis: content;
+ flex-shrink: 0;
+ width: 100%;
+}
+
+
+
+.JrYtMessageListUl {
+	overflow-y:auto;
+  border: 1px dotted black;
+  padding: 2px;
+  margin: 2px;
+	list-style: none;
+	width:100%;
+}
+
+
+
+.JrYtMessageList li {
+  border: 1px dotted black;
+  border-radius: 5px;
+  padding: 5px;
+  margin: 8px;
+	background-color: #b5cde6FF;
+  cursor: pointer;
+  caret-color: transparent;
+  font-size: 0.6em;
+}
+
+.JrYtMessageList li {
+  border: 1px dotted black;
+  border-radius: 5px;
+  padding: 5px;
+  margin: 8px;
+	background-color: #b5cde6FF;
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+.JrYtMessageList li.jrSelected {
+	background-color: #FFcde6FF;
+}
+
+
+
+
+
+.imgClearing {
+	 clear: both;
+}
+
+
+.JrYtButtonBar {
+	margin:2px;
+	padding: 2px;
+	font-size: 0.5em;
+	line-height: 100%;
+	border: 1px solid #BCC6CCAA;
+	margin-left: auto;
+	border-radius: 2px;
+}
+
+.JrYtButton {
+	padding:10px;
+}
+
+
+
+
+.JrYtMessageList li img.jrYtUserImage {
+	width: 75px;
+}
+
+
+.JrYtMessageList .jrYtAuthorName {
+	padding-bottom: 6px;
+}
+
+
+

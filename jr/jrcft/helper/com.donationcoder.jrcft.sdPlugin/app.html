@@ -1,0 +1,85 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>com.donationcoder.jrcft</title>
+    <meta charset="utf-8"/>
+    <style>
+        canvas {
+            background-color: transparent;
+        }
+    </style>
+</head>
+
+<body>
+	<!-- Stream Deck Libs -->
+    <script src="libs/js/constants.js"></script>
+	<script src="libs/js/prototypes.js"></script>
+	<script src="libs/js/timers.js"></script>
+	<script src="libs/js/utils.js"></script>
+    <script src="libs/js/events.js"></script>
+	<script src="libs/js/api.js"></script>
+    <script src="libs/js/stream-deck.js"></script>
+	<script src="libs/js/action.js"></script>
+
+	<!-- Plugin Source -->
+    <script src="app.js"></script>
+    
+  <!-- ws helper -->
+    <script src="jrws/lib/obs-ws.min.js"></script>   
+    <script src="jrws/js/jrws.js"></script>
+
+
+
+
+
+
+	<div class="JrYtPage">
+		<div id="optionsDiv">
+			<div id="versionInfo">VERSION INFO GOES HERE</div>
+		<form>
+		  <fieldset>
+		    <legend>Connection options</legend>
+		    <p>
+		      <input type="text" name="connectionAddress" id="connectionAddress" autocapitalize="none" value="ws://localhost:4466" />
+		      <label for="connectionAddress">Websocket connection address (ws://IP:PORT)</label>
+		    </p>
+		    <p>
+		      <input type="password" name="connectionPassword" autocapitalize="none" id="connectionPassword" value="" />
+		      <label for="connectionPassword">Websocket connection password</label>
+		    </p>
+		  </fieldset>
+		</form>
+			<div class="JrYtButtonBarRight">
+				<button class="JrYtButton" onclick="location.reload();"><img class="JrYtButtonImg" src="images/reload.png">Discard changes and reload</button>
+				<button class="JrYtButton" onclick="saveOptionsButtonClick();"><img class="JrYtButtonImg" src="images/filesave.png">Save and reload</button>
+			</div>
+		</div>
+  	<div id="infoDiv"></div>
+		<div class = "JrYtPageMain" id="JrYtPageMain">
+		</div>
+		<div class="JrYtButtonBar">
+			<button class="JrYtButton" onclick="optionsButtonClick();"><img class="JrYtButtonImgNoText" src="images/options.png"></button>
+			<button class="JrYtButton" onclick="sendWsCommandTestToggleVisibility();"><img class="JrYtButtonImg" src="images/reload_all_tabs.png">TestToggleVis</button>
+		</div>
+	</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+
+</html>

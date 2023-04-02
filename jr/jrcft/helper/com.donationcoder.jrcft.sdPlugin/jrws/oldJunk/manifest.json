@@ -1,0 +1,19 @@
+{
+  "name": "JrYouTubeControl",
+  "short_name": "JrYtControl",
+  "start_url": "jrytControlr.html",
+  "display": "minimal-ui",
+  "background_color": "#000000",
+  "theme_color": "#2B547E",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/avatars/jrytIcon192x192.png",
+      "type": "image/png", "sizes": "192x192"
+    },
+    {
+      "src": "/avatars/jrytIcon512x512.png",
+      "type": "image/png", "sizes": "512x512"
+    }
+  ]
+}

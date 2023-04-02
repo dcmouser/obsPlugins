@@ -28,3 +28,6 @@ QString splitOffRightWord(QString& str, QString splitPattern);
 QString splitOffLeftWord(QString& str, QString splitPattern);
 
 QString sanitizeMessageString(const QString& str);
+
+void showModalQtDialog(const QString& title, const QString& msg);
+void showModalQtDialogError(const QString& msg);
