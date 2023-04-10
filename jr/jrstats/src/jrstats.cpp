@@ -62,15 +62,17 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 //
 #define TIMER_INTERVAL 2000
 #define REC_TIME_LEFT_INTERVAL 30000
+//
+#define DefResetKeepZeroSec 0.5
 //---------------------------------------------------------------------------
 
 
 
 //---------------------------------------------------------------------------
-static uint32_t first_encoded = 0xFFFFFFFF;
-static uint32_t first_skipped = 0xFFFFFFFF;
-static uint32_t first_rendered = 0xFFFFFFFF;
-static uint32_t first_lagged = 0xFFFFFFFF;
+static uint32_t first_encoded = 0;
+static uint32_t first_skipped = 0;
+static uint32_t first_rendered =0;
+static uint32_t first_lagged = 0;
 //
 #define MBYTE (1024ULL * 1024ULL)
 #define GBYTE (1024ULL * 1024ULL * 1024ULL)
@@ -216,18 +218,21 @@ void jrStats::handleObsFrontendEvent(enum obs_frontend_event event) {
 	switch ((int)event) {
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		RecordingStarts();
+		resetStats();
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
 		RecordingStops();
 		break;
 	case OBS_FRONTEND_EVENT_STREAMING_STARTED:
 		StreamingStarts();
+		resetStats();
 		break;
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
 		StreamingStops();
 		break;
 	case OBS_FRONTEND_EVENT_BROADCAST_STARTED:
 		BroadcastStarts();
+		resetStats();
 		break;
 	case OBS_FRONTEND_EVENT_SCENE_CHANGED:
 //		onSceneChange();
@@ -642,8 +647,8 @@ void jrStats::buildUi() {
 	buildUiInfoLayout(infoLayout, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel_DateTime);
 
 	// streaming and recording stats
-	buildUiAddOutputLabels(outLayoutStream, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel);
-	buildUiAddOutputLabels(outLayoutRecord, QTStr("Recording"), fontSizeMultTypeLabel, fontSizeMultLabel);
+	buildUiAddOutputLabels(outLayoutStream, QTStr("Streaming"), fontSizeMultTypeLabel, fontSizeMultLabel, true);
+	buildUiAddOutputLabels(outLayoutRecord, QTStr("Recording"), fontSizeMultTypeLabel, fontSizeMultLabel, false);
 
 	addLineSeparatorToLayout(mainLayout, linePaddingTop, linePaddingBot);
 
@@ -734,14 +739,17 @@ void jrStats::buildUi() {
 
 
 
-void jrStats::buildUiAddOutputLabels(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel)
+void jrStats::buildUiAddOutputLabels(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel, bool flagShowDropped)
 {
 	OutputLabels ol;
 	//ol.name = new QLabel(name, this);
 	ol.name = NULL;
 	//
 	ol.status = new QLabel(this);
-	ol.droppedFrames = new QLabel(this);
+
+	if (flagShowDropped) {
+		ol.droppedFrames = new QLabel(this);
+	}
 	ol.megabytesSent = new QLabel(this);
 	ol.bitrate = new QLabel(this);
 	ol.runTime = new QLabel(this);
@@ -786,7 +794,12 @@ void jrStats::buildUiAddOutputLabels(QGridLayout* layout, QString name, float fo
 	newStatBare(layout, name, NULL, 0, 0, true);
 	newStat(layout, "Status", ol.status, 1, 0);
 	newStat(layout, "Time", ol.runTime, 2, 0);
-	newStat(layout, "Dropped", ol.droppedFrames, 3, 0);
+	if (flagShowDropped) {
+		newStat(layout, "Dropped", ol.droppedFrames, 3, 0);
+	}
+	else {
+		//newStat(layout, "", ol.droppedFrames, 3, 0);
+	}
 	newStat(layout, "MbSent", ol.megabytesSent, 4, 0);
 	newStat(layout, "Bitrate", ol.bitrate, 5, 0);
 
@@ -1054,7 +1067,7 @@ void jrStats::Update()
 	uint32_t total_encoded = video_output_get_total_frames(video);
 	uint32_t total_skipped = video_output_get_skipped_frames(video);
 
-	if (total_encoded < first_encoded || total_skipped < first_skipped) {
+	if (resetPending) {
 		first_encoded = total_encoded;
 		first_skipped = total_skipped;
 	}
@@ -1090,7 +1103,7 @@ void jrStats::Update()
 	uint32_t total_rendered = obs_get_total_frames();
 	uint32_t total_lagged = obs_get_lagged_frames();
 
-	if (total_rendered < first_rendered || total_lagged < first_lagged) {
+	if (resetPending) {
 		first_rendered = total_rendered;
 		first_lagged = total_lagged;
 	}
@@ -1150,8 +1163,8 @@ void jrStats::Update()
 	/* recording/streaming stats                   */
 
 	if (true) {
-		outputLabels[0].Update(strOutput, false);
-		outputLabels[1].Update(recOutput, true);
+		outputLabels[0].Update(strOutput, false, resetPending);
+		outputLabels[1].Update(recOutput, true, resetPending);
 		if (obs_output_active(recOutput)) {
 			long double kbps = outputLabels[1].kbps;
 			bitrates.push_back(kbps);
@@ -1166,6 +1179,14 @@ void jrStats::Update()
 	updateOnAirBlockTime(onAirTimeBreak, onAirTimeBreakTypeLabel, onAirBreakLayoutWidget, startTimeOnAirBreak, stopTimeOnAirBreak, isOnBreak, true, 0, 0, "");
 	updateOnAirBlockTime(onAirTimeSession, onAirTimeSessionTypeLabel, onAirSessionLayoutWidget, startTimeOnAirSession, stopTimeOnAirSession, showSession, true, isOnBreak ? -1 : sessionSecsBeforeWarning, isOnBreak ? -1 : sessionSecsBeforeError, isOnBreak ? "warning" : "");
 	updateOnAirBlockTime(onAirTimeGeneric, onAirTimeGenericTypeLabel, onAirGenericLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, isBroadcasting, true, 0, 0, "");
+
+	if (resetPending) {
+		// turn off prolonged reset
+		clock_t nowTime = clock();
+		if (nowTime - resetTime > DefResetKeepZeroSec * CLOCKS_PER_SEC) {
+			resetPending = false;
+		}
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -1237,12 +1258,20 @@ void jrStats::RecordingTimeLeft()
 //---------------------------------------------------------------------------
 void jrStats::Reset()
 {
+	resetTime = clock();
+	resetPending = true;
+	//
 	timer.start();
+	doResetStuff();
+	Update();
+}
 
-	first_encoded = 0xFFFFFFFF;
-	first_skipped = 0xFFFFFFFF;
-	first_rendered = 0xFFFFFFFF;
-	first_lagged = 0xFFFFFFFF;
+
+void jrStats::doResetStuff() {
+	first_encoded = 0;
+	first_skipped = 0;
+	first_rendered = 0;
+	first_lagged = 0;
 
 	OBSOutputAutoRelease strOutput = obs_frontend_get_streaming_output();
 	OBSOutputAutoRelease recOutput = obs_frontend_get_recording_output();
@@ -1272,8 +1301,6 @@ void jrStats::Reset()
 	if (stopTimeBroadcast != 0) {
 		stopTimeBroadcast = startTimeBroadcast = 0;
 	}
-
-	Update();
 }
 //---------------------------------------------------------------------------
 
@@ -1285,7 +1312,7 @@ void jrStats::Reset()
 
 
 //---------------------------------------------------------------------------
-void jrStats::OutputLabels::Update(obs_output_t *output, bool rec)
+void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPending)
 {
 	uint64_t totalBytes = output ? obs_output_get_total_bytes(output) : 0;
 	uint64_t curTime = os_gettime_ns();
@@ -1317,8 +1344,9 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec)
 		themeID = DefJeReconnectErrorThemeId;
 	}
 	else {
-
 		if (rec) {
+			// RECORDING STATS (as opposed to STREAMING stats)
+			// note that we dont seem to show a DROPPED frame count for recording
 			if (active) {
 				str = QTStr("Recording");
 				themeID = "good";
@@ -1353,13 +1381,22 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec)
 	bitrate->setText(QString("%1 kb/s").arg(QString::number(kbps, 'f', 0)));
 
 	if (!rec) {
+		// !rec means STREAMING
+		//
 		int total = output ? obs_output_get_total_frames(output) : 0;
-		int dropped = output ? obs_output_get_frames_dropped(output)
-				     : 0;
+		int dropped = output ? obs_output_get_frames_dropped(output) : 0;
 
-		if (total < first_total || dropped < first_dropped) {
-			first_total = 0;
-			first_dropped = 0;
+		//if (total < first_total || dropped < first_dropped) {
+		if (resetPending) {
+			// shouldt this be first_total=total; first_dropped=dropped;
+			if (false) {
+				first_total = 0;
+				first_dropped = 0;
+			}
+			else {
+				first_total=total;
+				first_dropped=dropped;
+			}
 		}
 
 		total -= first_total;
@@ -1885,6 +1922,16 @@ QString jrStats::MakeMissedFramesText(uint32_t total_lagged, uint32_t total_rend
 				QString::number(total_rendered),
 				QString::number(num, 'f', 1));
 	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrStats::resetStats() {
+	Reset();
 }
 //---------------------------------------------------------------------------
 

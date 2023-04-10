@@ -22,7 +22,7 @@ target_sources(
 		src/pluginRender.cpp
 		src/pluginMainRenderHook.cpp
 		src/jrScreenFlip_options.cpp
-		src/jrScreenFlip.hpp
+		src/jrScreenFlip_options.hpp
 		../jrcommon/src/jrhelpers.cpp
 		../jrcommon/src/jrhelpers.hpp
 		../jrcommon/src/jrqthelpers.cpp

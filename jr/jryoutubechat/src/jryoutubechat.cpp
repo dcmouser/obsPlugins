@@ -403,14 +403,18 @@ void JrYouTubeChat::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 		gotoLastMessage();
 	}
 	else if (id == hotkeyId_voteStart) {
+		userDoesActionStopAutoTimer();
 		voteStartNew();
 	} else if (id == hotkeyId_voteStop) {
 		voteStop();
 	} else if (id == hotkeyId_voteRestart) {
+		userDoesActionStopAutoTimer();
 		voteReopen(true);
 	} else if (id == hotkeyId_voteReopen) {
+		userDoesActionStopAutoTimer();
 		voteReopen(false);
 	} else if (id == hotkeyId_voteGolast) {
+		userDoesActionStopAutoTimer();
 		voteGotoLastOrCurrent();
 	}
 
@@ -1887,14 +1891,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
 		// handle callback
 		ytp->checkSelectedItemStillGood();
 		ytp->requestWsSelectedMessageInfoEvent(response_data, ytp->selectedListItem, ytp->getSelectedIndex(), false, false);
@@ -1910,14 +1906,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb event_request_cb_JrYtListGet.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
 		// handle callback
 		ytp->requestWsAllMessagesInListEvent(response_data);
 	};
@@ -1931,14 +1919,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtMessageSelect.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
 		// handle callback
 		ytp->requestWsHandleMessageSelectedByClient(request_data, response_data);
 	};
@@ -1953,14 +1933,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtCommand.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
 		// handle callback
 		ytp->requestWsHandleCommandByClient(request_data, response_data);
 	};
@@ -1975,14 +1947,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtGetState.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
 		// handle callback
 		ytp->requestWsHandleGetState(request_data, response_data);
 	};
@@ -1996,15 +1960,6 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 					void *thisptr) {
 		//mydebug("IN cb JrYtMsgStarState.");
 		JrYouTubeChat* ytp = static_cast<JrYouTubeChat*>(thisptr);
-		/*
-		const char *event_name = obs_data_get_string(request_data, "event_name");
-		if (!event_name)
-			return;
-		OBSDataAutoRelease event_data = obs_data_get_obj(request_data, "event_data");
-		const char *event_data_string = event_data ? obs_data_get_json(event_data) : "{}";
-		obs_data_release(event_data);
-		*/
-		// handle callback
 		ytp->requestWsModifyStarState(request_data, response_data);
 	};
 	//
@@ -2018,7 +1973,9 @@ void JrYouTubeChat::wsSetupWebsocketStuff() {
 
 void JrYouTubeChat::wsShutdownWebsocketStuff() {
 	if (vendor) {
-		obs_websocket_vendor_unregister_request(vendor, "JrYtMessageGet");
+		// concerned about crashing
+		//obs_websocket_vendor_unregister_request(vendor, "JrYtMessageGet");
+		vendor = NULL;
 	}
 }
 
@@ -2441,6 +2398,11 @@ void JrYouTubeChat::onSceneChange() {
 
 	// turning on/off auto feature
 	if (optionEnableAutoAdvanceScenesList) {
+		// but not if a vote is showing and open
+		if (isVoteShowing() && isVoteOpen()) {
+			return;
+		}
+
 		bool inAutoAdvanceScene = currentSceneIsInAutoAdvanceList();
 		if (inAutoAdvanceScene && !shouldTurnOffAutoOnAutoSceneLeave) {
 			// turn it on
@@ -2448,6 +2410,7 @@ void JrYouTubeChat::onSceneChange() {
 		}
 		else if (!inAutoAdvanceScene && shouldTurnOffAutoOnAutoSceneLeave) {
 			// turn it off
+			//
 			turnOffPreviousAutoAdvanceOnSceneLeave();
 		}
 	}
@@ -2527,3 +2490,20 @@ QString JrYouTubeChat::getStatsAll() {
 	return chatStats.getAllUsersAsString();
 }
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+bool JrYouTubeChat::isVoteShowing() {
+	auto listItemp = chatVote.getVoteListItemp();
+	if (listItemp && listItemp == selectedListItem) {
+		return true;
+	}
+	return false;
+}
+
+bool JrYouTubeChat::isVoteOpen() {
+	return chatVote.isOpen();
+}
+//---------------------------------------------------------------------------
+

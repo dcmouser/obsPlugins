@@ -17,6 +17,9 @@ it looks like you are looking off in the other direction.
 #include <string>
 #include <vector>
 
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
 
 
 
@@ -43,6 +46,10 @@ bool obs_module_load(void) {
 }
 
 void obs_module_unload() {
+	if (moduleInstance != NULL) {
+		moduleInstance->onModuleUnload();
+	}
+
 	if (moduleInstanceIsRegisteredAndAutoDeletedByObs) {
 		blog(LOG_INFO, "plugin managed by and should be auto deleted by OBS.");
 		return;
@@ -54,6 +61,14 @@ void obs_module_unload() {
 		moduleInstance = NULL;
 	}
 	blog(LOG_INFO, "plugin unloaded");
+}
+
+
+void obs_module_post_load() {
+	//blog(LOG_INFO, "plugin in onModulePostLoad");
+	if (moduleInstance != NULL) {
+		moduleInstance->onModulePostLoad();
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -79,9 +94,15 @@ jrScreenFlip::~jrScreenFlip() {
 //---------------------------------------------------------------------------
 
 
+//---------------------------------------------------------------------------
+void jrScreenFlip::onModulePostLoad() {
+	setupWebsocketStuff();
+}
 
-
-
+void jrScreenFlip::onModuleUnload() {
+	shutdownWebsocketStuff();
+}
+//---------------------------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
@@ -91,9 +112,10 @@ void jrScreenFlip::registerCallbacksAndHotkeys() {
 
 	// hotkeys
 	registerHotkey(ObsHotkeyCallback, this, "toggleEnable", hotkeyId_toggleEnable, "Toggle flip enable");
-	//
+
 	// register main render callback
 	registerMainRenderHook();
+
 }
 
 void jrScreenFlip::unregisterCallbacksAndHotkeys() {
@@ -193,6 +215,8 @@ void jrScreenFlip::deInitialize() {
 		obs_leave_graphics();
 	}
 
+	shutdownWebsocketStuff();
+
 	// base class stuff
 	finalShutdown();
 }
@@ -221,6 +245,7 @@ void jrScreenFlip::saveStuff(obs_data_t *settings) {
 	saveHotkey(settings, "toggleEnable", hotkeyId_toggleEnable);
 	obs_data_set_string(settings, "entryFilterString", opt_entryFilterString.c_str());
 	obs_data_set_bool(settings, "enabled", opt_enabled);
+	obs_data_set_bool(settings, "disableIfDsk", opt_disableIfDsk);
 	obs_data_set_bool(settings, "onlyDuringStreamRec", opt_onlyDuringStreamRec);
 }
 
@@ -235,6 +260,7 @@ void jrScreenFlip::loadStuff(obs_data_t *settings) {
 	}
 	//
 	opt_enabled = obs_data_get_bool(settings, "enabled");
+	opt_disableIfDsk = obs_data_get_bool(settings, "disableIfDsk");
 	opt_onlyDuringStreamRec = obs_data_get_bool(settings, "onlyDuringStreamRec");
 
 	// parse breaklines
@@ -256,6 +282,7 @@ void jrScreenFlip::setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialo
 
 void jrScreenFlip::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 	optionDialog->setOptionEnabled(opt_enabled);
+	optionDialog->setOptionDisableIfDsk(opt_disableIfDsk);
 	optionDialog->setOptionOnlyStreamingrecording(opt_onlyDuringStreamRec);
 	optionDialog->setOptionSceneFilterNewlined(opt_entryFilterString);
 }
@@ -372,14 +399,29 @@ void jrScreenFlip::calcSettingsForScene(obs_source_t* source) {
 		sceneSettingSplitPosition = 0;
 	}
 	else {
-		if (sceneEntry->splitPosIsAbsolute) {
-			// specified as absolute position; scale it by width
-			sceneSettingSplitPosition = sceneEntry->splitPos / (float)sourceWidth;
-			if (sceneSettingSplitPosition < 0.0 || sceneSettingSplitPosition > 1.0f) {
-				sceneSettingSplitPosition = 0.0f;
+		// there is a split position set, but before we continue we need to check if DSK turns us off
+		bool isDisabledForDsk = false;
+		if (opt_disableIfDsk) {
+			// check if dsk is on
+			if (isDskOn()) {
+				isDisabledForDsk = true;
 			}
-		} else {
-			sceneSettingSplitPosition = sceneEntry->splitPos;
+		}
+		if (!isDisabledForDsk) {
+			// absolute or percentage split?
+			if (sceneEntry->splitPosIsAbsolute) {
+				// specified as absolute position; scale it by width
+				sceneSettingSplitPosition = sceneEntry->splitPos / (float)sourceWidth;
+				if (sceneSettingSplitPosition < 0.0 || sceneSettingSplitPosition > 1.0f) {
+					sceneSettingSplitPosition = 0.0f;
+				}
+			}
+			else {
+				sceneSettingSplitPosition = sceneEntry->splitPos;
+			}
+		}
+		else {
+			sceneSettingSplitPosition = 0;
 		}
 	}
 	if (sceneSettingSplitPosition > 0) {
@@ -388,7 +430,7 @@ void jrScreenFlip::calcSettingsForScene(obs_source_t* source) {
 
 	// we have good clear flag so we can reuse cache next time
 	lastSplitSource = source;
-	dirtyConfigData = false;
+	setDirtyConfigData(false);
 }
 
 
@@ -409,7 +451,7 @@ SplitSceneEntry* jrScreenFlip::lookupSceneEntryByName(const char* sceneName) {
 
 
 //---------------------------------------------------------------------------
-bool jrScreenFlip::parseFilterSettings(const char *filterCharp) {
+bool jrScreenFlip::parseFilterSettings(const char* filterCharp) {
 	sceneEntryCount = 0;
 
 	char settingsBuf[DefMaxSceneEntryLen];
@@ -458,3 +500,100 @@ bool jrScreenFlip::parseFilterSettings(const char *filterCharp) {
 
 
 
+
+//---------------------------------------------------------------------------
+bool jrScreenFlip::isDskOn() {
+	// just return cached dsk state
+	return dskIsOn;
+}
+
+
+void jrScreenFlip::dskStateUpdate(bool val) {
+	// called by downstream keyer websocket call
+	if (val != dskIsOn) {
+		//mydebug("Setting dsk state internal val to %d.", (int)val);
+		dskIsOn = val;
+		// set flag to make sure we recheck scenes for split locations, etc.,
+		setDirtyConfigData(true);
+	}
+}
+
+
+void jrScreenFlip::setupWebsocketStuff() {
+	// it will look somethjing like this
+	vendor = obs_websocket_register_vendor("jrScreenFlip");
+	if (!vendor) {
+		warn("Failed to register websockets vendor.");
+		return;
+	}
+
+	//mydebug("Registering event_request_cb_JrReceiveVendorBroadcastEvent.");
+
+	// register special request to receive event broadcasts from other vendors
+	auto event_request_cb_JrReceiveVendorBroadcastEvent = [](obs_data_t* request_data, obs_data_t* response_data, void* thisptr) {
+		//mydebug("IN cb event_request_cb_JrReceiveVendorBroadcastEvent.");
+		jrScreenFlip* thisp = static_cast<jrScreenFlip*>(thisptr);
+		thisp->handleWsVenderBroadcastEmit(request_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "ReceiveVendorBroadcastEvent", event_request_cb_JrReceiveVendorBroadcastEvent, this)) {
+		warn("Failed to register obs - websocket request ReceiveVendorBroadcastEvent");
+	}
+	
+}
+
+
+void jrScreenFlip::shutdownWebsocketStuff() {
+	// ATTN: THIS IS CRASHING OBS -- not sure why dont have life to deal with it now
+	if (vendor) {
+		// concerned about crashing
+		//obs_websocket_vendor_unregister_request(vendor, "ReceiveVendorBroadcastEvent");
+		vendor = NULL;
+	}
+}
+
+
+void jrScreenFlip::handleWsVenderBroadcastEmit(obs_data_t* request_data) {
+	// ok now we are looking for events from downstream keyer
+	// these data look like:
+	//{
+	//eventData:
+	//	{dsk_channel: 7, dsk_name : 'DSK 1', new_scene : 'DSK - Big Text', old_scene : 'DSK - Count Down'},
+	//eventType: "dsk_scene_changed",	
+	//vendorName : "downstream-keyer"
+	//}
+
+	const char* jsonstr = obs_data_get_json(request_data);
+	//mydebug("handleWsVenderBroadcastEmit with json requestdata: %s.", jsonstr);
+
+	const char* vendorName = obs_data_get_string(request_data, "vendorName");
+	//mydebug("IN cb event_request_cb_JrReceiveVendorBroadcastEvent event vendor = %s.", vendorName);
+	if (strcmp(vendorName, "downstream-keyer") == 0) {
+		// ok its from downstream keyer, so far so good
+		const char* eventType = obs_data_get_string(request_data, "eventType");
+		if (strcmp(eventType, "dsk_scene_changed") == 0) {
+			// its the event we want
+			//mydebug("IN cb event_request_cb_JrReceiveVendorBroadcastEvent event type = %s.", eventType);
+			// now we need eventData parsed as object (then released)
+			obs_data_t* event_data = obs_data_get_obj(request_data, "eventData");
+			const char* new_scene = obs_data_get_string(event_data, "new_scene");
+			//mydebug("IN cb event_request_cb_JrReceiveVendorBroadcastEvent new_scene = %s.", new_scene);
+			bool newDskIsOn = false;
+			if (strcmp(new_scene, "") == 0) {
+				newDskIsOn = false;
+			}
+			else {
+				newDskIsOn = true;
+			}
+			// ATTN: NOTE THAT this code is imperfect -- if the user has MULTIPLE downstream keyers that go on or off, this will confuse it
+			// in such a case you would want an associative map indexed by the keyer and only turn off if ALL keyers are off
+			// dsk state has changed from on to off or vice versa
+			if (newDskIsOn != dskIsOn) {
+				dskStateUpdate(newDskIsOn);
+			}
+			// release extracted obj
+			obs_data_release(event_data);
+		}
+	}
+}
+//---------------------------------------------------------------------------

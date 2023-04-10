@@ -1,0 +1,132 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float border_src_minx;
+uniform float border_src_miny;
+uniform float border_src_maxx;
+uniform float border_src_maxy;
+uniform float4 border_color;
+
+uniform float2 mulVal;
+uniform float2 addVal;
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+sampler_state textureSampler {
+	//Filter    = Linear;
+	Filter    = Bicubic;
+	AddressU  = Border;
+	AddressV  = Border;
+	BorderColor = 00000000;
+};
+
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+VertData VSDraw(VertData v_in)
+{
+	VertData vert_out;
+
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = (v_in.uv * mulVal) + addVal;
+
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSDraw(VertData v_in) : TARGET
+{
+	if (v_in.uv.x < border_src_minx || v_in.uv.x > border_src_maxx || v_in.uv.y < border_src_miny || v_in.uv.y > border_src_maxy) {
+		//clip(-1);
+		// can we return anyhing here if we clip(-1)?
+		return border_color;
+		}
+
+	float2 vertpos = v_in.uv;
+	return image.Sample(textureSampler, vertpos);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDraw(v_in);
+		pixel_shader  = PSDraw(v_in);
+	}
+}
+//---------------------------------------------------------------------------

@@ -18,6 +18,12 @@
 #include <QGridLayout>
 #include <QScreen>
 
+#include <QProcess>
+#include <QDesktopServices>
+
+#include <windows.h>
+#include <shellapi.h>
+
 void addSpacerToLayout(QLayout* layout);
 void addLineSeparatorToLayout(QLayout* layout, int paddingTop, int paddingBot);
 
@@ -31,3 +37,5 @@ QString sanitizeMessageString(const QString& str);
 
 void showModalQtDialog(const QString& title, const QString& msg);
 void showModalQtDialogError(const QString& msg);
+
+qint64 qtHelpLaunchCommandline(const QString &str, bool optionStartMinimized);

@@ -31,6 +31,7 @@ class OptionsDialog : public JrPluginOptionsDialog {
 	jrScreenFlip* pluginp = NULL;
 	QGridLayout *mainLayout;
 	QCheckBox* checkbox_enable;
+	QCheckBox* checkbox_disableIfDsk;
 	QCheckBox* checkbox_onlyStreamingrecording;
 	QTextEdit* textEdit_sceneFilter;
 public:
@@ -40,7 +41,8 @@ public:
 	virtual void onClickApply();
 	virtual void buildUi();
 public:
-	void setOptionEnabled(bool val);
-	void setOptionOnlyStreamingrecording(bool val);
-	void setOptionSceneFilterNewlined(std::string str);
+	void setOptionEnabled(bool val) {checkbox_enable->setCheckState(val ? Qt::Checked : Qt::Unchecked);}
+	void setOptionDisableIfDsk (bool val) {checkbox_disableIfDsk->setCheckState(val ? Qt::Checked : Qt::Unchecked);}
+	void setOptionOnlyStreamingrecording(bool val) {checkbox_onlyStreamingrecording->setCheckState(val ? Qt::Checked : Qt::Unchecked);}
+	void setOptionSceneFilterNewlined(std::string str) {textEdit_sceneFilter->setPlainText(str.c_str());}
 };

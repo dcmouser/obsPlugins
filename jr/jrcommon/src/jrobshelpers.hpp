@@ -12,7 +12,7 @@
 #include <graphics/vec2.h>
 #include <graphics/vec4.h>
 
-
+#include <../obs-frontend-api/obs-frontend-api.h>
 
 
 
@@ -29,7 +29,7 @@ extern int jrSourceCalculateHeight(obs_source_t* src);
 
 
 //---------------------------------------------------------------------------
-enum jrBlendClearMode {jrBlendClearOverwite, jrBlendClearMerge, jrBlendOverwriteMerge, jrBlendDebugOverlay, jrBlendPassthroughMerge};
+enum jrBlendClearMode {jrBlendClearOverwite, jrBlendClearMerge, jrBlendOverwriteMerge, jrBlendDebugOverlay, jrBlendPassthroughMerge, jrBlendSrcAlphaMerge};
 //---------------------------------------------------------------------------
 
 
@@ -115,8 +115,10 @@ extern "C" {
 void jrazUint32ToRgbVec(uint32_t color, struct vec3& clvec);
 void jrazUint32ToHsvVec(uint32_t color, struct vec3& clvec);
 void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec);
+void jrazUint32ToRgba1Vec(uint32_t color, struct vec4& clvec);
 void RGBtoHSV(float& fR, float& fG, float fB, float& fH, float& fS, float& fV);
 void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float alpha);
+unsigned char MyGetAValue(uint32_t color);
 //---------------------------------------------------------------------------
 
 
@@ -125,3 +127,30 @@ void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float a
 enum JrForceSourceStateEnum {JrForceSourceStateVisible, JrForceSourceStateHidden, JrForceSourceStateToggle};
 void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, JrForceSourceStateEnum forceState);
 //---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void fixAudioMonitoringInObsSource(OBSSource itemSource);
+void refreshBrowserSource(OBSSource itemSource);
+void restartMediaSource(OBSSource itemSource);
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+// templated function to help with callbacks; we don't really use different type T but its a good way to avoid knowing function signature
+typedef bool(*SceneEnumCbType)(obs_scene_t* , obs_sceneitem_t* , void* );
+void doRunObsCallbackOnScene(obs_scene_t* scene, SceneEnumCbType cb, void* datap, bool flagRecurseScenes);
+void doRunObsCallbackOnScenes(bool flagAllScenes, SceneEnumCbType cb, void* datap, bool flagUsePreviewSceneInStudioMode, bool flagRecurseScenes);
+struct ProxyDataPackT {
+	void* childdatap;
+	SceneEnumCbType childcb;
+	obs_scene_t* scene;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+

@@ -325,6 +325,8 @@ public:
 	void voteUpdateResults(bool pushChanges);
 	void voteGotoLastOrCurrent();
 	void initializeVoteWithRecentTalkers();
+	bool isVoteShowing();
+	bool isVoteOpen();
 public:
 	void updateVoteItemWithTextAndLabel(QListWidgetItem* itemp, QString htmlResults, QString plainResults, int rowcount, int maxrowwidth, bool isOpen);
 	void pushChangeToItem(QListWidgetItem* item);

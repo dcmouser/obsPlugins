@@ -116,7 +116,7 @@ protected:
 		int first_total = 0;
 		int first_dropped = 0;
 
-		void Update(obs_output_t *output, bool rec);
+		void Update(obs_output_t *output, bool rec, bool resetPending);
 		void Reset(obs_output_t *output);
 
 		long double kbps = 0.0l;
@@ -133,6 +133,9 @@ protected:
 	clock_t stopTimeOnAirSession = 0;
 	clock_t startTimeOnAirGeneric = 0;
 	clock_t stopTimeOnAirGeneric = 0;
+	//
+	clock_t resetTime = 0;
+	bool resetPending = true;
 protected:
 	size_t hotkeyId_triggerStatsReset = -1;
 
@@ -159,7 +162,7 @@ protected:
 
 protected:
 	void buildUi();
-	void buildUiAddOutputLabels(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel);
+	void buildUiAddOutputLabels(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel, bool flagShowDropped);
 	void buildUiInfoLayout(QGridLayout* layout, QString name, float fontSizeMultTypeLabel, float fontSizeMultLabel);
 protected:
 	void Update();
@@ -204,7 +207,7 @@ private slots:
 	void RecordingTimeLeft();
 public slots:
 	void Reset();
-
+	void doResetStuff();
 protected:
 	virtual const char* getPluginName() { return PLUGIN_NAME; };
 	virtual const char* getPluginLabel() { return PLUGIN_LABEL; };
@@ -230,6 +233,8 @@ public:
 protected:
 	QString MakeTimeLeftText(int hours, int minutes);
 	QString MakeMissedFramesText(uint32_t total_lagged, uint32_t total_rendered, long double num);
+public:
+	void resetStats();
 };
 //---------------------------------------------------------------------------
 

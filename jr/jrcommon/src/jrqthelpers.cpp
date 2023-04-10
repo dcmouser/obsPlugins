@@ -113,3 +113,40 @@ void showModalQtDialogError(const QString& msg) {
 	showModalQtDialog(QString("ERROR"), msg);
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+qint64 qtHelpLaunchCommandline(const QString &str, bool optionStartMinimized) {
+	QProcess process;
+	qint64 pid = 0;
+
+
+	QString comlineq = str;
+	QStringList argumentsList =  QProcess::splitCommand(comlineq);
+	if (argumentsList.count() < 1) {
+		//mydebug("No arguments found in commandline command, not launching.");
+		return pid;
+	}
+	QString program = argumentsList.takeFirst();
+
+	process.setCreateProcessArgumentsModifier(
+			[optionStartMinimized](QProcess::CreateProcessArguments* args) {
+				args->flags |= CREATE_NEW_CONSOLE;
+				args->startupInfo->dwFlags &= ~STARTF_USESTDHANDLES;
+				if (optionStartMinimized) {
+					args->startupInfo->wShowWindow |= SW_SHOWMINIMIZED;
+					args->startupInfo->dwFlags |= STARTF_USESHOWWINDOW;
+				}
+			});
+
+	process.setProgram(program);
+	process.setArguments(argumentsList);
+	//
+	process.startDetached(&pid);
+
+	return pid;
+}
+//---------------------------------------------------------------------------

@@ -30,10 +30,16 @@ class OptionsDialog : public JrPluginOptionsDialog {
 	//Q_OBJECT
 	JrCft* pluginp = NULL;
 	QGridLayout *mainLayout;
+	//
+	QLineEdit* editStartRecStrCommandline;
+	QCheckBox* checkboxRestartMediaOnStart;
 public:
 	OptionsDialog(QMainWindow *parent, JrCft* inpluginp);
 	~OptionsDialog();
 public:
 	virtual void onClickApply();
 	virtual void buildUi();
+public:
+	void setOptionStartRecStrCommandline(QString str) {editStartRecStrCommandline->setText(str);}
+	void setOptionRestartMediaOnStart(bool val) { checkboxRestartMediaOnStart->setCheckState(val ? Qt::Checked : Qt::Unchecked); };
 };

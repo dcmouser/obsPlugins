@@ -65,6 +65,15 @@ void OptionsDialog::buildUi() {
 	textEdit_sceneFilter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 	textEdit_sceneFilter->setAcceptRichText(false);
 	++idx;
+
+	//
+	label = new QLabel(obs_module_text("Disable if DSK"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	checkbox_disableIfDsk = new QCheckBox;
+	mainLayout->addWidget(checkbox_disableIfDsk, idx, 1, Qt::AlignLeft);
+	++idx;
+
+
 	//
 	mainLayout->setColumnStretch(1, 1);
 
@@ -100,24 +109,13 @@ void OptionsDialog::buildUi() {
 
 
 
-//---------------------------------------------------------------------------
-void OptionsDialog::setOptionEnabled(bool val) {
-	checkbox_enable->setCheckState(val ? Qt::Checked : Qt::Unchecked);
-}
 
-void OptionsDialog::setOptionOnlyStreamingrecording(bool val) {
-	checkbox_onlyStreamingrecording->setCheckState(val ? Qt::Checked : Qt::Unchecked);
-}
-
-void OptionsDialog::setOptionSceneFilterNewlined(std::string str) {
-	textEdit_sceneFilter->setPlainText(str.c_str());
-}
-//---------------------------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
 void OptionsDialog::onClickApply() {
 	pluginp->setOptionEnabled(checkbox_enable->checkState() == Qt::Checked);
+	pluginp->setOptionDisableIfDsk(checkbox_disableIfDsk->checkState() == Qt::Checked);
 	pluginp->setOptionOnlyStreamingrecording(checkbox_onlyStreamingrecording->checkState() == Qt::Checked);
 	pluginp->setOptionSceneFilterNewlined(textEdit_sceneFilter->toPlainText().toStdString());
 	pluginp->optionsFinishedChanging();

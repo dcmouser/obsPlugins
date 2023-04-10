@@ -42,6 +42,7 @@ void OptionsDialog::buildUi() {
 
 	// main layout of controls
 	mainLayout = new QGridLayout;
+	QLabel* label;
 
 	//
 	mainLayout->setColumnStretch(1, 1);
@@ -49,6 +50,24 @@ void OptionsDialog::buildUi() {
 	// entire layout
 	QVBoxLayout* vlayout = new QVBoxLayout;
 	vlayout->addLayout(mainLayout);
+
+
+	if (true) {
+		label = new QLabel(obs_module_text("Restart media on Streaming/Recording/Broadcasting start?"));
+		mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+		checkboxRestartMediaOnStart = new QCheckBox;
+		mainLayout->addWidget(checkboxRestartMediaOnStart, idx, 1, Qt::AlignLeft);
+		++idx;
+
+		label = new QLabel(obs_module_text("Commandline to run on Streaming/Recording/Broadcasting start"));
+		mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+		++idx;
+		editStartRecStrCommandline = new QLineEdit;
+		mainLayout->addWidget(editStartRecStrCommandline, idx, 0, 1, 2 );
+		editStartRecStrCommandline->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+		++idx;
+	}
+
 
 	if (true) {
 		// button row
@@ -86,6 +105,8 @@ void OptionsDialog::buildUi() {
 //---------------------------------------------------------------------------
 void OptionsDialog::onClickApply() {
 	//
+	pluginp->setOptionStartRecStrCommandline(editStartRecStrCommandline->text());
+	pluginp->setOptionRestartMediaOnStart(checkboxRestartMediaOnStart->checkState() == Qt::Checked);
 	pluginp->optionsFinishedChanging();
 }
 //---------------------------------------------------------------------------

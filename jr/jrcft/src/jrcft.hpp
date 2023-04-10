@@ -31,7 +31,9 @@
 #define blog(level, msg, ...) blog(level, "[" PLUGIN_NAME "] " msg, ##__VA_ARGS__)
 //---------------------------------------------------------------------------
 
-
+//---------------------------------------------------------------------------
+#define DefMinimumTimeBetweenStartCommandlineRunSecs 5
+//---------------------------------------------------------------------------
 
 
 
@@ -61,6 +63,10 @@ protected:
 	obs_websocket_vendor vendor = NULL;
 protected:
 	size_t hotkeyId_trigger = -1;
+protected:
+	QString startRecStrCommandline;
+	bool restartMediaOnStart = true;
+	clock_t lastTimeRunCommandline = 0;
 public:
 	void destructStuff();
 public:
@@ -100,17 +106,22 @@ protected:
 protected:
 	void wsSetupWebsocketStuff();
 	void wsShutdownWebsocketStuff();
-	void requestWsSelectedMessageInfoEvent(obs_data_t *response_data, QListWidgetItem* itemp, int index, bool forInternalUse, bool messageChanged);
-	void requestWsAllMessagesInListEvent(obs_data_t *response_data);
-	void requestWsHandleMessageSelectedByClient(obs_data_t *request_data, obs_data_t* response_data);
-	void requestWsHandleCommandByClient(obs_data_t *request_data, obs_data_t* response_data);
+	void requestWsHandleCommandByClient(obs_data_t* request_data, obs_data_t* response_data);
 public:
 	virtual void onModulePostLoad();
 	virtual void onModuleUnload();
 public:
+	void setOptionStartRecStrCommandline(QString str) { startRecStrCommandline = str; };
+	void setOptionRestartMediaOnStart(bool val) { restartMediaOnStart = val; };
 	virtual void optionsFinishedChanging();
 public:
 	void testHotkeyTriggerAction();
+public:
+	void fixAudioMonitoringInScenes(bool flagAllScenes);
+	void refreshBrowserSourcesInScenes(bool flagAllScenes);
+	void restartMediaSourcesInScenes(bool flagAllScenes);
+protected:
+	void doOnStrRecStartStuff(enum obs_frontend_event event);
 };
 //---------------------------------------------------------------------------
 

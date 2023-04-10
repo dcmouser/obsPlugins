@@ -30,30 +30,14 @@ protected:
 	void saveSettings();
 	void loadSettings();
 	void createSettingsDir();
-
-
-// ATTN: for SOURCES, which we are not
-/*
-public:
-	// obs pointer should be initialized on creation of a source item
-	obs_source_t *context = NULL;
-public:
-	const char* getPluginIdCharp() { return obs_source_get_id(context); }
-	// note sure if this is right way to get the source represented by this plugin
-	obs_source_t* getThisPluginContextSource() { return context; }
-	obs_source_t* getThisPluginParentSource() { return obs_filter_get_parent(context); }
-	obs_source_t* getThisPluginTargetSource() { return obs_filter_get_target(context); }
-	bool getIsPluginTypeFilter() { return (obs_source_get_type(context) == OBS_SOURCE_TYPE_FILTER); }
-*/
-
 protected:
 	virtual const char* getPluginName() { return "getPluginName"; };
 	virtual const char* getPluginLabel() { return "getPluginLabel"; };
 	virtual const char* getPluginConfigFileName() { return "getPluginConfigFileName"; };
 	virtual const char* getPluginOptionsLabel() { return "getPluginOptionsLabel"; };
 public:
-	virtual void registerCallbacksAndHotkeys() =0; // these MUST be overridden
-	virtual void unregisterCallbacksAndHotkeys() =0;
+	virtual void registerCallbacksAndHotkeys() {;};
+	virtual void unregisterCallbacksAndHotkeys() {;};
 	//
 	virtual void handleObsFrontendEvent(enum obs_frontend_event event);
 	virtual void handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t* key) { ; };

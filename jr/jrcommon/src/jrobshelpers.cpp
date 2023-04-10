@@ -77,6 +77,8 @@ void jrSetBlendClear(jrBlendClearMode blendClearMode) {
 	} else if (blendClearMode == jrBlendPassthroughMerge) {
 		// we want to merge onto another texture
 		gs_blend_function(GS_BLEND_SRCALPHA, GS_BLEND_INVDSTALPHA);
+	} else if (blendClearMode == jrBlendSrcAlphaMerge) {
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 	} else {
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 	}
@@ -138,10 +140,8 @@ void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *te
 		gs_matrix_scale3f((float)outWidth / (float)sourceWidth, (float)outHeight / (float)sourceHeight, 0);
 	}
 
-
 	// RENDER THE SOURCE
 	obs_source_video_render(source);
-
 
 	// restore state and finalize texture
 	JrRenderTextureRenderEnd(tex);
@@ -192,12 +192,12 @@ void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect
 	// specify the image texture to use when running this effect
 	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 	if (!image) {
-		//mydebug("ERROR jrRenderEffectIntoTexture null image!!");
+		mydebug("ERROR jrRenderEffectIntoTexture null image!!");
 	}
 	if (inputTex && !obsInputTex) {
 		obsInputTex = gs_texrender_get_texture(inputTex);
 		if (!obsInputTex) {
-			//mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
+			mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
 		}
 	}
 	if (obsInputTex) {
@@ -543,6 +543,9 @@ void property_list_add_sources(obs_property_t *prop, obs_source_t *self)
   
 */
 
+
+unsigned char MyGetAValue(uint32_t color) { return (color & 0xFF000000) >> 24; };
+
 void jrazUint32ToRgbVec(uint32_t color, struct vec3 &clvec) {
 	BYTE red = GetRValue(color);
 	BYTE green = GetGValue(color);
@@ -555,6 +558,19 @@ void jrazUint32ToRgbVec(uint32_t color, struct vec3 &clvec) {
 }
 
 void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec) {
+	BYTE red = GetRValue(color);
+	BYTE green = GetGValue(color);
+	BYTE blue = GetBValue(color);
+	BYTE alpha = MyGetAValue(color);
+
+	// convert rgb to hsv
+	clvec.x = (float)red / 255.0f;
+	clvec.y = (float)green / 255.0f;
+	clvec.z = (float)blue / 255.0f;
+	clvec.w = (float)alpha / 255.0f;
+}
+
+void jrazUint32ToRgbaaVec(uint32_t color, struct vec4& clvec) {
 	BYTE red = GetRValue(color);
 	BYTE green = GetGValue(color);
 	BYTE blue = GetBValue(color);
@@ -658,10 +674,12 @@ void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, 
 		SouceVisibilityChangeDataT* forceStructp = reinterpret_cast<SouceVisibilityChangeDataT*>(param);
 		OBSSource itemSource = obs_sceneitem_get_source(sceneItem);
 		auto sourceName = obs_source_get_name(itemSource);
+		//mydebug("in setSourceVisiblityByName compareing source '%s' vs '%s'", sourceName,forceStructp->targetSourceName);
 		//auto sourceType = obs_source_get_type(itemSource);
 		//auto source_id = obs_source_get_unversioned_id(itemSource);
 		if (strcmp(sourceName, forceStructp->targetSourceName)==0) {
 			// matching source name
+			//mydebug("found source to set vis %s", sourceName);
 			bool visible = false;
 			switch (forceStructp->forceState) {
 				case JrForceSourceStateVisible:
@@ -685,6 +703,7 @@ void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, 
 					break;
 			}
 			// force it
+			//mydebug("found source to set vis %s setting vis to %d.", sourceName, (int)visible);
 			obs_sceneitem_set_visible(sceneItem, visible);
 		}
 		return true;
@@ -697,6 +716,139 @@ void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, 
 	forceStruct.forceState = forceState;
 	forceStruct.targetSourceName = targetSourceName;
 
+	doRunObsCallbackOnScenes(flagAllScenes, cb, &forceStruct, true, !flagAllScenes);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void fixAudioMonitoringInObsSource(OBSSource itemSource) {
+	auto monitoringType = obs_source_get_monitoring_type(itemSource);
+	if (monitoringType == OBS_MONITORING_TYPE_NONE) {
+		return;
+	}
+	// toggle it to reset it and fix it
+	obs_source_set_monitoring_type(itemSource, OBS_MONITORING_TYPE_NONE);
+	obs_source_set_monitoring_type(itemSource, monitoringType);
+
+	// debug
+	//auto sourceName = obs_source_get_name(itemSource);
+	//blog(LOG_WARNING,"In fixAudioMonitoringInObsSource %s.", sourceName);
+}
+
+
+void refreshBrowserSource(OBSSource itemSource) {
+	auto source_id = obs_source_get_unversioned_id(itemSource);
+	if (strcmp(source_id, "browser_source") == 0) {
+		// got a browser source!  to force it to refresh we use this kludge i found in another plugin to oscillate the browser source fps
+		auto settings = obs_source_get_settings(itemSource);
+		auto fps = obs_data_get_int(settings, "fps");
+		if (fps % 2 == 0) {
+			++fps;
+		} else {
+			--fps;
+		}
+		obs_data_set_int(settings, "fps", fps);
+		obs_source_update(itemSource, settings);
+		obs_data_release(settings);
+		// debug
+		//auto sourceName = obs_source_get_name(itemSource);
+		//blog(LOG_WARNING,"In refreshBrowserSourcesInScenes %s.", sourceName);
+	}
+}
+
+
+void restartMediaSource(OBSSource itemSource) {
+	// see https://docs.obsproject.com/reference-sources
+	uint32_t outputFlags = obs_source_get_output_flags(itemSource);
+	if (outputFlags && OBS_SOURCE_CONTROLLABLE_MEDIA == 0) {
+		// not controllable
+		return;
+	}
+	// only restart if playing or ended?
+	obs_media_state curMediaState = obs_source_media_get_state(itemSource);
+	if (curMediaState == OBS_MEDIA_STATE_PLAYING || curMediaState == OBS_MEDIA_STATE_ENDED) {
+		obs_source_media_restart(itemSource);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void doRunObsCallbackOnScene(obs_scene_t* scene, SceneEnumCbType cb, void* datap, bool flagRecurseScenes) {
+	
+	// enumerate items in scene and run callback on them
+	if (!flagRecurseScenes) {
+		// just run original callback on all items in scene, nothing special to do
+		obs_scene_enum_items(scene, cb, datap);
+	}
+	else {
+		// more complicated, we want to loop through child SceneItems, but if we find a scene, we go inside that (instead of OR IN ADDITION TO) calling callback on it
+		auto cbOuter = [](obs_scene_t* parentScene, obs_sceneitem_t* sceneItem, void* param) {
+			// this is invoked on every sceneitem source of the scene
+			// if the sceneitem is itself a scene, we just recursively call ourselves
+			ProxyDataPackT* datapackp = (ProxyDataPackT*)param;
+			OBSSource itemSource = obs_sceneitem_get_source(sceneItem);
+			auto sourceType = obs_source_get_type(itemSource);
+			if (sourceType == OBS_SOURCE_TYPE_SCENE) {
+				bool flagRunOnSceneChildrenThemselvesToo = true;
+				if (flagRunOnSceneChildrenThemselvesToo) {
+					// invoke the original callback on this non-scene child source in ADDITION to recursing into it -- this is the best approach since some cbs want to be told about scenes
+					datapackp->childcb(datapackp->scene, sceneItem, datapackp->childdatap);
+				}
+				// it's a child scene, we want to recurse into it
+				obs_scene_t* childScene = obs_scene_from_source(itemSource);
+				doRunObsCallbackOnScene(childScene, datapackp->childcb, datapackp->childdatap, true);
+			}
+			else {
+				// invoke the original callback on this non-scene child source
+				datapackp->childcb(datapackp->scene, sceneItem, datapackp->childdatap);
+			}
+			return true;
+		};
+		// iterate all child items, calling OUR proxy callback, which will call user callback; proxy takes void* to the stored data to know how to invoke childcb
+		ProxyDataPackT datapack{ 0 };
+		datapack.childdatap = datap;
+		datapack.childcb = cb;
+		datapack.scene = scene;
+		// call enum_scene_items with our outer callback which takes packed data that includes pointer to innercb
+		obs_scene_enum_items(scene, cbOuter, &datapack);
+	}
+}
+
+
+
+
+void doRunObsCallbackOnScenes(bool flagAllScenes, SceneEnumCbType cb, void* datap, bool flagUsePreviewSceneInStudioMode, bool flagRecurseScenes) {
+	// force off recurse scenes if we are already visiting all scenes
+	if (flagAllScenes) {
+		flagRecurseScenes = false;
+	}
+
 	if (flagAllScenes) {
 		// iterate all scenes 
 		obs_frontend_source_list sceneList = {};
@@ -705,27 +857,32 @@ void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, 
 			obs_source_t* sceneSource = sceneList.sources.array[i];
 			obs_scene_t* scene = obs_scene_from_source(sceneSource);
 			if (scene) {
-				// enumerate items in scene
-				obs_scene_enum_items(scene, cb, &forceStruct);
+				doRunObsCallbackOnScene(scene, cb, datap, flagRecurseScenes);
 			}
 		}
 		// free scene list
 		obs_frontend_source_list_free(&sceneList);
 	} else {
-		// just current scene
-		obs_source_t* sceneSource = obs_frontend_get_current_scene();
+		// just current scene (depends whether we are in preview mode?)
+		obs_source_t* sceneSource;
+		if (!flagUsePreviewSceneInStudioMode && !obs_frontend_preview_program_mode_active()) {
+			sceneSource = obs_frontend_get_current_scene();
+		}
+		else {
+			sceneSource = obs_frontend_get_current_preview_scene();
+			if (!sceneSource) {
+				sceneSource = obs_frontend_get_current_scene();
+			}
+		}
+		//
 		obs_scene_t* scene = obs_scene_from_source(sceneSource);
 		if (scene) {
 			// enumerate items in scene
-			obs_scene_enum_items(scene, cb, &forceStruct);
+			doRunObsCallbackOnScene(scene, cb, datap, flagRecurseScenes);
 		}
 		// free scene
 		obs_source_release(sceneSource);
 	}
 }
 //---------------------------------------------------------------------------
-
-
-
-
 

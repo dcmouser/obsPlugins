@@ -64,7 +64,6 @@ bool obs_module_load() {
 }
 
 void obs_module_unload() {
-
 	if (moduleInstance != NULL) {
 		moduleInstance->onModuleUnload();
 	}
@@ -229,6 +228,8 @@ void JrCft::setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialog) {
 
 
 void JrCft::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
+	optionDialog->setOptionRestartMediaOnStart(restartMediaOnStart);
+	optionDialog->setOptionStartRecStrCommandline(startRecStrCommandline);
 }
 //---------------------------------------------------------------------------
 
@@ -242,11 +243,17 @@ void JrCft::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 void JrCft::loadStuff(obs_data_t *settings) {
 	// hotkeys
 	loadHotkey(settings, "trigger", hotkeyId_trigger);
+	//
+	restartMediaOnStart = obs_data_get_bool(settings, "restartMediaOnStart");
+	startRecStrCommandline = obs_data_get_string(settings, "startRecStrCommandline");
 }
 
 void JrCft::saveStuff(obs_data_t *settings) {
 	// hotkeys
 	saveHotkey(settings, "trigger", hotkeyId_trigger);
+	//
+	obs_data_set_bool(settings, "restartMediaOnStart", restartMediaOnStart);
+	obs_data_set_string(settings, "startRecStrCommandline", startRecStrCommandline.toUtf8().constData());
 }
 //---------------------------------------------------------------------------
 
@@ -317,9 +324,20 @@ void JrCft::ObsHotkeyCallback(void *data, obs_hotkey_id id, obs_hotkey_t *key, b
 void JrCft::handleObsFrontendEvent(enum obs_frontend_event event) {
 	switch ((int)event) {
 		// handle broadcast selected
-		case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
-			break;
 		case OBS_FRONTEND_EVENT_STREAMING_STARTED:
+			doOnStrRecStartStuff(event);
+			break;
+		case OBS_FRONTEND_EVENT_RECORDING_STARTED:
+			doOnStrRecStartStuff(event);
+			break;
+		case OBS_FRONTEND_EVENT_BROADCAST_STARTING:
+			// this is triggered before broadcast actually begins -- to give it time to restart media i have patched OBS to add a delay
+			doOnStrRecStartStuff(event);
+			break;
+		case OBS_FRONTEND_EVENT_BROADCAST_STARTED:
+			// do NOT trigger anything here, this event happens AFTER the broadcast begins
+			break;
+		case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
 			break;
 		case OBS_FRONTEND_EVENT_SCENE_CHANGED:
 			break;
@@ -432,6 +450,12 @@ void JrCft::buildUi() {
 	auto* dockWidgetContents = new QWidget;
 	dockWidgetContents->setLayout(mainLayout);
 	setWidget(dockWidgetContents);
+
+	// user iterface elements
+	int idx=0;
+	auto label = new QLabel(obs_module_text("JrCft Dock has no contents to show; see Tools->JrCft Options to configure."));
+	mainLayout->addWidget(label, idx);
+
 
 	// bottom buttons
 	bool optionAlignButtonsBottom = true;
@@ -608,54 +632,12 @@ void JrCft::wsSetupWebsocketStuff() {
 
 void JrCft::wsShutdownWebsocketStuff() {
 	if (vendor) {
-		obs_websocket_vendor_unregister_request(vendor, "JrCftCommand");
+		// concerned about crashing
+		//obs_websocket_vendor_unregister_request(vendor, "JrCftCommand");
+		vendor = NULL;
 	}
 }
 //---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -669,5 +651,22 @@ void JrCft::postStartup() {
 void JrCft::initialShutdown() {
 }
 //---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

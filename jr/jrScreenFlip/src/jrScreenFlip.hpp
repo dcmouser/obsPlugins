@@ -10,7 +10,7 @@
 #include <../obs-app.hpp>
 #include <obs-module.h>
 
-
+#include "../../plugins/obs-websocket/lib/obs-websocket-api.h"
 
 
 
@@ -68,19 +68,23 @@ class jrScreenFlip : jrObsPlugin {
 protected:
 	int sceneEntryCount;
 	SplitSceneEntry sceneEntries[DefMaxSceneEntries];
+protected:
+	obs_websocket_vendor vendor = NULL;
 public:
 	gs_effect_t *effectMain;
 	gs_eparam_t *param_splitPosition;
 	gs_eparam_t *param_mulVal;
 public:
-	bool opt_enabled;
-	bool opt_onlyDuringStreamRec;
+	bool opt_enabled=true;
+	bool opt_disableIfDsk=true;
+	bool opt_onlyDuringStreamRec=true;
 	std::string opt_entryFilterString;
 protected:
 	size_t hotkeyId_toggleEnable = -1;
 protected:
 	bool dirtyConfigData = true;
 	obs_source_t* lastSplitSource = NULL;
+	bool dskIsOn = false;
 public:
 	obs_source_t* renderSource;
 	uint32_t sourceWidth, sourceHeight;
@@ -119,6 +123,9 @@ public:
 	void setDerivedSettingsOnOptionsDialog(OptionsDialog *optionDialog);
 	void forceUpdatePluginSettingsOnOptionChange() {;};
 public:
+	virtual void onModulePostLoad();
+	virtual void onModuleUnload();
+public:
 	bool isEnabled();
 	bool isStreamingOrRecording();
 	float lookupSceneSplitPosition(obs_source_t* source);
@@ -142,6 +149,14 @@ protected:
 public:
 	// receiving callbacks from options dialog
 	void setOptionEnabled(bool val) { opt_enabled = val; };
+	void setOptionDisableIfDsk (bool val) {opt_disableIfDsk = val;}
 	void setOptionOnlyStreamingrecording(bool val)  { opt_onlyDuringStreamRec = val; }
 	void setOptionSceneFilterNewlined(std::string str) { opt_entryFilterString = str;  parseFilterSettings(opt_entryFilterString.c_str()); }
+public:
+	bool isDskOn();
+	void dskStateUpdate(bool val);
+public:
+	void setupWebsocketStuff();
+	void shutdownWebsocketStuff();
+	void handleWsVenderBroadcastEmit(obs_data_t* request_data);
 };
