@@ -46,12 +46,15 @@ struct obs_source_info SingletonSourcePluginInfoJrBorder;
 //
 void JrBorder::gon_pluginModuleSingletonLoadDoRegistration() {
 	// set up the global singleton info for this source filter type
+	//
+	setPluginCallbacks(&SingletonSourcePluginInfoJrBorder);
+	//
 	SingletonSourcePluginInfoJrBorder.id = PLUGIN_NAME_Filter;
 	SingletonSourcePluginInfoJrBorder.type = OBS_SOURCE_TYPE_FILTER;
 	SingletonSourcePluginInfoJrBorder.version = 1;
 	SingletonSourcePluginInfoJrBorder.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW;
+	SingletonSourcePluginInfoJrBorder.icon_type = OBS_ICON_TYPE_COLOR;
 	//
-	setPluginCallbacks(&SingletonSourcePluginInfoJrBorder);
 	obs_register_source(&SingletonSourcePluginInfoJrBorder);
 }
 //---------------------------------------------------------------------------

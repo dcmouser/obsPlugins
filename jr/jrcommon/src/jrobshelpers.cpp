@@ -13,7 +13,9 @@
 //---------------------------------------------------------------------------
 
 
-
+//---------------------------------------------------------------------------
+#define DefJrCustomObsBuild true
+//---------------------------------------------------------------------------
 
 
 
@@ -883,6 +885,55 @@ void doRunObsCallbackOnScenes(bool flagAllScenes, SceneEnumCbType cb, void* data
 		// free scene
 		obs_source_release(sceneSource);
 	}
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+// obs internals
+struct obs_context_data_start {
+	char* name;
+	void* data;
+	// ...
+};
+
+struct obs_source_start {
+	struct obs_context_data_start context;
+	// ...
+};
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+void* jrobsGetVoidPointerToSourceContextDataPluginp(OBSSource &sourcep) {
+	// this function does not exist in original obs code, it's a modification that i have made to my obs source
+	if (DefJrCustomObsBuild) {
+		return obs_get_source_contextData(sourcep);
+	}
+
+	// is there a kludgey way we can get this?
+	// because these are structs we should be able to access memory offsets directly
+	obs_source_t* realsourcerep = obs_source_get_ref(sourcep);
+
+	// see obs-internal.h
+	struct obs_context_data_start* contextp = reinterpret_cast<obs_context_data_start*>(realsourcerep);
+	void* datap = contextp->data;
+
+	// need to release
+	obs_source_release(realsourcerep);
+
+	if (DefJrCustomObsBuild) {
+		// safety check
+		void *datapbackup = obs_get_source_contextData(sourcep);
+		mydebug("Sanity checking kludge memory pointers are %p vs %p.", datap, datapbackup);
+		if (datap != datapbackup) {
+			mydebug("ERROR: mismatch in raw kludge data pointers!!  %p vs %p.", datap, datapbackup);
+		}
+	}
+
+	return datap;
 }
 //---------------------------------------------------------------------------
 

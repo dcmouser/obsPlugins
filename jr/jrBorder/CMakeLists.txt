@@ -16,11 +16,9 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrborde
 target_sources(
 	jrborder
 	PRIVATE
-		src/jrborder_module.cpp
 		src/jrborder.cpp
 		src/jrborder.hpp
 		src/plugininfo.hpp
-		src/pluginRender.cpp
 		../jrcommon/src/jrhelpers.cpp
 		../jrcommon/src/jrhelpers.hpp
 		../jrcommon/src/jrqthelpers.cpp

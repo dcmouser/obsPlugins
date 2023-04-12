@@ -18,6 +18,7 @@ protected:
 	config_t* mainConfig = NULL;
 	bool flagObsIsFullyLoaded = false;
 	bool firstUpdate = true;
+	bool thisIsSingletonRep = false;
 protected:
 	config_t* getMainConfig();
 	config_t* getGlobalConfig();
@@ -36,6 +37,8 @@ protected:
 	virtual const char* getPluginConfigFileName() { return "getPluginConfigFileName"; };
 	virtual const char* getPluginOptionsLabel() { return "getPluginOptionsLabel"; };
 public:
+	void setThisIsSingletonRep(bool val) { thisIsSingletonRep = val; };
+	bool getIsSingletonRep() { return thisIsSingletonRep; };
 	virtual void registerCallbacksAndHotkeys() {;};
 	virtual void unregisterCallbacksAndHotkeys() {;};
 	//

@@ -80,7 +80,6 @@ void setPluginCallbacks(obs_source_info* pluginInfo) {
 	pluginInfo->get_height = plugin_height;
 	pluginInfo->enum_active_sources = plugin_enum_sources;
 	pluginInfo->audio_render = plugin_audio_render;
-	pluginInfo->icon_type = OBS_ICON_TYPE_CAMERA;
 	// this is really used for our internal signaling system
 	pluginInfo->key_click = pluginOnKeyClick;
 	//
@@ -110,6 +109,9 @@ static bool moduleInstanceIsRegisteredAndAutoDeletedByObs = false;
 bool obs_module_load(void) {
 	blog(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 	moduleInstance = new PLUGIN_CLASS();
+	// record that this object is our global singleton helper
+	moduleInstance->setThisIsSingletonRep(true);
+	// register sources etc.
 	moduleInstance->gon_pluginModuleSingletonLoadDoRegistration();
 	return true;
 }
