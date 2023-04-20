@@ -1,0 +1,463 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform texture2d imageBackTex;
+
+// from mask filter
+uniform float2 mul_val;
+uniform float2 add_val;
+// our border generator
+uniform float4 color;
+uniform float colorBlendLerp;
+uniform float colorBlendLerpBack;
+uniform float2 border_mul_val;
+uniform float2 border_add_val;
+uniform float2 pixel_size;
+//
+uniform float4 innerLimits;
+
+
+
+sampler_state textureSampler {
+//	Filter    = Linear;
+//	AddressU  = Clamp;
+//	AddressV  = Clamp;
+	Filter    = Bicubic;
+	AddressU  = Border;
+	AddressV  = Border;
+	BorderColor = 00000000;
+};
+
+
+sampler_state textureSamplerClamp {
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+	Filter    = Linear;
+};
+
+struct VertDataIn {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+struct VertDataOut {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+struct VertDataImposeOut {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+	float2 uv2 : TEXCOORD1;
+};
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float4 doSampleBackgroundTexture(float2 uv)
+{
+	return imageBackTex.Sample(textureSampler, uv);
+}
+
+
+float4 doSampleTextureClamp(float2 uv)
+{
+	return image.Sample(textureSamplerClamp, uv);
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+float3 jrlerp3(float3 backColor, float3 foreColor, float scaleFactor) {
+	if (foreColor.r<.01 && foreColor.g<0.01 && foreColor.b<0.01) {
+		// pure black we dont lerp
+		return backColor;
+	}
+	return lerp(backColor, foreColor, scaleFactor);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float GetChromaDist(float4 rgba)
+{
+	if (rgba.r <= 0.05 && rgba.b < 0.05 && rgba.g > 0.95) { return 0.0; }
+	return 1.0;
+}
+
+float GetBoxFilteredChromaDist(float4 rgba, float2 texCoord)
+{
+	float2 h_pixel_size = pixel_size / 2.0;
+	float2 point_0 = float2(pixel_size.x, h_pixel_size.y);
+	float2 point_1 = float2(h_pixel_size.x, -pixel_size.y);
+	float distVal = GetChromaDist(doSampleTextureClamp(texCoord-point_0));
+	distVal += GetChromaDist(doSampleTextureClamp(texCoord+point_0));
+	distVal += GetChromaDist(doSampleTextureClamp(texCoord-point_1));
+	distVal += GetChromaDist(doSampleTextureClamp(texCoord+point_1));
+	distVal *= 2.0;
+	distVal += GetChromaDist(rgba);
+	return distVal / 9.0;
+}
+
+
+
+
+float GetAlphaDist(float4 rgba)
+{
+	return rgba.a;
+}
+
+float GetBoxFilteredAlphaDist(float4 rgba, float2 texCoord)
+{
+	float2 h_pixel_size = pixel_size / 2.0;
+	float2 point_0 = float2(pixel_size.x, h_pixel_size.y);
+	float2 point_1 = float2(h_pixel_size.x, -pixel_size.y);
+	float distVal = GetAlphaDist(doSampleTextureClamp(texCoord-point_0));
+	distVal += GetAlphaDist(doSampleTextureClamp(texCoord+point_0));
+	distVal += GetAlphaDist(doSampleTextureClamp(texCoord-point_1));
+	distVal += GetAlphaDist(doSampleTextureClamp(texCoord+point_1));
+	distVal *= 2.0;
+	distVal += GetAlphaDist(rgba);
+	return distVal / 9.0;
+}
+
+float GetBoxFilteredAlphaMin(float4 rgba, float2 texCoord)
+{
+	float2 h_pixel_size = pixel_size / 2.0;
+	float2 point_0 = float2(pixel_size.x, h_pixel_size.y);
+	float2 point_1 = float2(h_pixel_size.x, -pixel_size.y);
+	float alpham0 = GetAlphaDist(doSampleTextureClamp(texCoord-point_0)) ;
+	float alphap0 = GetAlphaDist(doSampleTextureClamp(texCoord+point_0));
+	float alpham1 = GetAlphaDist(doSampleTextureClamp(texCoord-point_1));
+	float alphap1 = GetAlphaDist(doSampleTextureClamp(texCoord+point_1));
+	float alpha0 = GetAlphaDist(rgba);
+	return min(min(min(min(alpha0, alpham0), alphap0), alpham1), alphap1);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VertDataOut VSDefault(VertDataIn v_in)
+{
+	VertDataOut vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv * mul_val + add_val;
+	return vert_out;
+}
+
+
+
+float4 PSColorConvertColorToZeroColorAlpha(VertDataOut v_in) : TARGET
+{
+	// convert color to alpha, so color min is alpha min and color max is alpha max
+	float4 rgba = image.Sample(textureSampler, v_in.uv);
+	rgba.a = (rgba.r + rgba.g + rgba.b) / 3.0;
+	rgba.rgb = float3(0.0, 0.0, 0.0);
+	return rgba;
+}
+
+
+float4 PSColorConvertAlphaToZeroColorAlpha(VertDataOut v_in) : TARGET
+{
+	// convert color to alpha, so color min is alpha min and color max is alpha max
+	float4 rgba = image.Sample(textureSampler, v_in.uv);
+	rgba.rgb = float3(0.0, 0.0, 0.0);
+	return rgba;
+}
+
+
+
+
+
+
+
+
+VertDataImposeOut VSImpose(VertDataIn v_in)
+{
+	VertDataImposeOut vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	vert_out.uv2 = (v_in.uv+border_add_val) * border_mul_val;
+	return vert_out;
+}
+
+float4 PSColorImpose(VertDataImposeOut v_in) : TARGET
+{
+	// the color will be color of border
+	// but the alpha will be alphaPointA * (1-alphaPointB)
+	// in this way we will have alpha of non zero ONLY where original mask has alpha 1 AND the shrunken superimposed map has alpha 0
+	// which is the BORDER region
+	float4 rgba1 = image.Sample(textureSampler, v_in.uv);
+	float4 rgba2 = image.Sample(textureSampler, v_in.uv2);
+	float4 rgba;
+	float maska = ceil(rgba1.a * (1.0 - rgba2.a));
+	rgba.a = maska * color.a;
+	rgba.rgb = float3(color.r * maska, color.g * maska, color.b * maska);
+
+	return rgba;
+}
+
+
+
+float4 PSColorImposeBackTex(VertDataImposeOut v_in) : TARGET
+{
+	// the color will be color of border
+	// but the alpha will be alphaPointA * (1-alphaPointB)
+	// in this way we will have alpha of non zero ONLY where original mask has alpha 1 AND the shrunken superimposed map has alpha 0
+	// which is the BORDER region
+	float4 rgba1 = image.Sample(textureSampler, v_in.uv);
+	float4 rgba2 = image.Sample(textureSampler, v_in.uv2);
+	float4 rgbaout;
+	float maska = ceil(rgba1.a * (1.0 - rgba2.a));
+	rgbaout.a = maska * color.a;
+	rgbaout.rgb = float3(color.r * maska, color.g * maska, color.b * maska);
+
+	// ok now we lerp between the border color and the background texture (but keeping alpha of border?)
+	float4 backgroundColor = doSampleBackgroundTexture(v_in.uv);
+	rgbaout.rgb = jrlerp3(backgroundColor.rgb, rgbaout.rgb, colorBlendLerpBack);
+	return rgbaout;
+}
+
+
+
+float4 PSColorImposeShrink(VertDataImposeOut v_in) : TARGET
+{
+	float4 rgba = image.Sample(textureSampler, v_in.uv2);
+	return rgba;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+float4 PSAlphaToMask(VertDataOut v_in) : TARGET
+{
+  // ok so this just sends back a 0 color and preserves alpha
+	float4 rgba = doSampleTextureClamp(v_in.uv);
+
+	// we dont want any color in mask
+	rgba.rgb = float3(0.0, 0.0, 0.0);
+	
+	// now we essentially just want to return alpha exactly as we found on the mask image, so that 0 alpha masks out
+	// but this is a sharp mask.. we'd love to encroach a little onto the edge of the border, since the border will hide it
+	float softAlpha = GetBoxFilteredAlphaMin(rgba, v_in.uv );
+
+	// no masking beyond image
+  if (softAlpha < 1.0 && (v_in.uv.x < innerLimits[0] || v_in.uv.y < innerLimits[1] || v_in.uv.x > innerLimits[2] || v_in.uv.y > innerLimits[3])) {
+  	softAlpha = 1.0;
+  }
+
+	rgba.a = softAlpha;
+
+	return rgba;
+}
+
+
+
+float4 PSNonChromaToBorderLerped(VertDataOut v_in) : TARGET
+{
+	// all chroma (pure green) or transparent, render as transparent, otherwise pass through
+	float4 rgba = doSampleTextureClamp(v_in.uv);
+
+	// we use box filter from chroma, why? this will match any pixel that is green OR adjacent to a green
+	// this essentially lets a little bit of the interior show through where the inner border edge is
+	float chromaDist = GetBoxFilteredChromaDist(rgba, v_in.uv);
+	
+	if (chromaDist < 1.0) {
+		// chroma match this is green area where we will show through to source
+		float chromaDistThis = GetChromaDist(rgba);
+  	
+   	// the softalpha test here is needed to get us to blend into the border
+		float softAlpha = GetBoxFilteredAlphaMin(rgba, v_in.uv );   	
+   	if (softAlpha>0.5 && (v_in.uv.x <= innerLimits[0] || v_in.uv.y <= innerLimits[1] || v_in.uv.x >= innerLimits[2] || v_in.uv.y >= innerLimits[3])) {
+
+	  	// no source here use background fill
+	  	//rgba = color;
+	  	rgba.rgb = color.rgb;
+	  	rgba.a = 1.0;
+	  } else {
+			rgba.rgb = float3(0.0, 0.0, 0.0);
+			rgba.a = 0.0;
+			}
+	} else {
+		rgba.rgb = jrlerp3(rgba.rgb, color, colorBlendLerp);
+	}
+	return rgba;
+}
+
+float4 PSNonChromaToBorderLerpedBorderBackTex(VertDataOut v_in) : TARGET
+{
+	// all chroma (pure green) or transparent, render as transparent, otherwise pass through
+	float4 rgba = doSampleTextureClamp(v_in.uv);
+
+	// we use box filter from chroma, why? this will match any pixel that is green OR adjacent to a green
+	// this essentially lets a little bit of the interior show through where the inner border edge is
+	float chromaDist = GetBoxFilteredChromaDist(rgba, v_in.uv);
+	
+	if (chromaDist < 1.0) {
+		// chroma match this is green area where we will show through to source
+		float chromaDistThis = GetChromaDist(rgba);
+  	
+   	// the softalpha test here is needed to get us to blend into the border
+		float softAlpha = GetBoxFilteredAlphaMin(rgba, v_in.uv );   	
+   	if (softAlpha>0.5 && (v_in.uv.x <= innerLimits[0] || v_in.uv.y <= innerLimits[1] || v_in.uv.x >= innerLimits[2] || v_in.uv.y >= innerLimits[3])) {
+
+	  	// no source here use background fill
+	  	//rgba = color;
+	  	rgba.rgb = color.rgb;
+			// ok now we RE-lerp between the border color and the background texture (but keeping alpha of border?)
+			float4 backgroundColor = doSampleBackgroundTexture(v_in.uv);
+			rgba.rgb = jrlerp3(backgroundColor.rgb, rgba.rgb, colorBlendLerpBack);
+			//
+	  	rgba.a = 1.0;
+	  } else {
+			rgba.rgb = float3(0.0, 0.0, 0.0);
+			rgba.a = 0.0;
+			}
+	} else {
+		rgba.rgb = jrlerp3(rgba.rgb, color, colorBlendLerp);
+		//
+		// ok now we RE-lerp between the border color and the background texture (but keeping alpha of border?)
+		float4 backgroundColor = doSampleBackgroundTexture(v_in.uv);
+		rgba.rgb = jrlerp3(backgroundColor.rgb, rgba.rgb, colorBlendLerp);
+	}
+	return rgba;
+}
+
+
+
+
+
+
+
+
+technique DrawConvertColorToZeroColorAlpha
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSColorConvertColorToZeroColorAlpha(v_in);
+	}
+}
+
+technique DrawConvertAlphaToZeroColorAlpha
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSColorConvertAlphaToZeroColorAlpha(v_in);
+	}
+}
+
+
+technique SuperimposedBorder
+{
+	pass
+	{
+		vertex_shader = VSImpose(v_in);
+		pixel_shader  = PSColorImpose(v_in);
+	}
+}
+
+
+technique SuperimposedBorderBackTex
+{
+	pass
+	{
+		vertex_shader = VSImpose(v_in);
+		pixel_shader  = PSColorImposeBackTex(v_in);
+	}
+}
+
+
+technique InnerBorderMaskShrink
+{
+	pass
+	{
+		vertex_shader = VSImpose(v_in);
+		pixel_shader  = PSColorImposeShrink(v_in);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+technique DrawConvertChromaAlphaToZeroColorAlphaLerpedMask
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSAlphaToMask(v_in);
+	}
+}
+
+technique DrawConvertChromaAlphaToZeroColorAlphaLerpedBorder
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSNonChromaToBorderLerped(v_in);
+	}
+}
+
+technique DrawConvertChromaAlphaToZeroColorAlphaLerpedBorderBackTex
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSNonChromaToBorderLerpedBorderBackTex(v_in);
+	}
+}

@@ -165,7 +165,7 @@ cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
 
-set pluginName=jrborderSrc
+set pluginName=jrAutoAspect
 set fname=%pluginName%.%zformat%
 set builddir=%pluginName%\release
 mkdir "%builddir%"
@@ -180,3 +180,4 @@ copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
+

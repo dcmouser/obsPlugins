@@ -120,7 +120,7 @@ protected:
 	int optionAutoDelayBetweenLastItemChecks = 1000;
 	int optionAutoTimeOff = 2000;
 	int optionAutoTimeShow = 5000;
-	int optionAutoTimeShowExtraLastItem = 10000; // note autocomputed as optionAutoTimeShow * 2
+	int optionAutoTimeShowExtraLastItem = 10000; // note autocomputed in code as optionAutoTimeShow * 2
 	bool optionAutoEngaged = false;
 	//
 	QString optionAutoAdvanceScenesList = "";

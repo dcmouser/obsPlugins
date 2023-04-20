@@ -21,8 +21,15 @@ void jrObsPluginSource::updateSourceProperties() {
 	obs_source_t* source = getThisPluginParentSource();
 	renderSource = source;
 	renderSource = getThisPluginTargetSource();
-	sourceWidth = obs_source_get_base_width(source);
-	sourceHeight = obs_source_get_base_height(source);
+	if (renderSource && getIsPluginTypeFilter()) {
+		// attempt to properly get size of previous filter output
+		sourceWidth = obs_source_get_base_width(renderSource);
+		sourceHeight = obs_source_get_base_height(renderSource);
+	}
+	else {
+		sourceWidth = obs_source_get_base_width(source);
+		sourceHeight = obs_source_get_base_height(source);
+	}
 }
 //---------------------------------------------------------------------------
 

@@ -105,7 +105,7 @@ bool jrScreenFlip::renderFlipScreenMainDisplay() {
 	int outHeight = ovi.base_height;
 
 	// setup rendering to texture
-	jrRenderTextureRenderStart(texrender, outWidth, outHeight, jrBlendClearOverwite);
+	jrRenderTextureRenderStart(texrender, outWidth, outHeight, jrBlendClearOverwite,-1,-1);
 
 	// ATTN: unclear if we need this
 	gs_ortho(0.0f, (float)outWidth, 0.0f, (float)outHeight, -100.0f, 100.0f);
@@ -114,7 +114,7 @@ bool jrScreenFlip::renderFlipScreenMainDisplay() {
 	obs_render_main_texture_src_color_only();
 
 	// restore state and finalize texture
-	JrRenderTextureRenderEnd(texrender);
+	jrRenderTextureRenderEnd(texrender);
 
 	// now render effect from texture to output NULL=SCREEN or current target
 	jrRenderEffectIntoTexture(NULL, effectMain, texrender, outWidth, outHeight, jrBlendClearOverwite, "Draw");

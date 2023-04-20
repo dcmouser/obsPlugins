@@ -214,3 +214,93 @@ bool jrLeftCharpSplit(char* str, char* leftPart, char separator) {
 
 
 
+//---------------------------------------------------------------------------
+bool jrParseCommaStringVector(std::string commaSeparatedFloats, std::vector<float> &vec) {
+	bool success = true;
+	vec.clear();
+	std::string onevalstr;
+	while (JR_SplitStringLeft(commaSeparatedFloats, onevalstr, ',')) {
+		try {
+			float val = std::stof(onevalstr);
+			vec.push_back(val);
+		}
+		catch (...) {
+			// just ignore
+			success = false;
+		}
+
+	}
+	return success;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+bool JR_SplitStringLeft(std::string &mainstring,std::string &leftpart,char dividerchar)
+{
+	// split left part of a string off
+	std::string tempstr;
+
+	int len = (int)(mainstring.length());
+	if (len==0)
+		{
+		// nothing to grab so return false
+		leftpart="";
+		return false;
+		}
+
+	const char *charp=mainstring.c_str();
+	bool inquote=false;
+	char c;
+
+	// find 
+	for (int count=0;count<len;++count)
+		{
+		c=charp[count];
+		if (c==34 && inquote==false)
+			inquote=true;
+		else if (c==34 && inquote==true)
+			inquote=false;
+		else if (c==dividerchar && inquote==false)
+			{
+			// found it, grab left part
+			if (count==0)
+				leftpart="";
+			else
+				{
+				leftpart=mainstring.substr(0,count);
+				// ATTN: do we need to trim it?
+				JR_trim_string(leftpart);
+				}
+			// now grab remainder
+			if (count<len-1)
+				{
+				tempstr=mainstring.substr(count+1,len-(count+1));
+				mainstring=tempstr;
+				// ATTN: do we need to trim it?
+				JR_trim_string(mainstring);
+				}
+			else
+				mainstring="";
+			return true;
+			}
+		}
+
+	// not found, so its all left part
+	leftpart=mainstring;
+	JR_trim_string(leftpart);
+	mainstring="";
+	return true;
+}
+
+void JR_trim_string(std::string &s)
+{ 
+	s.erase(0,s.find_first_not_of(" \t\r\n"));
+	s.erase(s.find_last_not_of(" \t\r\n")+1);
+} 
+//---------------------------------------------------------------------------
+

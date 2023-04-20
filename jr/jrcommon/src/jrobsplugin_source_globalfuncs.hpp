@@ -20,6 +20,7 @@ static PLUGIN_CLASS* moduleInstance = NULL;
 void* plugin_create(obs_data_t* settings, obs_source_t* context)
 	{
 		// CREATE (allocate space for) the new plugin and point to it; this is our plugin class instance that will be used throughout via plugin pointer
+
 		PLUGIN_CLASS* pluginp = new PLUGIN_CLASS();
 		bool bretv = pluginp->gon_plugin_create(settings, context);
 		if (!bretv) {
@@ -28,6 +29,14 @@ void* plugin_create(obs_data_t* settings, obs_source_t* context)
 		}
 		return pluginp;
 	}
+
+
+void plugin_destroy(void* data) {
+	PLUGIN_CLASS* pluginp = (PLUGIN_CLASS*)data;
+	pluginp->gon_plugin_destroy();
+	// now delete -- without this we leak memory
+	delete pluginp;
+};
 //---------------------------------------------------------------------------
 
 
@@ -49,8 +58,6 @@ void plugin_update(void* data, obs_data_t* settings) { ((PLUGIN_CLASS*)data)->go
 //
 void plugin_load(void* data, obs_data_t* settings) { ((PLUGIN_CLASS*)data)->gon_plugin_load(settings); };
 void plugin_save(void* data, obs_data_t* settings) { ((PLUGIN_CLASS*)data)->gon_plugin_save(settings); };
-//
-void plugin_destroy(void* data) { ((PLUGIN_CLASS*)data)->gon_plugin_destroy(); };
 //
 void onHotkeyCallback(void* data, obs_hotkey_id id, obs_hotkey_t* key, bool pressed) { ((PLUGIN_CLASS*)data)->gon_onHotkeyCallback(id, key, pressed); };
 //

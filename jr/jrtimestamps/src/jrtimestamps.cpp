@@ -564,3 +564,30 @@ std::string jrTimestamper::AddTimeOffsetHintToLabel(std::string label) {
 	return label;
 }
 //---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+std::string jrTimestamper::AddVideoIdToLabel(std::string label) {
+	// get global video id
+	std::string videoidstr = reqVideoIdFromObsSelectedBroadcast();
+	if (videoidstr != "") {
+		label += " [videoid: " + videoidstr + "]";
+	}
+	return label;
+}
+
+std::string jrTimestamper::reqVideoIdFromObsSelectedBroadcast() {
+	QString broadcastIdQstr = "";
+
+	// ask obs for broadcast id
+	if (true) {
+		const char* broadcastIdStrbuf = obs_get_broadcastid_str();
+		if (broadcastIdStrbuf) {
+			broadcastIdQstr = QString(broadcastIdStrbuf);
+		}
+	}
+
+	return broadcastIdQstr.toStdString();
+}
+//---------------------------------------------------------------------------

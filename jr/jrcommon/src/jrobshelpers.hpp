@@ -12,7 +12,33 @@
 #include <graphics/vec2.h>
 #include <graphics/vec4.h>
 
+#include <string>
+
+
 #include <../obs-frontend-api/obs-frontend-api.h>
+
+
+//---------------------------------------------------------------------------
+// ATTN: yikes to have to copy this from texture-render.c
+struct gs_texture_render {
+	gs_texture_t *target, *prev_target;
+	gs_zstencil_t *zs, *prev_zs;
+	enum gs_color_space prev_space;
+
+	uint32_t cx, cy;
+
+	enum gs_color_format format;
+	enum gs_zstencil_format zsformat;
+
+	bool rendered;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
 
 
 
@@ -29,7 +55,7 @@ extern int jrSourceCalculateHeight(obs_source_t* src);
 
 
 //---------------------------------------------------------------------------
-enum jrBlendClearMode {jrBlendClearOverwite, jrBlendClearMerge, jrBlendOverwriteMerge, jrBlendDebugOverlay, jrBlendPassthroughMerge, jrBlendSrcAlphaMerge};
+enum jrBlendClearMode {jrBlendClearOverwite, jrBlendClearMerge, jrBlendOverwriteMerge, jrBlendDebugOverlay, jrBlendPassthroughMerge, jrBlendSrcAlphaMerge, jrBlendSrcAlphaMask, jrBlendSrcAlphaMask2, jrBlendPureCopy, jrBlendSrcObsSep, jrPureCopyNoClear};
 //---------------------------------------------------------------------------
 
 
@@ -39,7 +65,7 @@ void jrSetBlendClear(jrBlendClearMode blendClearMode);
 
 //---------------------------------------------------------------------------
 void jrRenderSourceIntoTexture(obs_source_t* source, gs_texrender_t* tex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode);
-void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t* tex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, bool forceResizeToScreen);
+void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t* tex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, bool forceResizeToScreen, int tsetwidth=-1, int tsetheight=-1);
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
@@ -48,7 +74,8 @@ void jrRenderSourceOut(obs_source_t* source, uint32_t sourceWidth, uint32_t sour
 
 //---------------------------------------------------------------------------
 void jrRenderEffectIntoTexture(gs_texrender_t* tex, gs_effect_t* effect, gs_texrender_t* inputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, const char* drawTechnique);
-void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique);
+void jrRenderEffectIntoTextureT(gs_texrender_t* tex, gs_effect_t* effect, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, const char* drawTechnique);
+void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t* tex, gs_effect_t* effect, gs_texrender_t* inputTex, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, int outx1, int outy1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique, int tsetwidth=-1, int tsetheight=-1);
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
@@ -57,6 +84,7 @@ void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t* tex, gs_effect_t*
 
 //---------------------------------------------------------------------------
 void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRender, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode);
+void jrRenderTextureIntoTextureBare(gs_texrender_t* tex, gs_texture* srcTexture, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode);
 //---------------------------------------------------------------------------
 
 
@@ -68,8 +96,13 @@ const char* jrStringFromListChoice(int index, const char** choiceList);
 
 
 //---------------------------------------------------------------------------
-void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode);
-void JrRenderTextureRenderEnd(gs_texrender_t* tex);
+void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode, int tsetwidth, int tsetheight);
+void jrRenderTextureRenderEnd(gs_texrender_t* tex);
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+void jrDrawTextureClear(gs_texrender_t* texrender, uint32_t cx, uint32_t cy);
+void jrDrawTextureFillColor(gs_texrender_t* texrender, uint32_t cx, uint32_t cy, unsigned int colorVal);
 //---------------------------------------------------------------------------
 
 
@@ -116,6 +149,7 @@ void jrazUint32ToRgbVec(uint32_t color, struct vec3& clvec);
 void jrazUint32ToHsvVec(uint32_t color, struct vec3& clvec);
 void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec);
 void jrazUint32ToRgba1Vec(uint32_t color, struct vec4& clvec);
+void jrazUint32ToRgbaVecTestLowAlpha(uint32_t color, struct vec4& clvec);
 void RGBtoHSV(float& fR, float& fG, float fB, float& fH, float& fS, float& fV);
 void jrazFillRgbaVec(vec4& colorvec, float red, float green, float blue, float alpha);
 unsigned char MyGetAValue(uint32_t color);
@@ -154,3 +188,11 @@ struct ProxyDataPackT {
 void* jrobsGetVoidPointerToSourceContextDataPluginp(OBSSource& sourcep);
 //---------------------------------------------------------------------------
 
+
+//---------------------------------------------------------------------------
+void jrSetEffectTextureParamByName(gs_effect_t* effect, gs_texture_t* texture, int width, int height, std::string effectImageName);
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+unsigned long jr_os_gettime_ms();
+//---------------------------------------------------------------------------

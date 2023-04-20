@@ -1,0 +1,67 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+bool JrBorder::setupCustomMaskEffect() {
+	obs_enter_graphics();
+
+	std::string customMaskEffectFilePath;
+	if (opt_customMaskType == customMaskTypeEnumColor) {
+		customMaskEffectFilePath="mask_color_filter.effect";
+	} else if (opt_customMaskType == customMaskTypeEnumAlpha) {
+		customMaskEffectFilePath="mask_alpha_filter.effect";
+	} else {
+		// unknown
+		return false;
+	}
+	// kill old
+	gs_effect_destroy(effectCustomMask);
+	// load new
+	effectCustomMask = gs_effect_create_from_file(customMaskEffectFilePath.c_str(), NULL);
+	obs_leave_graphics();
+	return true;
+}
+
+
+void JrBorder::renderCustomMaskEffect(int swidth, int sheight) {
+	gs_eparam_t *param;
+	struct vec2 add_val = {0};
+	struct vec2 mul_val = {1.0f, 1.0f};
+
+	if (!customMaskTexture || !effectCustomMask || swidth<=0 || sheight<=0) {
+		return;
+	}
+
+	struct vec4 fcolor;
+	uint32_t ucolor = 0xFFFFFFFF;
+	vec4_from_rgba_srgb(&fcolor, ucolor);
+	//
+	param = gs_effect_get_param_by_name(effectCustomMask,"target");
+	gs_effect_set_texture_srgb(param, customMaskTexture);
+	param = gs_effect_get_param_by_name(effectCustomMask,"color");
+	gs_effect_set_vec4(param, &fcolor);
+
+	param = gs_effect_get_param_by_name(effectCustomMask,"mul_val");
+	gs_effect_set_vec2(param, &mul_val);
+	param = gs_effect_get_param_by_name(effectCustomMask,"add_val");
+	gs_effect_set_vec2(param, &add_val);
+	gs_blend_state_push();
+	gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+
+	gs_blend_state_pop();
+}
+*/
+//---------------------------------------------------------------------------

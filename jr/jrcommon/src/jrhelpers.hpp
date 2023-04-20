@@ -29,3 +29,9 @@ char* jrtrim(char* str);
 
 bool jrLeftCharpSplit(char* str, char* leftPart, char separator);
 //---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+bool jrParseCommaStringVector(std::string commaSeparatedFloats, std::vector<float>& vec);
+bool JR_SplitStringLeft(std::string &mainstring,std::string &leftpart,char dividerchar);
+void JR_trim_string(std::string& s);
+//---------------------------------------------------------------------------

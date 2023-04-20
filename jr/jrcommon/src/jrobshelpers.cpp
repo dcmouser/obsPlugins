@@ -1,7 +1,7 @@
 #include "jrobshelpers.hpp"
 
 #include <../obs-frontend-api/obs-frontend-api.h>
-
+#include <./util/platform.h>
 
 
 //---------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 
 
 //---------------------------------------------------------------------------
-#define DefJrCustomObsBuild true
+//#define DefJrCustomObsBuild
 //---------------------------------------------------------------------------
 
 
@@ -81,11 +81,40 @@ void jrSetBlendClear(jrBlendClearMode blendClearMode) {
 		gs_blend_function(GS_BLEND_SRCALPHA, GS_BLEND_INVDSTALPHA);
 	} else if (blendClearMode == jrBlendSrcAlphaMerge) {
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+	}
+
+	else if (blendClearMode == jrBlendSrcObsSep) {
+		// see obs-source.c
+		gs_blend_function_separate(GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+		/*
+		struct vec4 clear_color;
+		vec4_zero(&clear_color);
+		gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+		*/
+	}
+	else if (blendClearMode == jrPureCopyNoClear) {
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+	}
+
+	else if (blendClearMode == jrBlendSrcAlphaMask) {
+		// we want to mask out stuff what settings should we use? no one cares to document thse values
+		//gs_blend_function(GS_BLEND_ONE, GS_BLEND_SRCALPHA);
+		gs_blend_function(GS_BLEND_DSTALPHA, GS_BLEND_SRCALPHA);
+		//gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+		//gs_blend_function(GS_BLEND_ZERO, );
+		//gs_blend_function(GS_BLEND_ZERO, GS_BLEND_ONE);
+	} else if (blendClearMode == jrBlendSrcAlphaMask2) {
+		// we want to mask out stuff what settings should we use? no one cares to document thse values
+		gs_blend_function_separate(GS_BLEND_ZERO, GS_BLEND_SRCALPHA, GS_BLEND_DSTALPHA, GS_BLEND_SRCALPHA);
+	}  else if (blendClearMode == jrBlendPureCopy) {
+		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
+		//gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 	} else {
+		// jrBlendClearOverwite gets here
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 	}
 	//
-	if (blendClearMode == jrBlendClearOverwite) {
+	if (blendClearMode == jrBlendClearOverwite || blendClearMode == jrBlendPureCopy) {
 		struct vec4 clear_color;
 		vec4_zero(&clear_color);
 		gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
@@ -117,13 +146,13 @@ void jrRenderSourceOut(obs_source_t* source, uint32_t sourceWidth, uint32_t sour
 
 
 
-void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *tex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, bool forceResizeToScreen) {
+void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *tex, uint32_t sourceWidth, uint32_t sourceHeight, int x1, int y1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, bool forceResizeToScreen, int tsetwidth, int tsetheight) {
 	// render source onto a texture
 
 	//mydebug("myRenderSourceIntoTexture source=(%d,%d) out=(%d,%d).", sourceWidth, sourceHeight, outWidth, outHeight);
 
-	// setup rendering to texture
-	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+	// setup rendering to texture (also sets output size!)
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode, tsetwidth, tsetheight);
 
 	if (tex) {
 		// only if TEX is being used as recipient of our drawing do we resize to fill tex, otherwise we are going to screen and do NOT want to do this
@@ -146,7 +175,7 @@ void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *te
 	obs_source_video_render(source);
 
 	// restore state and finalize texture
-	JrRenderTextureRenderEnd(tex);
+	jrRenderTextureRenderEnd(tex);
 }
 //---------------------------------------------------------------------------
 
@@ -176,34 +205,39 @@ void jrRenderSourceIntoTextureAtSizeLoc(obs_source_t* source, gs_texrender_t *te
 void jrRenderEffectIntoTexture(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
 	// let's try using our new function
 	jrRenderEffectIntoTextureAtSizeLoc(tex, effect, inputTex, NULL, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight, blendClearMode, drawTechnique);
-	return;
+}
+
+
+void jrRenderEffectIntoTextureT(gs_texrender_t* tex, gs_effect_t* effect, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
+	jrRenderEffectIntoTextureAtSizeLoc(tex, effect, NULL, obsInputTex, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight, blendClearMode, drawTechnique);
 }
 
 
 
-
-void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, int outx1, int outy1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique) {
+void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect, gs_texrender_t *inputTex, gs_texture_t* obsInputTex, uint32_t sourceWidth, uint32_t sourceHeight, int outx1, int outy1, int outWidth, int outHeight, jrBlendClearMode blendClearMode, const char* drawTechnique, int tsetwidth, int tsetheight) {
 	// render effect onto texture using an input texture (set effect params before invoking)
 
-	// setup rendering to texture
-	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+	// setup rendering to texture (also sets output size!)
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode, tsetwidth, tsetheight);
 
 	//offset location
 	gs_matrix_translate3f((float)outx1, (float)outy1, 0.0f);
 
-	// specify the image texture to use when running this effect
-	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
-	if (!image) {
-		mydebug("ERROR jrRenderEffectIntoTexture null image!!");
-	}
-	if (inputTex && !obsInputTex) {
-		obsInputTex = gs_texrender_get_texture(inputTex);
-		if (!obsInputTex) {
-			mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
+	if (inputTex || obsInputTex) {
+		// specify the image texture to use when running this effect
+		gs_eparam_t* image = gs_effect_get_param_by_name(effect, "image");
+		if (!image) {
+			mydebug("ERROR jrRenderEffectIntoTexture null image!!");
 		}
-	}
-	if (obsInputTex) {
-		gs_effect_set_texture(image, obsInputTex);
+		if (inputTex && !obsInputTex) {
+			obsInputTex = gs_texrender_get_texture(inputTex);
+			if (!obsInputTex) {
+				mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex1!!");
+			}
+		}
+		if (obsInputTex) {
+			gs_effect_set_texture(image, obsInputTex);
+		}
 	}
 
 	if (tex) {
@@ -219,8 +253,9 @@ void jrRenderEffectIntoTextureAtSizeLoc(gs_texrender_t *tex, gs_effect_t* effect
 	}
 
 	// restore state and finalize texture
-	JrRenderTextureRenderEnd(tex);
+	jrRenderTextureRenderEnd(tex);
 }
+
 //---------------------------------------------------------------------------
 
 
@@ -259,9 +294,8 @@ void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t *tex, gs_effect_t*
 	// render effect onto texture using an input texture (set effect params before invoking)
 	// drawTechnique should be "FadeLinear"
 
-
 	// setup rendering to texture
-	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode, -1,-1);
 
 	if (tex) {
 		// if rendering into texture force output size
@@ -273,7 +307,7 @@ void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t *tex, gs_effect_t*
 	}
 
 	// restore state and finalize texture
-	JrRenderTextureRenderEnd(tex);
+	jrRenderTextureRenderEnd(tex);
 }
 //---------------------------------------------------------------------------
 
@@ -284,8 +318,10 @@ void jrRenderConfiguredEffectIntoTextureAtSize(gs_texrender_t *tex, gs_effect_t*
 
 //---------------------------------------------------------------------------
 void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRender, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode) {
+	// IMPORTANT!!!!!! 4/14/23
+	// IF the existing contents of tex are different size, i think we do not get a proper overwrite merge with blendClearMode and instead get a zerod source
+	/*
 	bool flagDirectCopy = false;
-
 	if (flagDirectCopy) {
 		// simpler way -- but does it work?
 		if (tex) {
@@ -298,9 +334,10 @@ void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRende
 			// obs_source_draw(gs_texrender_get_texture(srcTexRender), 0, 0, outWidth, outHeight, false);
 		}
 	}
+	*/
 
 	// setup rendering to texture
-	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode);
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode, -1,-1);
 
 	if (tex) {
 		// if rendering into texture force output size
@@ -313,13 +350,13 @@ void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRende
 	// specify the image texture to use when running this effect
 	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 	if (!image) {
-		//mydebug("ERROR jrRenderTextureIntoTexture null image!!");
+		mydebug("ERROR jrRenderTextureIntoTexture null image!!");
 	}
 	gs_texture_t* obsInputTex = NULL;
 	if (srcTexRender) {
 		obsInputTex = gs_texrender_get_texture(srcTexRender);
 		if (!obsInputTex) {
-			//mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex!!");
+			mydebug("ERROR jrRenderEffectIntoTexture null obsInputTex2!!");
 		}
 	}
 	if (obsInputTex) {
@@ -332,24 +369,55 @@ void jrRenderTextureIntoTexture(gs_texrender_t* tex, gs_texrender_t* srcTexRende
 	}
 
 	// restore state and finalize texture
-	JrRenderTextureRenderEnd(tex);
+	jrRenderTextureRenderEnd(tex);
 }
 //---------------------------------------------------------------------------
 
 
 
 
+
 //---------------------------------------------------------------------------
-void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode) {
+void jrRenderTextureIntoTextureBare(gs_texrender_t* tex, gs_texture* srcTexture, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode) {
+	// setup rendering to texture
+	jrRenderTextureRenderStart(tex, outWidth, outHeight, blendClearMode, -1,-1);
+
 	if (tex) {
-		if (true) {
-			gs_texrender_reset(tex);
-		}
-		if (!gs_texrender_begin(tex, outWidth, outHeight)) {
-			//mydebug("ERROR ----> failure in jrRenderTextureRenderStart to gs_texrender_begin %d,%d.", outWidth, outHeight);
-			return;
-		}
+		// if rendering into texture force output size
+		gs_ortho(0.0f, (float)outWidth, 0.0f, (float)outHeight, -100.0f, 100.0f);
 	}
+
+	// default effect for rendering
+	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
+
+	// specify the image texture to use when running this effect
+	gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+	if (!image) {
+		mydebug("ERROR jrRenderTextureIntoTexture null image!!");
+	}
+	gs_texture_t* obsInputTex = srcTexture;
+	//
+	if (obsInputTex) {
+		gs_effect_set_texture(image, obsInputTex);
+	}
+
+	// render it
+	while (gs_effect_loop(effect, "Draw")) {
+		gs_draw_sprite(NULL, 0, outWidth, outHeight);
+	}
+
+	// restore state and finalize texture
+	jrRenderTextureRenderEnd(tex);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t outHeight, jrBlendClearMode blendClearMode, int tsetwidth, int tsetheight) {
 
 	// save state
 	gs_viewport_push();
@@ -357,25 +425,52 @@ void jrRenderTextureRenderStart(gs_texrender_t* tex, uint32_t outWidth, uint32_t
 	gs_matrix_push();
 	gs_blend_state_push();
 
+	if (tex) {
+		if (true) {
+			// does not clear contents just set it as unrendered
+			gs_texrender_reset(tex);
+		}
+		if (tsetwidth == -1) {
+			tsetwidth = outWidth;
+		}
+		if (tsetheight == -1) {
+			tsetheight = outHeight;
+		}
+		//
+		if (!gs_texrender_begin(tex, tsetwidth, tsetheight)) {
+			mydebug("ERROR ----> failure in jrRenderTextureRenderStart to gs_texrender_begin %d,%d (%d,%d).", outWidth, outHeight, tsetwidth, tsetheight);
+		}
+		// these dif sizes let us render into a larger target texture
+		//gs_set_viewport(0, 0, tsetwidth, tsetheight);
+		// ATTN: 4/16/23 putting this back
+		// ATTN: 4/16/23 -- no idea if this is doing anything
+		gs_set_viewport(0, 0, tsetwidth, tsetheight);
+		if (tsetwidth != outWidth || tsetheight != outHeight) {
+			gs_matrix_scale3f((float)outWidth / (float)tsetwidth, (float)outHeight / (float)tsetheight, 0);
+		}
+	}
+
+	// the save state stuff used to be here
+
 	// blend mode and clear
 	jrSetBlendClear(blendClearMode);
 }
 
 
-void JrRenderTextureRenderEnd(gs_texrender_t* tex) {
+void jrRenderTextureRenderEnd(gs_texrender_t* tex) {
 	// restore state and finalize texture
+
+	if (tex) {
+		gs_texrender_end(tex);
+	}
+
 	gs_blend_state_pop();
 	gs_matrix_pop();
 	gs_projection_pop();
 	gs_viewport_pop();
-	//
-	if (tex) {
-		gs_texrender_end(tex);
-	}
+
 }
 //---------------------------------------------------------------------------
-
-
 
 
 
@@ -570,6 +665,20 @@ void jrazUint32ToRgbaVec(uint32_t color, struct vec4& clvec) {
 	clvec.y = (float)green / 255.0f;
 	clvec.z = (float)blue / 255.0f;
 	clvec.w = (float)alpha / 255.0f;
+}
+
+
+void jrazUint32ToRgbaVecTestLowAlpha(uint32_t color, struct vec4& clvec) {
+	BYTE red = GetRValue(color);
+	BYTE green = GetGValue(color);
+	BYTE blue = GetBValue(color);
+	BYTE alpha = MyGetAValue(color);
+
+	// convert rgb to hsv
+	clvec.x = (float)red / 255.0f;
+	clvec.y = (float)green / 255.0f;
+	clvec.z = (float)blue / 255.0f;
+	clvec.w = 0.1f;
 }
 
 void jrazUint32ToRgbaaVec(uint32_t color, struct vec4& clvec) {
@@ -909,9 +1018,14 @@ struct obs_source_start {
 //---------------------------------------------------------------------------
 void* jrobsGetVoidPointerToSourceContextDataPluginp(OBSSource &sourcep) {
 	// this function does not exist in original obs code, it's a modification that i have made to my obs source
-	if (DefJrCustomObsBuild) {
+
+
+	#ifdef DefJrCustomObsBuild
+	if (true) {
+		// fast sure way
 		return obs_get_source_contextData(sourcep);
 	}
+	#endif
 
 	// is there a kludgey way we can get this?
 	// because these are structs we should be able to access memory offsets directly
@@ -924,16 +1038,73 @@ void* jrobsGetVoidPointerToSourceContextDataPluginp(OBSSource &sourcep) {
 	// need to release
 	obs_source_release(realsourcerep);
 
-	if (DefJrCustomObsBuild) {
+	#ifdef DefJrCustomObsBuild
+	if (true) {
 		// safety check
 		void *datapbackup = obs_get_source_contextData(sourcep);
-		mydebug("Sanity checking kludge memory pointers are %p vs %p.", datap, datapbackup);
+		//mydebug("Sanity checking kludge memory pointers are %p vs %p.", datap, datapbackup);
 		if (datap != datapbackup) {
 			mydebug("ERROR: mismatch in raw kludge data pointers!!  %p vs %p.", datap, datapbackup);
 		}
 	}
+	#endif
 
 	return datap;
 }
 //---------------------------------------------------------------------------
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrDrawTextureClear(gs_texrender_t *texrender, uint32_t cx, uint32_t cy)
+{
+	jrDrawTextureFillColor(texrender, cx, cy, 0x00000000);
+}
+
+
+void jrDrawTextureFillColor(gs_texrender_t *texrender, uint32_t cx, uint32_t cy, unsigned int colorVal)
+{
+	gs_effect_t *solid = obs_get_base_effect(OBS_EFFECT_SOLID);
+	gs_eparam_t *color = gs_effect_get_param_by_name(solid, "color");
+	gs_technique_t *tech = gs_effect_get_technique(solid, "Solid");
+
+	struct vec4 borderColorVec;
+	jrazUint32ToRgbaVec(colorVal, borderColorVec);
+	gs_effect_set_vec4(color, &borderColorVec);
+
+	jrRenderEffectIntoTexture(texrender, solid, NULL, cx, cy, jrBlendClearOverwite, "Solid");
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void jrSetEffectTextureParamByName(gs_effect_t* effect, gs_texture_t* texture, int width, int height, std::string effectImageName) {
+	gs_eparam_t* param_image = gs_effect_get_param_by_name(effect, effectImageName.c_str());
+	if (!param_image) {
+		mydebug("ERROR jrSetEffectTextureWithScale couldnt find effect image param");
+		return;
+	}
+	// set image name
+	gs_effect_set_texture(param_image, texture);
+}
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+unsigned long jr_os_gettime_ms() { return (unsigned long) (os_gettime_ns() / 1000000L); }
+//---------------------------------------------------------------------------

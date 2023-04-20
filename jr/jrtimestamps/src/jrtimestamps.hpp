@@ -81,7 +81,7 @@ protected:
 	// front end events
 	void BroadcastStarts() { if (!optionEnabled) { return; } isBroadcasting = true; resetTimestampOrigin(AddTimeOffsetHintToLabel("Broadcast begins"), true); };
 	void BroadcastStops() { timestampEvent("Broadcast ends", true); isBroadcasting = false;  finalizeTimestampFileIfAppropriate(false); };
-	void StreamingStarts() { if (!optionEnabled) { return; } isStreaming = true; optionUseTimestampAdjust = true;  recordTimestamp(timestampOriginStreaming);  resetTimestampOrigin(AddTimeOffsetHintToLabel("Streaming begins"), true); };
+	void StreamingStarts() { if (!optionEnabled) { return; } isStreaming = true; optionUseTimestampAdjust = true;  recordTimestamp(timestampOriginStreaming);  resetTimestampOrigin(AddTimeOffsetHintToLabel(AddVideoIdToLabel("Streaming begins")), true); };
 	void StreamingStops() { timestampEvent("Streaming ends", true); isStreaming = false; optionUseTimestampAdjust = false; zeroTimestamp(timestampOriginStreaming); isBroadcasting = false; finalizeTimestampFileIfAppropriate(false); };
 	void RecordingStarts() { if (!optionEnabled) { return; } isRecording = true;  recordTimestamp(timestampOriginRecording);  if (isStreaming) { timestampEvent("Recording begins (timestamps unaffected)", true); } else { resetTimestampOrigin("Recording begins", true); } };
 	void RecordingStops() { timestampEvent("Recording ends", true); isRecording = false; zeroTimestamp(timestampOriginRecording);  finalizeTimestampFileIfAppropriate(false); };
@@ -131,5 +131,7 @@ public:
 	void fillBreakScenePatterns(const std::string breakPatternStringNewlined);
 protected:
 	std::string AddTimeOffsetHintToLabel(std::string label);
+	std::string AddVideoIdToLabel(std::string label);
+	std::string reqVideoIdFromObsSelectedBroadcast();
 };
 //---------------------------------------------------------------------------

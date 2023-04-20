@@ -1432,7 +1432,7 @@ void JrYouTubeChat::optionsFinishedChanging() {
 	jrObsPlugin::optionsFinishedChanging();
 	//
 	// computed values
-	optionAutoTimeShowExtraLastItem = optionAutoTimeShow * 2;
+	optionAutoTimeShowExtraLastItem = optionAutoTimeShow * 1.5;
 	// stop any auto advance if on
 	userDoesActionStopAutoTimer();
 	// re-fill manual items

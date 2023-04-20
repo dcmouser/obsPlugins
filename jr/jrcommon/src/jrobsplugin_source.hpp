@@ -18,7 +18,8 @@ public:
 	int height = 480;
 public:
 	obs_source_t* renderSource = NULL;
-	uint32_t sourceWidth, sourceHeight;
+	uint32_t sourceWidth = 0;
+	uint32_t sourceHeight = 0;
 public:
 	void updateSourceProperties();
 	void setContext(obs_source_t* incontext) { context = incontext; }
@@ -26,9 +27,11 @@ public:
 	EnumJrPluginType getPluginType() { return pluginType; }
 	//
 	obs_source_t* getThisPluginContextSource() { return context; }
+	//obs_source_t* getThisPluginParentSource() { return obs_filter_get_parent(context); }
 	obs_source_t* getThisPluginParentSource() { return obs_filter_get_parent(context); }
 	obs_source_t* getThisPluginTargetSource() { return obs_filter_get_target(context); }
 	bool getIsPluginTypeFilter() { return (obs_source_get_type(context) == OBS_SOURCE_TYPE_FILTER); }
+	bool getIsPluginTypeSource() { return (obs_source_get_type(context) == OBS_SOURCE_TYPE_INPUT); }
 	void setJrPluginType(EnumJrPluginType in_pluginType) { pluginType = in_pluginType; };
 public:
 	void setObsPluginSourceSetCallbacks(obs_source_info* pluginInfo);
@@ -67,5 +70,6 @@ public:
 	virtual void gon_pluginModuleSingletonLoadDoRegistration() { ; };
 public:
 	void forceUpdatePluginSettingsOnOptionChange() { ; }
+
 };
 //---------------------------------------------------------------------------
