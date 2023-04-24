@@ -441,8 +441,8 @@ bool JrAutoAspect::doRenderPluginFilter() {
 		return false;
 	}
 
-	// NULL to render direct to screen, but sometimes we need to use temp buffer
-	bool flag_renderToTempForCompositing = false;
+	// If we try rendering directly to screen it blanks out the entire background unless we have another filter afterwards; dont really understand why..
+	bool flag_renderToTempForCompositing = true;
 	gs_texrender_t* outTexrender = (flag_renderToTempForCompositing) ? texrenderTemp : NULL;
 
 	// draw source into holding texture first with default effect
@@ -450,6 +450,7 @@ bool JrAutoAspect::doRenderPluginFilter() {
 
 	// ok render the source to output texture (or display) at desired crop/size/position
 	doRenderEffectCropScale(outTexrender, texrenderSource, sourceWidth, sourceHeight);
+	//doRenderEffectCropScale(outTexrender, texrenderSource, renderedWidth, renderedHeight);
 
 	// if we rendered to temp then now to screen
 	if (outTexrender!=NULL) {
@@ -474,7 +475,8 @@ bool JrAutoAspect::doRenderPluginFilter() {
 void JrAutoAspect::doRenderEffectCropScale(gs_texrender_t* texDest, gs_texrender_t* texSource, int swidth, int sheight) {
 	// note that this used PRECOMPUTED values so that we only have to recompute on changed size or options
 	doSetEffectParamsCropScale();
-	jrRenderEffectIntoTextureAtSizeLoc(texDest, effectCropScale, texSource, NULL, swidth, sheight, 0, 0, renderedWidth, renderedHeight, jrBlendPureCopy, "Draw", width, height);
+	//jrRenderEffectIntoTextureAtSizeLoc(texDest, effectCropScale, texSource, NULL, swidth, sheight, 0, 0, renderedWidth, renderedHeight, jrBlendPureCopy, "Draw", width, height);
+	jrRenderEffectIntoTextureAtSizeLoc(texDest, effectCropScale, texSource, NULL, swidth, sheight, 0, 0, renderedWidth, renderedHeight, jrBlendPureCopy, "Draw", renderedWidth, renderedHeight);
 }
 //---------------------------------------------------------------------------
 

@@ -33,5 +33,7 @@ bool jrLeftCharpSplit(char* str, char* leftPart, char separator);
 //---------------------------------------------------------------------------
 bool jrParseCommaStringVector(std::string commaSeparatedFloats, std::vector<float>& vec);
 bool JR_SplitStringLeft(std::string &mainstring,std::string &leftpart,char dividerchar);
+bool JR_SplitStringRight(std::string& mainstring, std::string& rightpart, char dividerchar);
 void JR_trim_string(std::string& s);
+std::string jrGetDirPathFromFilePath(std::string filepath);
 //---------------------------------------------------------------------------

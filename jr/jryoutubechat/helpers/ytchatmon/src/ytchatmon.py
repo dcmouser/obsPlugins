@@ -10,6 +10,8 @@ import time
 import argparse
 import signal
 import re
+from datetime import datetime
+import random
 
 import signal
 
@@ -24,7 +26,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # global app and version info
 appName = "ytChatMon"
-appVersion = "2.2 (3/6/23)"
+appVersion = "2.3 (4/24/23)"
 appDescription = "YouTube Live Chat Monitor"
 #appPrintPrefix = "] " + appName + " v"+ appVersion
 appPrintPrefix = "] "
@@ -51,6 +53,10 @@ optionPythonNewerPytchatKludge = True
 optionRegexPatternAlert = r"jesse.*check|check.*jesse"
 optionRegexPatternCancel = r"cancel alert"
 optionReconnectAttemptLimit = 3;
+optionRejectSuspectedBuggyDupes = True
+optionUseMessageCacheToCheckForBuggyDupes = True
+optionCacheCheckEveryMessageForBuggyDupes = False
+optionReportDupeRejections = True
 
 # regex patterns to trigger alerts and cancel them
 patternAlert = False
@@ -72,6 +78,8 @@ ytChatStreamContinuation = False
 outFile = False
 kthread = False
 reconnectAttempts = 0
+lastMessageTimestamp = 0
+messageHashSet = set()
 
 
 
@@ -111,10 +119,12 @@ def setup():
     parseCommandlineArgs()
     setupRegex();
     #
-    setupOutputFile()
     setupBlink()
     setupHotkeys()
     setupPytchat(youtubeVideoId, False)
+    #
+    setupOutputFile()
+    #
     # attempt to catch kill signals
     signal.signal(signal.SIGINT, lambda a, b: abortApplication())
     #signal.signal(signal.SIGTERM, lambda a, b: abortApplication())
@@ -306,12 +316,21 @@ def shutdownHotkeys():
 
 # output file helpers
 def setupOutputFile():
+    global youtubeVideoId
     global outFile
     global outFilePath
     if (outFilePath):
         outFile = open(outFilePath, 'a', encoding="utf-8")
     if (outFile):
         myprint("Opened file for writing: " + outFilePath)
+        # write video it to file
+        datestr = datetime.now().strftime("%m/%d/%Y %I:%M:%S %p");
+        msg = "Connecting to video id " +  youtubeVideoId + " on " + datestr + "."
+        if (optionFileBrief):
+            print("] " + msg, file=outFile)
+        else:
+            print("{ msg = \"" + msg + "\"}", file=outFile)
+
     elif (outFilePath):
         myprint("ERROR: Failed to open file for writing: " + outFilePath)
 
@@ -371,6 +390,7 @@ def loopDisplayAllChatMessages():
     global outFile
     global optionUseContinuationOnReconnect, optionUseContinationEvenIfLive, optionReconnectAttemptLimit
     global optionBrief, optionFileBrief
+    global optionReportDupeRejections
     global reconnectAttempts
     #myprint("Fetching chat from video.")
     validChatMessages = 0
@@ -428,14 +448,26 @@ def loopDisplayAllChatMessages():
             for c in items:
                 # reset
                 reconnectAttempts = 0
+                
+                # new 4/24/23
+                # check if c item is a BUGGY REPEAT of an old message -- this can happen very rarely on some streams (4/23/23 dear holmes 2, log is full of duplicated chat messages)
+                # there are TWO ways we could check for such repeats.. FIRST we could check if timestamp of subsequent message is earlier or equal to last one
+                # but might this happen in real life?
+                # SECOND we could hash messages and check for duplicate existence in hash
+                # THIRD we could combine, hash messages but only check for duplicate IFF the timestamp <= last
+                if (checkForRepeatedBuggyMessage(c)):
+                    # should we report it as dupe?
+                    if (optionReportDupeRejections):
+                        myprint(f"Rejected duplicate message from {c.datetime}.")
+                    continue
+                
+                
                 # inc
                 iterationsSinceReconnect = iterationsSinceReconnect + 1
                 validChatMessages = validChatMessages + 1
                 # print on screen
                 if (optionBrief):
                     print(f"{c.datetime} [{c.author.name}]- {c.message}")
-                    #print(f"{c.datetime} [{c.author.name}]- {c.message}")
-                    #print(f"{c.author.name}: {c.message}")
                 else:
                     print(c.json())           
                 #
@@ -465,7 +497,11 @@ def loopDisplayAllChatMessages():
             myprint("KeyboardInterrupt hit; breaking.")
             wantsQuit = True
             break
+    #
     #myprint("Done fetching chat from video.")
+    #
+    # debug new hash table?
+    #messsageHashDebug()
 
 
 
@@ -483,6 +519,70 @@ def scanChatMessageForTriggers(cobj):
     else:
         if (patternCancel.search(msg)):
             triggerCancelAlert()
+
+
+def checkForRepeatedBuggyMessage(cobj):
+    # check if c item is a BUGGY REPEAT of an old message -- this can happen very rarely on some streams (4/23/23 dear holmes 2, log is full of duplicated chat messages)
+    # there are TWO ways we could check for such repeats.. FIRST we could check if timestamp of subsequent message is earlier or equal to last one
+    # but might this happen in real life?
+    # SECOND we could hash messages and check for duplicate existence in hash
+    # THIRD we could combine, hash messages but only check for duplicate IFF the timestamp <= last
+    global lastMessageTimestamp
+    global optionUseMessageCacheToCheckForBuggyDupes, optionCacheCheckEveryMessageForBuggyDupes, optionRejectSuspectedBuggyDupes
+    global messageHashSet
+    if (not optionRejectSuspectedBuggyDupes):
+        # disabled this feature
+        return;
+    
+    thisTimestamp = cobj.timestamp
+    # calc hash of message
+    hashOfMessage = 0
+    if (optionUseMessageCacheToCheckForBuggyDupes):
+        hashOfMessage = messageHashCalc(cobj)
+
+    # is it even candidate for being dupe?
+    if (thisTimestamp <= lastMessageTimestamp or optionCacheCheckEveryMessageForBuggyDupes):
+        # ok we have a message out of time (or we are checking all), so we consider it a candidate for checking dupers
+        # we could just reject it out of hand, or check for it in cache
+        if (not optionUseMessageCacheToCheckForBuggyDupes and thisTimestamp <= lastMessageTimestamp):
+            # reject it as a dupe without even bothering to check a cache
+            return True
+        # check if its a dupe in cache
+        isInCache = messageHashCheckPresence(hashOfMessage)
+        if (isInCache):
+            # reject as dupe
+            return True
+        # otherwise drop down
+    # ok we can ASSUME its not a dupe because its not out of time OR because we dropped down after explicitly checking
+    # update timestamp
+    if (thisTimestamp > lastMessageTimestamp):
+        lastMessageTimestamp = thisTimestamp
+    if (not optionUseMessageCacheToCheckForBuggyDupes):
+        # all done, just return saying not a dupe
+        return False
+    # ok its not a dupe, weve updated timestamp, but now we want to add a hash
+    messageHashAdd(hashOfMessage)
+    # all done, return saying not dupe
+    return False
+
+
+def messageHashCalc(cobj):
+    return hash(cobj.json())
+
+def messageHashCheckPresence(hashVal):
+    global messageHashSet
+    return (hashVal in messageHashSet)
+
+def messageHashAdd(hashVal):
+    global messageHashSet
+    messageHashSet.add(hashVal)
+
+def messsageHashDebug():
+    global messageHashSet
+    myprint("Testing messsageHashDebug:")
+    myprint(messageHashSet)
+
+
 
 
 def triggerCancelAlert():

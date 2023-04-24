@@ -250,8 +250,6 @@ public:
 	void doPrecalcCropScale(int swidth, int sheight);
 	void doSetEffectParamsBorder(int swidth, int sheight);
 	void doSetEffectParamsCropScale();
-	//
-	void clearBorderCache() { cachedBorderWidth = -1;  cachedBorderHeight = -1; }
 public:
 	virtual void gon_plugin_update( obs_data_t* settings);
 	virtual bool gon_plugin_render(gs_effect_t* obsoleteFilterEffect);
@@ -297,5 +295,5 @@ public:
 	bool reloadBackTextureFile();
 	void freeBackTextureFile();
 public:
-	void forceUpdatePluginSettingsOnOptionChange() { clearBorderCache(); }
+	void forceUpdatePluginSettingsOnOptionChange() { markBorderTextureCacheInvalid(); }
 };

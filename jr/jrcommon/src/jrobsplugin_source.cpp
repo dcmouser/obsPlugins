@@ -18,17 +18,26 @@ void jrObsPluginSource::setObsPluginSourceSetCallbacks(obs_source_info* pluginIn
 
 //---------------------------------------------------------------------------
 void jrObsPluginSource::updateSourceProperties() {
-	obs_source_t* source = getThisPluginParentSource();
-	renderSource = source;
-	renderSource = getThisPluginTargetSource();
-	if (renderSource && getIsPluginTypeFilter()) {
+	if (getIsPluginTypeFilter()) {
+		//mydebug("In updateSourceProperties FILTER!!!! TYPE rendersource = %p", renderSource);
+		renderSource = getThisPluginTargetSource();
 		// attempt to properly get size of previous filter output
 		sourceWidth = obs_source_get_base_width(renderSource);
 		sourceHeight = obs_source_get_base_height(renderSource);
 	}
 	else {
-		sourceWidth = obs_source_get_base_width(source);
-		sourceHeight = obs_source_get_base_height(source);
+		sourceWidth = width;
+		sourceHeight = height;
+		renderSource = getThisPluginTargetSource();
+		return;
+
+		renderSource = getThisPluginParentSource();
+		//mydebug("In updateSourceProperties SOURCE TYPE rendersource = %p", renderSource);
+		sourceWidth = obs_source_get_base_width(renderSource);
+		sourceHeight = obs_source_get_base_height(renderSource);
+		renderSource = getThisPluginTargetSource();
+		//mydebug("In updateSourceProperties SOURCE TYPEB rendersource = %p", renderSource);
+		// ATTN: I don't understand why this suddenly broke
 	}
 }
 //---------------------------------------------------------------------------

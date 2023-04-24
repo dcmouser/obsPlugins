@@ -173,21 +173,12 @@ obs_properties_t* JrBorder::gon_plugin_get_properties() {
 
 	propgroup = obs_properties_create();
 	obs_properties_add_group(props, "custommask", "Custom mask file", OBS_GROUP_NORMAL , propgroup);
-	//
-	std::string filterStr = std::string(TEXT_PATH_IMAGES) + std::string(IMAGE_FILTER_EXTENSIONS ";;") + std::string(TEXT_PATH_ALL_FILES) + std::string(" (*.*)");
-	/*
-	struct dstr filter_str = {0};
-	dstr_copy(&filter_str, TEXT_PATH_IMAGES);
-	dstr_cat(&filter_str, IMAGE_FILTER_EXTENSIONS ";;");
-	dstr_cat(&filter_str, TEXT_PATH_ALL_FILES);
-	*/
-	const char* defPath = NULL;
-	if (opt_customMaskFilePath != "") {
-		defPath = opt_customMaskFilePath.c_str();
+
+	if (true) {
+		std::string filterStr = std::string(TEXT_PATH_IMAGES) + std::string(IMAGE_FILTER_EXTENSIONS ";;") + std::string(TEXT_PATH_ALL_FILES) + std::string(" (*.*)");
+		std::string startFolderPath = jrGetDirPathFromFilePath(opt_customMaskFilePath);
+		obs_properties_add_path(propgroup, "maskFilePath", "Mask file path", OBS_PATH_FILE, filterStr.c_str(), startFolderPath.c_str());
 	}
-	//dstr_cat(&filter_str, " (*.*)");
-	obs_properties_add_path(propgroup, "maskFilePath", "Mask file path", OBS_PATH_FILE, filterStr.c_str(), defPath);
-	//dstr_free(&filter_str);
 
 	comboStringStyle = obs_properties_add_list(propgroup, SettingCustomMaskType, "Custom mask type", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	obs_property_set_modified_callback(comboStringStyle, OnPropertyChangeCallback);
@@ -227,26 +218,15 @@ obs_properties_t* JrBorder::gon_plugin_get_properties() {
 		// manually adjust button
 		obs_properties_add_button(propgroup, "adjustNow", "Adjust size and position now to match subsequent scene item", OnPropertyButtonClickAdjustNowCallback);
 	}
-
 	if (true) {
 		// new background textures
 		propgroup = obs_properties_create();
 		obs_properties_add_group(props, "backTexture", "Background texture", OBS_GROUP_CHECKABLE , propgroup);
-		//
+
 		std::string filterStr = std::string(TEXT_PATH_IMAGES) + std::string(IMAGE_FILTER_EXTENSIONS ";;") + std::string(TEXT_PATH_ALL_FILES) + std::string(" (*.*)");
-		/*
-		struct dstr filter_str = {0};
-		dstr_copy(&filter_str, TEXT_PATH_IMAGES);
-		dstr_cat(&filter_str, IMAGE_FILTER_EXTENSIONS ";;");
-		dstr_cat(&filter_str, TEXT_PATH_ALL_FILES);
-		*/
-		const char* defPath = NULL;
-		if (opt_backTextureFilePath != "") {
-			defPath = opt_backTextureFilePath.c_str();
-		}
-		//dstr_cat(&filter_str, " (*.*)");
-		obs_properties_add_path(propgroup, "backTextureFilePath", "Background texture file path", OBS_PATH_FILE, filterStr.c_str(), defPath);
-		//dstr_free(&filter_str);
+		std::string startFolderPath = jrGetDirPathFromFilePath(opt_backTextureFilePath);
+		obs_properties_add_path(propgroup, "backTextureFilePath", "Background texture file path", OBS_PATH_FILE, filterStr.c_str(), startFolderPath.c_str());
+
 		obs_properties_add_int_slider(propgroup, "colorBlendLerpBack", "Background color blend %", 0, 100, 1);
 	}
 
@@ -358,9 +338,6 @@ void JrBorder::gon_plugin_update(obs_data_t* settings) {
 		opt_backTextureFilePath = newBackTextureFilePath;
 		reloadBackTextureFile();
 	}
-
-	// clear cache
-	clearBorderCache();
 
 	// and now make changes based on options changing
 	forceUpdatePluginSettingsOnOptionChange();
@@ -1378,6 +1355,7 @@ bool JrBorder::updateBorderComputationsCacheAndBorderTexture(int swidth, int she
 				// no mask needed
 				jrRenderEffectIntoTextureT(texrenderBorder, effectBorder, backTexturep, cropScaleStageFinalWidth, cropScaleStageFinalHeight, jrBlendPureCopy, ("DrawRectangle"+drawTechniqueSuffix).c_str());
 				flagUsingBorderMask = false;
+				flagUsingBorder = true;
 			}
 		} else if (opt_borderShape==borderShapeEnumCustom) {
 			// build mask
@@ -1390,11 +1368,15 @@ bool JrBorder::updateBorderComputationsCacheAndBorderTexture(int swidth, int she
 		cachedBorderWidth = swidth;
 		cachedBorderHeight = sheight;
 		rebuilt = true;
+		//mydebug("ATTN: in updateBorderComputationsCacheAndBorderTexture 3b (%dx%d)", cropScaleStageFinalWidth, cropScaleStageFinalHeight);
 	}
 
 	// new set this from computations so we dont have to always run
 	width = cropScaleStageFinalWidth;
 	height = cropScaleStageFinalHeight;
+
+	//mydebug("ATTN: in updateBorderComputationsCacheAndBorderTexture 4 (%dx%d)", cropScaleStageFinalWidth, cropScaleStageFinalHeight);
+
 	return rebuilt;
 }
 //---------------------------------------------------------------------------
@@ -1566,6 +1548,7 @@ bool JrBorder::doRenderPluginSource() {
 	updateSourceProperties();
 
 	//startLinearRgbSpaceMode();
+	//mydebug("doRenderPluginSource1 %dx%d (tw = %dx%d)", sourceWidth, sourceHeight, width, height);
 
 	if (needsShadowSourceReadjust) {
 		// get any taget item to watch for changes (can be null meaning assume its changed)
@@ -1574,10 +1557,12 @@ bool JrBorder::doRenderPluginSource() {
 		setNeedsShadowSourceReadjust(false, NULL);
 		// scan
 		rescanCurrentSceneAndAdjustSizePositions(targetItemp);
+		//mydebug("doRenderPluginSource2");
 	}
 
 	if (!effectBorder || width<=0 || height<=0) {
 		// dont render normal source, better to show there is error with blankness
+		//mydebug("doRenderPluginSource3");
 		return false;
 	}
 
@@ -1588,9 +1573,12 @@ bool JrBorder::doRenderPluginSource() {
 	//width = cropScaleStageFinalWidth;
 	//height = cropScaleStageFinalHeight;
 
+	//if (isEnabledAndWorkingBorder()) {
 	if (isEnabledAndWorkingBorder()) {
 		// and now from border texture (cached)
+		//mydebug("doRenderPluginSource4");
 		if (isEnabledAndWorkingBorderMask()) {
+			//mydebug("doRenderPluginSource5");
 			// mask out first
 			// see https://www.andersriggelsen.dk/glblendfunc.php
 			if (true) {
@@ -1606,7 +1594,7 @@ bool JrBorder::doRenderPluginSource() {
 	}
 
 	//endLinearRgbSpaceMode();
-
+	//mydebug("doRenderPluginSource6");
 	return true;
 }
 //---------------------------------------------------------------------------

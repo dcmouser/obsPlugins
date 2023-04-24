@@ -161,11 +161,11 @@ void JrCft::restartMediaSourcesInScenes(bool flagAllScenes) {
 
 //---------------------------------------------------------------------------
 // helper to launch stuff on start of streaming AND recording
-void JrCft::doOnStrRecStartStuff(enum obs_frontend_event event) {
-	if (restartMediaOnStart) {
+void JrCft::doOnStrRecStartStuff(enum obs_frontend_event event, bool flagRestartMedia, bool flagLaunchBatch) {
+	if (flagRestartMedia) {
 		restartMediaSourcesInScenes(false);
 	}
-	if (startRecStrCommandline!= "" && !startRecStrCommandline.startsWith("//")) {
+	if (flagLaunchBatch && startRecStrCommandline!= "" && !startRecStrCommandline.startsWith("//")) {
 		clock_t nowTime = clock();
 		clock_t sinceLastRun = nowTime - lastTimeRunCommandline;
 		if (sinceLastRun < DefMinimumTimeBetweenStartCommandlineRunSecs * CLOCKS_PER_SEC) {

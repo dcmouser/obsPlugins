@@ -297,6 +297,67 @@ bool JR_SplitStringLeft(std::string &mainstring,std::string &leftpart,char divid
 	return true;
 }
 
+
+
+
+bool JR_SplitStringRight(std::string &mainstring,std::string &rightpart,char dividerchar)
+{
+	// split left part of a string off
+
+	int len = (int)(mainstring.length());
+	if (len==0)
+		{
+		// nothing to grab so return false
+		rightpart="";
+		return false;
+		}
+
+	const char *charp=mainstring.c_str();
+	bool inquote=false;
+	char c;
+
+	// find 
+	for (int count=len-1;count>=0;--count)
+		{
+		c=charp[count];
+		if (c==34 && inquote==false)
+			inquote=true;
+		else if (c==34 && inquote==true)
+			inquote=false;
+		else if (c==dividerchar && inquote==false)
+			{
+			// found it, grab right part
+			if (count==len-1)
+				rightpart="";
+			else
+				{
+				rightpart=mainstring.substr(count+1, (len-(count+1)) );
+				// ATTN: do we need to trim it?
+				JR_trim_string(rightpart);
+				}
+			// now grab remainder
+			if (count>0)
+				{
+				mainstring=mainstring.substr(0,count);
+				// ATTN: do we need to trim it?
+				JR_trim_string(mainstring);
+				}
+			else
+				mainstring="";
+			return true;
+			}
+		}
+
+	// not found, so its all left part
+	rightpart=mainstring;
+	JR_trim_string(rightpart);
+	mainstring="";
+	return true;
+}
+
+
+
+
 void JR_trim_string(std::string &s)
 { 
 	s.erase(0,s.find_first_not_of(" \t\r\n"));
@@ -304,3 +365,11 @@ void JR_trim_string(std::string &s)
 } 
 //---------------------------------------------------------------------------
 
+
+//---------------------------------------------------------------------------
+std::string jrGetDirPathFromFilePath(std::string filepath) {
+	std::string dummystr;
+	JR_SplitStringRight(filepath, dummystr, '/');
+	return filepath;
+}
+//---------------------------------------------------------------------------

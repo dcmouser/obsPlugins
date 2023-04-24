@@ -121,7 +121,7 @@ public:
 	void refreshBrowserSourcesInScenes(bool flagAllScenes);
 	void restartMediaSourcesInScenes(bool flagAllScenes);
 protected:
-	void doOnStrRecStartStuff(enum obs_frontend_event event);
+	void doOnStrRecStartStuff(enum obs_frontend_event event, bool flagRestartMedia, bool flagLaunchBatch);
 };
 //---------------------------------------------------------------------------
 

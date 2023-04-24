@@ -325,17 +325,19 @@ void JrCft::handleObsFrontendEvent(enum obs_frontend_event event) {
 	switch ((int)event) {
 		// handle broadcast selected
 		case OBS_FRONTEND_EVENT_STREAMING_STARTED:
-			doOnStrRecStartStuff(event);
+			doOnStrRecStartStuff(event, true, true);
 			break;
 		case OBS_FRONTEND_EVENT_RECORDING_STARTED:
-			doOnStrRecStartStuff(event);
+			doOnStrRecStartStuff(event,  true, true);
 			break;
 		case OBS_FRONTEND_EVENT_BROADCAST_STARTING:
 			// this is triggered before broadcast actually begins -- to give it time to restart media i have patched OBS to add a delay
-			doOnStrRecStartStuff(event);
+			// but we dont want to do the thing that launches process because it takes too long?
+			doOnStrRecStartStuff(event,  true, false);
 			break;
 		case OBS_FRONTEND_EVENT_BROADCAST_STARTED:
 			// do NOT trigger anything here, this event happens AFTER the broadcast begins
+			doOnStrRecStartStuff(event,  false, true);
 			break;
 		case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
 			break;
