@@ -1,0 +1,402 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float2 mulVal;
+uniform float2 addVal;
+uniform float2 clip_ul;
+uniform float2 clip_lr;
+//
+uniform float2 hardClip_ul;
+uniform float2 hardClip_lr;
+//
+uniform float2 pixel_size;
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+sampler_state textureSampler {
+	//Filter    = Linear;
+	Filter    = Bicubic;
+	AddressU  = Border;
+	AddressV  = Border;
+	BorderColor = 00000000;
+};
+
+
+sampler_state LinearClampSampler {
+	Filter = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+	MinLOD = 0;
+	MaxLOD = 0;
+};
+
+sampler_state LinearBorderSampler {
+	Filter = Linear;
+	AddressU  = Border;
+	AddressV  = Border;
+	MinLOD = 0;
+	MaxLOD = 0;
+};
+
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+VertData VSCrop(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv * mulVal + addVal;
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+float4 PsCropBlurPixel_BadButWorks(VertData v_in) {
+		// blur in here
+		// ATTN: unfinished
+		// from https://github.com/Jam3/glsl-fast-gaussian-blur/blob/master/5.glsl
+		// sample pixel
+		float resolution = 1.0;
+		float2 direction = (0.0, 1.0);
+		float4 color = float4(0.0,0.0,0.0,0.0);
+		//
+		float2 off1 = float2(1.3333333333333333, 1.3333333333333333) * direction;
+		color += image.Sample(textureSampler, v_in.uv) * 0.29411764705882354;
+		color += image.Sample(textureSampler, v_in.uv + (off1 * pixel_size)) * 0.35294117647058826;
+		color += image.Sample(textureSampler, v_in.uv - (off1 * pixel_size)) * 0.35294117647058826;
+
+		// doing it appx in one pass
+		direction = (1.0, 0.0);
+		off1 = float2(1.3333333333333333, 1.3333333333333333) * direction;
+		color += image.Sample(textureSampler, v_in.uv) * 0.29411764705882354;
+		color += image.Sample(textureSampler, v_in.uv + (off1 * pixel_size)) * 0.35294117647058826;
+		color += image.Sample(textureSampler, v_in.uv - (off1 * pixel_size)) * 0.35294117647058826;
+		color = color / 2.0;
+
+		return color; 
+}
+
+
+
+
+
+
+float4 PsCropBlurPixelBoxLinear(VertData vtx) {
+		// blur in here
+		// see https://github.com/Xaymar/obs-StreamFX/wiki/Filter-Blur
+
+		// mystery params
+		float pStepScale=1;
+		float pSize=4;
+		float pSizeInverseMul = 1.0;
+		int MAX_BLUR_SIZE = 128;
+
+		pSizeInverseMul = 1.0f / ((float)pSize * 2.0f + 1.0f);
+
+
+	// y = yes, s = skip, b = break
+	// Size-> | 1| 2| 3| 4| 5| 6| 7|
+	// -------+--+--+--+--+--+--+--+
+	//  n=1   | b| y| y| y| y| y| y|
+	//  n=2   |  |bs| s| s| s| s| s|
+	//  n=3   |  | b| b| y| y| y| y|
+	//  n=4   |  |  |  |bs| s| s| s|
+	//  n=5   |  |  |  | b| b| y| y|
+	//  n=6   |  |  |  |  |  |bs| s|
+	//  n=7   |  |  |  |  |  | b| b|
+	//  n=8   |  |  |  |  |  |  |  |
+
+	float4 final = image.Sample(LinearClampSampler, vtx.uv);
+	for (uint n = 1u; (n < uint(pSize)) && (n < MAX_BLUR_SIZE); n += 2u) {
+		float2 nstep = (pixel_size * pStepScale) * (float(n) + 0.5);
+		final += image.Sample(LinearClampSampler, vtx.uv + nstep) * 2.;
+		final += image.Sample(LinearClampSampler, vtx.uv - nstep) * 2.;
+	}
+
+	if ((uint(pSize) % 2u) == 1u) {
+		float2 nstep = (pixel_size * pStepScale) * pSize;
+		final += image.Sample(LinearClampSampler, vtx.uv + nstep);
+		final += image.Sample(LinearClampSampler, vtx.uv - nstep);
+	}
+
+	final *= pSizeInverseMul;
+
+	return final;
+}
+
+
+
+
+
+float4 PsCropBlurPixelDual(VertData vtx) {
+	// blur in here
+	// see https://github.com/Xaymar/obs-StreamFX/wiki/Filter-Blur
+	float4 color1, color2, color3;
+
+	if (true) {
+		float2 pImageTexel = pixel_size * 1.0f;
+		float4 pxL  = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x * 2,  0.           ));
+		float4 pxBL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxB  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                 pImageTexel.y * 2));
+		float4 pxBR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxR  = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x * 2,  0.           ));
+		float4 pxTR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		float4 pxT  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                -pImageTexel.y * 2));
+		float4 pxTL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		color1 =  (((pxTL + pxTR + pxBL + pxBR) * 2.0) + pxL + pxR + pxT + pxB) * 0.083333333333;
+		}
+
+	if (true) {
+		float2 pImageTexel = pixel_size * 2.0f;
+		float4 pxL  = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x * 2,  0.           ));
+		float4 pxBL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxB  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                 pImageTexel.y * 2));
+		float4 pxBR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxR  = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x * 2,  0.           ));
+		float4 pxTR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		float4 pxT  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                -pImageTexel.y * 2));
+		float4 pxTL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		color2 =  (((pxTL + pxTR + pxBL + pxBR) * 2.0) + pxL + pxR + pxT + pxB) * 0.083333333333;
+		}
+
+	if (true) {
+		float2 pImageTexel = pixel_size * 3.0f;
+		float4 pxL  = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x * 2,  0.           ));
+		float4 pxBL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxB  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                 pImageTexel.y * 2));
+		float4 pxBR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,      pImageTexel.y)); // * 2.0
+		float4 pxR  = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x * 2,  0.           ));
+		float4 pxTR = image.Sample(LinearClampSampler, vtx.uv + float2( pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		float4 pxT  = image.Sample(LinearClampSampler, vtx.uv + float2( 0.,                -pImageTexel.y * 2));
+		float4 pxTL = image.Sample(LinearClampSampler, vtx.uv + float2(-pImageTexel.x,     -pImageTexel.y)); // * 2.0
+		color3 =  (((pxTL + pxTR + pxBL + pxBR) * 2.0) + pxL + pxR + pxT + pxB) * 0.083333333333;
+		}
+
+	float4 color = (color1+color2+color3*2) /4.0;
+	return color;
+}
+
+
+
+
+// needed for loop unrolling complaint
+#define MAX_LOOPS 64
+
+float4 PsCropBlurPixelSimple(VertData vtx) {
+	int samples = 0;
+	const int loops = 6;
+	const int stepsize = 1;
+	float4 color = float4(0,0,0,0);
+
+	for (int i = 1;i<=MAX_LOOPS;++i) {
+		for (int dx=-stepsize; dx<=stepsize; dx+=stepsize) {
+			for (int dy=-stepsize;dy<=stepsize; dy+=stepsize) {
+				color += (image.Sample(LinearClampSampler, vtx.uv + float2(dx*pixel_size.x,dy*pixel_size.y)*i));
+				samples+=1;
+			}
+		}
+		if (i>loops) {
+			break;
+		}
+	}
+
+	color /= samples;
+	return color;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float4 PSCrop(VertData v_in) : TARGET
+{
+	// clip to crop area
+	if (v_in.uv.x < clip_ul.x || v_in.uv.x > clip_lr.x || v_in.uv.y < clip_ul.y || v_in.uv.y > clip_lr.y) {
+		clip(-1);
+		// can we return anyhing here?
+		return float4(0.0,0.0,0.0,0.0);
+		}
+
+	return image.Sample(textureSampler, v_in.uv);
+}
+
+
+float4 PSCropSoft(VertData v_in) : TARGET
+{
+	// clip to hard crop area; let soft crop through
+	if (v_in.uv.x < hardClip_ul.x || v_in.uv.x > hardClip_lr.x || v_in.uv.y < hardClip_ul.y || v_in.uv.y > hardClip_lr.y) {
+		// in hard clip area
+		clip(-1);
+		// doesn't matter what we return here
+		return float4(0.0,0.0,0.0,0.0);
+		}
+
+	return image.Sample(textureSampler, v_in.uv);
+}
+
+
+
+float4 PSCropBlur(VertData v_in) : TARGET
+{
+	if (v_in.uv.x < hardClip_ul.x || v_in.uv.x > hardClip_lr.x || v_in.uv.y < hardClip_ul.y || v_in.uv.y > hardClip_lr.y) {
+		// in hard clip area
+		clip(-1);
+		// doesn't matter what we return here
+		return float4(0.0,0.0,0.0,0.0);
+		}
+
+	if (v_in.uv.x < clip_ul.x || v_in.uv.x > clip_lr.x || v_in.uv.y < clip_ul.y || v_in.uv.y > clip_lr.y) {
+		// in blur area
+		//
+		if (false) {
+			// test to check where is being blurred
+			return float4(0.0,0.0,1.0,1.0);
+		}
+		//
+		float4 color = PsCropBlurPixelDual(v_in);
+		// also darken and semi-transpar?
+		if (true) {
+			color /= 2.0;
+		}
+		//
+		return color;
+		}
+
+	// normal view
+	return image.Sample(textureSampler, v_in.uv);
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSCrop(v_in);
+		pixel_shader  = PSCrop(v_in);
+	}
+}
+
+
+technique DrawSoftCrop
+{
+	pass
+	{
+		vertex_shader = VSCrop(v_in);
+		pixel_shader  = PSCropSoft(v_in);
+	}
+}
+
+
+technique DrawBlur
+{
+	pass
+	{
+		vertex_shader = VSCrop(v_in);
+		pixel_shader  = PSCropBlur(v_in);
+	}
+}
+//---------------------------------------------------------------------------

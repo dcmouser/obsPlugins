@@ -32,7 +32,8 @@
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-#define DefMinimumTimeBetweenStartCommandlineRunSecs 5
+#define DefMinimumTimeBetweenStartCommandlineRunSecs 3
+#define DefMinimumTimeBetweenRestartMediaRunSecs 0.5
 //---------------------------------------------------------------------------
 
 
@@ -67,6 +68,7 @@ protected:
 	QString startRecStrCommandline;
 	bool restartMediaOnStart = true;
 	clock_t lastTimeRunCommandline = 0;
+	clock_t lastTimeRunMediaRestart = 0;
 public:
 	void destructStuff();
 public:

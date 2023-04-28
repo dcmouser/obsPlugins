@@ -162,8 +162,18 @@ void JrCft::restartMediaSourcesInScenes(bool flagAllScenes) {
 //---------------------------------------------------------------------------
 // helper to launch stuff on start of streaming AND recording
 void JrCft::doOnStrRecStartStuff(enum obs_frontend_event event, bool flagRestartMedia, bool flagLaunchBatch) {
+
+	//blog(LOG_INFO, "In doOnStrRecStartStuff on event %d with (restartmedia = %d, launchBatch = %d).", (int) event, (int)flagRestartMedia, (int)flagLaunchBatch);
+
 	if (flagRestartMedia) {
+		clock_t nowTime = clock();
+		clock_t sinceLastRun = nowTime - lastTimeRunMediaRestart;
+		if (sinceLastRun < DefMinimumTimeBetweenRestartMediaRunSecs * CLOCKS_PER_SEC) {
+			return;
+		}
+		lastTimeRunMediaRestart = nowTime;
 		restartMediaSourcesInScenes(false);
+		//blog(LOG_INFO, "Restarted media.");
 	}
 	if (flagLaunchBatch && startRecStrCommandline!= "" && !startRecStrCommandline.startsWith("//")) {
 		clock_t nowTime = clock();
@@ -174,7 +184,9 @@ void JrCft::doOnStrRecStartStuff(enum obs_frontend_event event, bool flagRestart
 		lastTimeRunCommandline = nowTime;
 		//
 		bool optionStartMinimized = true;
+		//blog(LOG_INFO, "Launching commandline...");
 		qtHelpLaunchCommandline(startRecStrCommandline, optionStartMinimized);
+		//blog(LOG_INFO, "Launched commandline.");
 	}
 }
 //---------------------------------------------------------------------------

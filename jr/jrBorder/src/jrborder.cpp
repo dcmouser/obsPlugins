@@ -83,7 +83,7 @@ bool OnPropertyChangeCallback(obs_properties_t* props, obs_property_t* p, obs_da
 
 	if (true) {
 		bool vis = backTextureEnabled;
-		obs_property_set_visible(obs_properties_get(props, "colorBlendLerpBack"), vis);
+		//obs_property_set_visible(obs_properties_get(props, "colorBlendLerpBack"), vis);
 	}
 
 	return true;
@@ -221,7 +221,8 @@ obs_properties_t* JrBorder::gon_plugin_get_properties() {
 	if (true) {
 		// new background textures
 		propgroup = obs_properties_create();
-		obs_properties_add_group(props, "backTexture", "Background texture", OBS_GROUP_CHECKABLE , propgroup);
+		auto prop = obs_properties_add_group(props, "backTexture", "Background texture", OBS_GROUP_CHECKABLE , propgroup);
+		obs_property_set_modified_callback(prop, OnPropertyChangeCallback);
 
 		std::string filterStr = std::string(TEXT_PATH_IMAGES) + std::string(IMAGE_FILTER_EXTENSIONS ";;") + std::string(TEXT_PATH_ALL_FILES) + std::string(" (*.*)");
 		std::string startFolderPath = jrGetDirPathFromFilePath(opt_backTextureFilePath);
@@ -1442,13 +1443,24 @@ void JrBorder::doPrecalcCropScale(int swidth, int sheight) {
 		return;
 	}
 
-	// getarget dimensions for crop, before scale
-	int renderedWidth = swidth - (opt_cropLeft + opt_cropRight);
-	int renderedHeight = sheight - (opt_cropTop + opt_cropBottom);
+	// note that below here we are committed to using cropzoom EFFECT, but that doesn't necesarily mean the CROP/ZOOM is engaged and using dialog options
+	// for example we might only be doing this because opt_borderStyle == borderStyleEnumConstrain and we have to do some auto rescaling
 
-	// crop effects
-	cropScaleStage_offVal.x = (float)opt_cropLeft/(float)swidth;
-	cropScaleStage_offVal.y = (float)opt_cropTop / (float)sheight;
+	// getarget dimensions for crop, before scale
+	int renderedWidth = swidth;
+	int renderedHeight = sheight;
+
+	// crop effect params
+	if (opt_enable_cropzoom) {
+		renderedWidth -= (opt_cropLeft + opt_cropRight);
+		renderedHeight -= (opt_cropTop + opt_cropBottom);
+		cropScaleStage_offVal.x = (float)opt_cropLeft/(float)swidth;
+		cropScaleStage_offVal.y = (float)opt_cropTop / (float)sheight;
+	}
+	else {
+		cropScaleStage_offVal.x = 0;
+		cropScaleStage_offVal.y = 0;
+	}
 	cropScaleStage_mulVal.x = (float) renderedWidth / (float)swidth;
 	cropScaleStage_mulVal.y = (float) renderedHeight / (float)sheight;
 

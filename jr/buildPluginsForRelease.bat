@@ -22,10 +22,9 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 mkdir "%builddir%\timestampOffset"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 copy "%pluginName%\timestampOffset\*.*" ".\%builddir%\timestampOffset\"
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
@@ -41,9 +40,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%\locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -58,9 +56,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -75,9 +72,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -92,9 +88,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -108,9 +103,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -125,9 +119,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -141,9 +134,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -158,9 +150,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
@@ -174,9 +165,8 @@ mkdir "%builddir%\obs-plugins\64bit"
 mkdir "%builddir%\data"
 mkdir "%builddir%\data\obs-plugins"
 mkdir "%builddir%\data\obs-plugins\%pluginName%"
-mkdir "%builddir%\data\obs-plugins\%pluginName%/locale"
 copy "%releasedirDlls%\%pluginName%.*" ".\%builddir%\obs-plugins\64bit\"
-copy "%pluginName%\data\locale\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\locale\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
 cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..

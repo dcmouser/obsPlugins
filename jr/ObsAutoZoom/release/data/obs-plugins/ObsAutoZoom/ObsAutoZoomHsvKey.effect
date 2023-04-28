@@ -1,0 +1,330 @@
+//---------------------------------------------------------------------------
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 pixel_size;
+
+uniform float3 color1hsv;
+uniform float3 color2hsv;
+uniform float hueThreshold1;
+uniform float saturationThreshold1;
+uniform float valueThreshold1;
+uniform float hueThreshold2;
+uniform float saturationThreshold2;
+uniform float valueThreshold2;
+//
+#define hsvTestThreshold 1.0
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+// see https://www.chilliant.com/rgb2hsv.html
+// As for most pixel shaders, red/green/blue components are in the range zero to one inclusive. For consistency, hue/saturation/value/lightness/chroma/luminance are also in the unit range.
+// alternatively see https://www.ronja-tutorials.com/post/041-hsv-colorspace/
+
+ float Epsilon = 0.0000000001; //1e-10;
+
+
+  float3 HUEtoRGB(in float H)
+  {
+    float R = abs(H * 6 - 3) - 1;
+    float G = 2 - abs(H * 6 - 2);
+    float B = 2 - abs(H * 6 - 4);
+    return saturate(float3(R,G,B));
+  }
+  
+  float3 RGBtoHCV(in float3 RGB)
+  {
+    // Based on work by Sam Hocevar and Emil Persson
+    float4 P = (RGB.g < RGB.b) ? float4(RGB.bg, -1.0, 2.0/3.0) : float4(RGB.gb, 0.0, -1.0/3.0);
+    float4 Q = (RGB.r < P.x) ? float4(P.xyw, RGB.r) : float4(RGB.r, P.yzx);
+    float C = Q.x - min(Q.w, Q.y);
+    float H = abs((Q.w - Q.y) / (6 * C + Epsilon) + Q.z);
+    return float3(H, C, Q.x);
+  }
+
+  float3 HSVtoRGB(in float3 HSV)
+  {
+    float3 RGB = HUEtoRGB(HSV.x);
+    return ((RGB - 1) * HSV.y + 1) * HSV.z;
+  }
+  
+  
+  float3 RGBtoHSV(in float3 RGB)
+  {
+    float3 HCV = RGBtoHCV(RGB);
+    float S = HCV.y / (HCV.z + Epsilon);
+    return float3(HCV.x, S, HCV.z);
+  }
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+/*
+sampler_state textureSamplerNearestUnused {
+	Filter    = Nearest;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+*/
+
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+//---------------------------------------------------------------------------
+
+
+
+
+//---------------------------------------------------------------------------
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+float3 SampleHsvTexture(in float2 uv)
+{
+	return RGBtoHSV(image.Sample(textureSampler, uv).rgb);
+}
+
+
+
+float4 calcRgbaColorGreenFromHsvDistance(in float dist)
+{
+	return (dist < hsvTestThreshold) ? float4(0.0,1.0,0.0,1.0) : float4(0.0,0.0,0.0,0.0);
+}
+
+float4 calcRgbaColorRedFromHsvDistance(in float dist)
+{
+	return (dist < hsvTestThreshold) ? float4(1.0,0.0,0.0,1.0) : float4(0.0,0.0,0.0,0.0);
+}
+
+
+
+
+float calcHueDistance(in float hue1, in float hue2)
+{
+	return (abs(hue1-hue2) > 0.5) ? 1.0-abs(hue1-hue2) : abs(hue1-hue2);
+}
+
+float GetHsvColorDist1(in float3 hsv)
+{
+	return (calcHueDistance(color1hsv.x, hsv.x) > hueThreshold1 || abs(color1hsv.y - hsv.y) > saturationThreshold1 || abs(color1hsv.z - hsv.z) > valueThreshold1) ? 1.0 : 0.0;
+}
+
+float GetHsvColorDist2(in float3 hsv)
+{
+	return (calcHueDistance(color2hsv.x, hsv.x) > hueThreshold2 || abs(color2hsv.y - hsv.y) > saturationThreshold2 || abs(color2hsv.z - hsv.z) > valueThreshold2) ? 1.0 : 0.0;
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+// unused; we now use dilation later in pipeline
+float GetBoxFilteredHsvColorDist1(in float2 texCoord)
+{
+	float2 h_pixel_size = pixel_size / 2.0;
+	float2 point_0 = float2(pixel_size.x, h_pixel_size.y);
+	float2 point_1 = float2(h_pixel_size.x, -pixel_size.y);
+	float distVal = GetHsvColorDist1(SampleHsvTexture(texCoord-point_0));
+	distVal += GetHsvColorDist1(SampleHsvTexture(texCoord+point_0));
+	distVal += GetHsvColorDist1(SampleHsvTexture(texCoord-point_1));
+	distVal += GetHsvColorDist1(SampleHsvTexture(texCoord+point_1));
+	distVal *= 2.0;
+	distVal += GetHsvColorDist1(SampleHsvTexture(texCoord));
+	return distVal / 9.0;
+}
+
+
+float GetBoxFilteredHsvColorDist2(in float2 texCoord)
+{
+	float2 h_pixel_size = pixel_size / 2.0;
+	float2 point_0 = float2(pixel_size.x, h_pixel_size.y);
+	float2 point_1 = float2(h_pixel_size.x, -pixel_size.y);
+	float distVal = GetHsvColorDist2(SampleHsvTexture(texCoord-point_0));
+	distVal += GetHsvColorDist2(SampleHsvTexture(texCoord+point_0));
+	distVal += GetHsvColorDist2(SampleHsvTexture(texCoord-point_1));
+	distVal += GetHsvColorDist2(SampleHsvTexture(texCoord+point_1));
+	distVal *= 2.0;
+	distVal += GetHsvColorDist2(SampleHsvTexture(texCoord));
+	return distVal / 9.0;
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+float calcHsvColorDistance1(in VertData v_in)
+{
+	//return GetBoxFilteredHsvColorDist1(v_in.uv);
+	return GetHsvColorDist1(SampleHsvTexture(v_in.uv));
+}
+
+
+float calcHsvColorDistance2(in VertData v_in)
+{
+//	return GetBoxFilteredHsvColorDist2(v_in.uv);
+	return GetHsvColorDist2(SampleHsvTexture(v_in.uv));
+}
+
+
+
+float4 PSHsvColor1(in VertData v_in) : TARGET
+{
+	return calcRgbaColorGreenFromHsvDistance(GetBoxFilteredHsvColorDist1(v_in.uv));
+}
+
+float4 PSHsvColor2(VertData v_in) : TARGET
+{
+	return calcRgbaColorRedFromHsvDistance(GetBoxFilteredHsvColorDist2(v_in.uv));
+}
+
+
+
+
+float4 PSHsvDualSep(VertData v_in) : TARGET
+{
+	// run both distances and take the closer one
+	return (calcHsvColorDistance1(v_in) < calcHsvColorDistance2(v_in)) ? calcRgbaColorGreenFromHsvDistance(calcHsvColorDistance1(v_in)) : calcRgbaColorRedFromHsvDistance(calcHsvColorDistance2(v_in));
+/*
+	float dist1 = calcHsvColorDistance1(v_in);
+	float dist2 = calcHsvColorDistance2(v_in);
+	return (dist1 < dist2) ? calcRgbaColorGreenFromHsvDistance(dist1) : calcRgbaColorRedFromHsvDistance(dist2);
+*/
+}
+
+
+
+
+float4 PSHsvColorDebug(VertData v_in, float3 colorhsv, int debugMode) : TARGET
+{
+	if (debugMode==1) {
+		// test of colorhsv passed in -- this actually is very useful to see if the base code of converting to hsv matches OUR conversion to hsv
+		// if it works the entire disaply whould be the color of the color1 in the options
+		float3 hsv = colorhsv;
+		float3 rgbout = HSVtoRGB(hsv);
+		float4 rgbaout = float4(rgbout.xyz, 1.0);
+		return rgbaout;
+	}
+	if (debugMode==2) {
+		// render hsv as rgb it will look weird but tell us its not all 0s
+		// get image at location
+		float4 rgba = image.Sample(textureSampler, v_in.uv);
+		float3 hsv = RGBtoHSV(rgba.rgb);
+		float4 rgbaout = float4(hsv, 1.0);
+		return rgbaout;
+		}
+	if (true || debugMode==3) {
+		// convert pixel to hsv and then back
+		// get image at location
+		float4 rgba = image.Sample(textureSampler, v_in.uv);
+		float3 hsv = RGBtoHSV(rgba.rgb);
+		// back from hsv to rgb - if everything works this should look like original image
+		float3 rgbout = HSVtoRGB(hsv);
+		float4 rgbaout = float4(rgbout.xyz, 1.0);
+		return rgbaout;
+		}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+technique DrawColor1
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSHsvColor1(v_in);
+	}
+}
+
+
+technique DrawColor2
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSHsvColor2(v_in);
+	}
+}
+
+
+technique DrawDualSep
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSHsvDualSep(v_in);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
