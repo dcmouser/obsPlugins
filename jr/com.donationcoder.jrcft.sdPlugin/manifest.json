@@ -1,0 +1,47 @@
+{
+	"SDKVersion": 2,
+	"Author": "jessereichler@gmail.com",
+	"CodePath": "app.html",
+	"Description": "JrCft Streamdeck plugin for websocket communication with OBS",
+	"Name": "JrCft Obs",
+	"Icon": "actions/template/assets/action",
+	"URL": "https://www.elgato.com/en/gaming/stream-deck",
+	"Version": "1.0.2",
+	"Software": {
+		"MinimumVersion": "5.0"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "10.11"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Category": "JrCft",
+	"CategoryIcon": "actions/template/assets/websocketObs",
+	"Actions": [
+		{
+			"Icon": "actions/template/assets/websocketObs",
+			"Name": "Cft OBS websocket command",
+			"Controllers": ["Keypad"],
+			"Encoder": {
+				"layout": "$X1",
+				"TriggerDescription": {
+					"Push": "Send websocket command to OBS"
+				}
+			},
+			"States": [
+				{
+					"Image": "actions/template/assets/websocketObs",
+					"Title": "OBS Websocket"
+				}
+			],
+			"Tooltip": "JrCft websocket command sender",
+			"UUID": "com.donationcoder.jrcft.action_wscommand",
+			"PropertyInspectorPath": "actions/template/property-inspector/inspector.html"
+		}
+	]
+}
