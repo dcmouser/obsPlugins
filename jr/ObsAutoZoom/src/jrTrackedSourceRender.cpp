@@ -24,6 +24,7 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source)
 	JrPlugin* plugin = getPluginp();
 
 	// trying to find if this source errors on render
+	//blog(LOG_WARNING, "jrattn: doRenderWorkFromEffectToStageTexRender validForRender forcing true");
 	setJrBadSourceRenderFlagPerSource(false);
 	validForRender = true;
 
@@ -76,6 +77,7 @@ void TrackedSource::doRenderWorkFromEffectToStageTexRender(obs_source_t* source)
 
 	// trying to find if this source errors on render
 	if (getJrBadSourceRenderFlagPerSource()) {
+		// ATTN: 6/18/23
 		//blog(LOG_WARNING, "jrattn: SourceStutterKludge Tracked source bad render alert!");
 		validForRender = false;
 	}
@@ -164,7 +166,8 @@ bool TrackedSource::doRenderWorkFromStageToInternalMemory() {
 	//mydebug("doRenderWorkFromStageToInternalMemory 10");
 	if (!stageMemoryReady) {
 		validForRender = false;
-		//mydebug("ERROR ---> stageMemoryReady is false.");
+		// ATTN: 6/18/23
+		//blog(LOG_WARNING, "jrattn: SourceStutterKludge stageMemoryReady is false bad render alert!");
 		// clear it to help debugger not see old version
 		if ((DefDebugClearDrawingSpaced || forceClear) && stagedData) {
 			memset(stagedData, 0xFF, (stageWidth + 32) * stageHeight * 4);

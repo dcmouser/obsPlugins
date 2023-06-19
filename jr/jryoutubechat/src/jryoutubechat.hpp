@@ -331,7 +331,8 @@ public:
 	void updateVoteItemWithTextAndLabel(QListWidgetItem* itemp, QString htmlResults, QString plainResults, int rowcount, int maxrowwidth, bool isOpen);
 	void pushChangeToItem(QListWidgetItem* item);
 protected:
-	void testVoting();
+	void testVoting1();
+	void testVoting2();
 protected:
 	bool currentSceneIsInIgnoreList();
 	bool currentSceneIsInAutoAdvanceList();

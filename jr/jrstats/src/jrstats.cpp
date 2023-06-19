@@ -42,6 +42,8 @@
 //
 // big -- use only if you have a * [themeID="bigerror"] in your style.qss
 #define DefJeReconnectErrorThemeId	"bigerror"
+//
+#define DefJrNotBroadcastingCautionThemeId  "caution"
 //---------------------------------------------------------------------------
 
 
@@ -233,6 +235,9 @@ void jrStats::handleObsFrontendEvent(enum obs_frontend_event event) {
 	case OBS_FRONTEND_EVENT_BROADCAST_STARTED:
 		BroadcastStarts();
 		resetStats();
+		break;
+	case OBS_FRONTEND_EVENT_BROADCAST_START_FAILED:
+		BroadcastStops();
 		break;
 	case OBS_FRONTEND_EVENT_SCENE_CHANGED:
 //		onSceneChange();
@@ -602,10 +607,13 @@ void jrStats::buildUi() {
 	onAirTimeSession = new QLabel(this);
 	onAirTimeGeneric = new QLabel(this);
 	onAirTimeOff = new QLabel(this);
+	onAirTimeNotLive = new QLabel(this);
+	//
 	onAirTimeBreakTypeLabel = new QLabel(this);
 	onAirTimeSessionTypeLabel = new QLabel(this);
 	onAirTimeGenericTypeLabel = new QLabel(this);
 	onAirTimeOffTypeLabel = new QLabel(this);
+	onAirTimeNotLiveTypeLabel = new QLabel(this);
 	bool flagLayoutOnAirVertical = true;
 	//
 	float fontSizeHeadlinef = (float)fontSizeHeadline / 10.0f;
@@ -614,6 +622,7 @@ void jrStats::buildUi() {
 	onAirBreakLayoutWidget = buildOnAirLayoutWidget("Break", onAirTimeBreak, onAirTimeBreakTypeLabel, flagLayoutOnAirVertical, "", fontSizeHeadlinef, fontSizeHeadlinef);
 	onAirSessionLayoutWidget = buildOnAirLayoutWidget("Session", onAirTimeSession, onAirTimeSessionTypeLabel, flagLayoutOnAirVertical, "", fontSizeHeadlinef, fontSizeHeadlinef);
 	onAirGenericLayoutWidget = buildOnAirLayoutWidget("OnAir", onAirTimeGeneric, onAirTimeGenericTypeLabel, flagLayoutOnAirVertical, "good", fontSizeHeadlinef, fontSizeHeadlinef);
+	onAirNotLiveLayoutWidget = buildOnAirLayoutWidget("NotLive", onAirTimeNotLive, onAirTimeNotLiveTypeLabel, flagLayoutOnAirVertical, "caution", fontSizeHeadlinef * 0.75f, fontSizeHeadlinef * 0.75f);
 
 	// bottom buttons
 	QPushButton *resetButton = new QPushButton(QTStr("Reset"));
@@ -624,6 +633,8 @@ void jrStats::buildUi() {
 
 
 
+
+	mainLayout->addWidget(onAirNotLiveLayoutWidget);
 	mainLayout->addWidget(onAirOffLayoutWidget);
 	mainLayout->addWidget(onAirBreakLayoutWidget);
 	mainLayout->addWidget(onAirSessionLayoutWidget);
@@ -1172,13 +1183,21 @@ void jrStats::Update()
 	}
 
 	// on air details
-	bool isBroadcasting = (startTimeOnAirGeneric != 0 && stopTimeOnAirGeneric == 0);
-	bool isOnBreak = (startTimeOnAirBreak != 0 && stopTimeOnAirBreak == 0) && isBroadcasting;
-	bool showSession = (startTimeOnAirSession != 0) && isBroadcasting;
-	updateOnAirBlockTime(onAirTimeOff, onAirTimeOffTypeLabel, onAirOffLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, !isBroadcasting, false, 0, 0, "");
-	updateOnAirBlockTime(onAirTimeBreak, onAirTimeBreakTypeLabel, onAirBreakLayoutWidget, startTimeOnAirBreak, stopTimeOnAirBreak, isOnBreak, true, 0, 0, "");
-	updateOnAirBlockTime(onAirTimeSession, onAirTimeSessionTypeLabel, onAirSessionLayoutWidget, startTimeOnAirSession, stopTimeOnAirSession, showSession, true, isOnBreak ? -1 : sessionSecsBeforeWarning, isOnBreak ? -1 : sessionSecsBeforeError, isOnBreak ? "warning" : "");
-	updateOnAirBlockTime(onAirTimeGeneric, onAirTimeGenericTypeLabel, onAirGenericLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, isBroadcasting, true, 0, 0, "");
+	bool calcIsBroadcasting = isBroadcasting();
+	bool calcIsOnAir = isOnAir();
+	bool calcIsOnBreak = isInBreak(); //  (startTimeOnAirBreak != 0 && stopTimeOnAirBreak == 0) && calcIsOnAir;
+	bool calcShowSession = (startTimeOnAirSession != 0) && calcIsOnAir;
+	//
+	const char* forcedNotBroadcastingCautionTheme = (!calcIsBroadcasting) ? "caution" : "";
+
+	//blog(LOG_WARNING, "attn isbroadcasting = %d and theme=%s", calcIsBroadcasting, forcedNotBroadcastingCautionTheme);
+
+	updateOnAirBlockTime(onAirTimeOff, onAirTimeOffTypeLabel, onAirOffLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, !calcIsOnAir, false, 0, 0, "");
+	updateOnAirBlockTime(onAirTimeBreak, onAirTimeBreakTypeLabel, onAirBreakLayoutWidget, startTimeOnAirBreak, stopTimeOnAirBreak, calcIsOnBreak, true, 0, 0, forcedNotBroadcastingCautionTheme);
+	updateOnAirBlockTime(onAirTimeSession, onAirTimeSessionTypeLabel, onAirSessionLayoutWidget, startTimeOnAirSession, stopTimeOnAirSession, calcShowSession, true, calcIsOnBreak ? -1 : sessionSecsBeforeWarning, calcIsOnBreak ? -1 : sessionSecsBeforeError, calcIsOnBreak ? "warning" : forcedNotBroadcastingCautionTheme);
+	updateOnAirBlockTime(onAirTimeGeneric, onAirTimeGenericTypeLabel, onAirGenericLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, calcIsOnAir, true, 0, 0, "");
+	updateOnAirBlockTime(onAirTimeNotLive, onAirTimeNotLiveTypeLabel, onAirNotLiveLayoutWidget, 0, 0, calcIsOnAir && !calcIsBroadcasting, false, 0, 0, "caution");
+
 
 	if (resetPending) {
 		// turn off prolonged reset
@@ -1463,12 +1482,14 @@ void jrStats::OutputLabels::Reset(obs_output_t *output)
 void jrStats::BroadcastStarts() {
 	startTimeBroadcast = clock();
 	stopTimeBroadcast = 0;
+	broadcastIsLive = true;
 	//
 	onAirStarts();
 	updateOnAirMode();
 }
 
 void jrStats::BroadcastStops() {
+	broadcastIsLive = false;
 	stopTimeBroadcast = clock();
 	updateOnAirMode();
 }
@@ -1486,6 +1507,7 @@ void jrStats::StreamingStops() {
 	//blog(LOG_WARNING, "jrstats: Streaming stops");
 	outputLabels[0].endTime = clock();
 	//
+	broadcastIsLive = false;
 	if (!isRecording()) {
 		onAirStops();
 	}
@@ -1561,6 +1583,9 @@ bool jrStats::isRecording() {
 }
 bool jrStats::isBroadcasting() {
 	return (startTimeBroadcast > 0 && stopTimeBroadcast == 0);
+}
+bool jrStats::isReallyBroadcasting() {
+	return (broadcastIsLive && startTimeBroadcast > 0 && stopTimeBroadcast == 0);
 }
 bool jrStats::isInBreak() {
 	return (startTimeOnAirBreak > 0 && stopTimeOnAirBreak == 0);
@@ -1751,7 +1776,7 @@ void jrStats::updateOnAirBlockTime(QLabel* labelp, QLabel* typelabelp, QWidget* 
 void jrStats::updateOnAirMode() {
 	// update state
 	// hierarchy
-	if (isBroadcasting()) {
+	if (isReallyBroadcasting()) {
 		onAirMode = JrEnumOnAirMode_Broadcasting;
 	} else if (isStreaming() && isRecording()) {
 		onAirMode = JrEnumOnAirMode_StreamRecing;

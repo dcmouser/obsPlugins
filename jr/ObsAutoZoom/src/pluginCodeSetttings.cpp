@@ -605,6 +605,7 @@ void JrPlugin::updateSettingsOnChange(obs_data_t *settings) {
 	opt_debugAllUpdate = obs_data_get_bool(settings, SETTING_debugAllUpdate);
 	//
 	opt_autoTrack = obs_data_get_bool(settings, SETTING_autoTrack);
+
 	opt_trackRate = (int)obs_data_get_int(settings, SETTING_trackRate);
 	//
 	opt_rmTDensityMin = (float)obs_data_get_int(settings, SETTING_rmDensityMin) / 100.0f;

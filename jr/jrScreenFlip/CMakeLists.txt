@@ -18,7 +18,7 @@ target_sources(
 	PRIVATE
 		src/jrScreenFlip.cpp
 		src/jrScreenFlip.hpp
-		src/plugininfo.hpp
+		src/pluginInfo.hpp
 		src/pluginRender.cpp
 		src/pluginMainRenderHook.cpp
 		src/jrScreenFlip_options.cpp

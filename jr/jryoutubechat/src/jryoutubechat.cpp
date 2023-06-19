@@ -789,12 +789,14 @@ void JrYouTubeChat::buildUi() {
 		auto actClearList = new QAction("Clear list", this);
 		connect(actClearList, &QAction::triggered, [=]() { clearMessageList(); });
 		//
-		auto actTestVoting = new QAction("Test voting", this);
-		connect(actTestVoting, &QAction::triggered, [=]() { testVoting(); });
+		auto actTestVoting1 = new QAction("Test voting (single)", this);
+		connect(actTestVoting1, &QAction::triggered, [=]() { testVoting1(); });
+		auto actTestVoting2 = new QAction("Test voting (many)", this);
+		connect(actTestVoting2, &QAction::triggered, [=]() { testVoting2(); });
 		//
 		// and this will take care of everything else:
 		msgList->setContextMenuPolicy(Qt::ActionsContextMenu);
-		msgList->addActions({ actClearList, actTestVoting });
+		msgList->addActions({ actClearList, actTestVoting1, actTestVoting2 });
 
 	}
 
@@ -2240,6 +2242,7 @@ void JrYouTubeChat::voteStop() {
 void JrYouTubeChat::voteReopen(bool flagClear) {
 	chatVote.reopen(flagClear);
 	voteUpdateResults(true);
+	voteGotoLastOrCurrent();
 }
 
 
@@ -2299,7 +2302,30 @@ void JrYouTubeChat::pushChangeToItem(QListWidgetItem* item) {
 
 
 //---------------------------------------------------------------------------
-void JrYouTubeChat::testVoting() {
+void JrYouTubeChat::testVoting1() {
+	if (false && !chatVote.isOpen()) {
+		voteStartNew();
+	}
+
+	QString votingString = "";
+
+	// test new named voter each timee
+	static int anindex = 0;
+	++anindex;
+	votingString += "BAnonymous person" + QString::number(anindex) + ": vote spaghetti" + QString::number(anindex) + "\n";
+	votingString += "BGeneric person" + QString::number(anindex) + ": vote pizza" + QString::number(anindex) + "\n";
+
+	auto lines = votingString.split("\n", Qt::SkipEmptyParts);
+	foreach(auto oneline, lines) {
+		if (oneline.startsWith("//")) {
+			continue;
+		}
+		fillListWithManualItem(oneline, -1, true);
+	}
+}
+
+
+void JrYouTubeChat::testVoting2() {
 	if (false && !chatVote.isOpen()) {
 		voteStartNew();
 	}

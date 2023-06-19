@@ -79,14 +79,17 @@ protected:
 	QLabel* onAirTimeSession = nullptr;
 	QLabel* onAirTimeGeneric = nullptr;
 	QLabel* onAirTimeOff = nullptr;
+	QLabel* onAirTimeNotLive = nullptr;
 	QLabel* onAirTimeBreakTypeLabel = nullptr;
 	QLabel* onAirTimeSessionTypeLabel = nullptr;
 	QLabel* onAirTimeGenericTypeLabel = nullptr;
 	QLabel* onAirTimeOffTypeLabel = nullptr;
+	QLabel* onAirTimeNotLiveTypeLabel = nullptr;
 	QWidget* onAirBreakLayoutWidget = nullptr;
 	QWidget* onAirSessionLayoutWidget = nullptr;
 	QWidget* onAirGenericLayoutWidget = nullptr;
 	QWidget* onAirOffLayoutWidget = nullptr;
+	QWidget* onAirNotLiveLayoutWidget = nullptr;
 
 	os_cpu_usage_info_t *cpu_info = nullptr;
 
@@ -133,6 +136,7 @@ protected:
 	clock_t stopTimeOnAirSession = 0;
 	clock_t startTimeOnAirGeneric = 0;
 	clock_t stopTimeOnAirGeneric = 0;
+	bool broadcastIsLive = false;
 	//
 	clock_t resetTime = 0;
 	bool resetPending = true;
@@ -198,6 +202,7 @@ public:
 	bool isOnAir();
 	bool isStreaming();
 	bool isRecording();
+	bool isReallyBroadcasting();
 	bool isBroadcasting();
 	bool isInBreak();
 

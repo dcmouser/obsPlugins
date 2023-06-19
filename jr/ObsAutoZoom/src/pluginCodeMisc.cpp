@@ -129,13 +129,7 @@ void JrPlugin::updateOneShotStatus(bool isStill, bool goodMarkersFound) {
 
 
 
-//---------------------------------------------------------------------------
-void JrPlugin::goToInitialView() {
-	// go to initial markerless view
 
-	stracker.travelToMarkerlessDefault();
-}
-//---------------------------------------------------------------------------
 
 
 
@@ -388,3 +382,13 @@ void JrPlugin::gotoLastGoodMarkerLocation() {
 
 
 
+
+
+
+
+//---------------------------------------------------------------------------
+void JrPlugin::goToInitialView() {
+	// go to initial markerless view
+	stracker.travelToMarkerlessDefault();
+}
+//---------------------------------------------------------------------------

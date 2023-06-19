@@ -131,7 +131,10 @@ void JrPlugin::doRender() {
 				trackingUpdateCounter = 0;
 				shouldUpdateTrackingBox = true;
 			}
+		} else if (!opt_autoTrack) {
+			// bug 6/18/23 starting with opt_autoTrack false?
 		}
+
 
 		// default source to track
 		obs_source_t* sourcePointerToTrack = tsourcepTrack ? sourceTrack : sourceView;
@@ -152,6 +155,7 @@ void JrPlugin::doRender() {
 
 		// OVERRIDE display
 		if (sourceView != NULL) {
+			//blog(LOG_WARNING, "jrattn: sourceView != NULL");
 			// we have a source view; basic info about source
 			sourceViewWidth = tsourcepView->getSourceWidth();
 			sourceViewHeight = tsourcepView->getSourceHeight();
@@ -330,11 +334,15 @@ void JrPlugin::doRender() {
 	
 	// new test
 	if (tsourcepView) {
-		if (!tsourcepView->validForRender) {
+		// ATTN: 6/18/23 -- adding test for didUpdateTrackingBox so that we only check validRender after we update tracking box
+		// ATTN: IFFFF the stuttering is back, we need to fix this
+		if (!tsourcepView->validForRender && (didUpdateTrackingBox || opt_autoTrack) ) {
+			// ATTN: 6/18/23 this is where our start-with opt_autoTrack false bug is happening, we get validForRender staying false
 			// if the source is not ready, then we shouldnt try to show it
 			setJrBadSourceRenderFlagPerSource(true);
 			setJrBadSourceRenderFlagMain(true);
-			//blog(LOG_WARNING, "jrattn: SourceStutterKludge Setting plugincoderender for autozoom to bad render.");
+			// ATTN: 6/18/23
+			// blog(LOG_WARNING, "jrattn: SourceStutterKludge Setting plugincoderender for autozoom to bad render.");
 		}
 	}
 }

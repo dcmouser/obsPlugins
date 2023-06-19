@@ -31,7 +31,10 @@ public:
 	JrPlugin* plugin;
 	JrRegionDetector regionDetector;
 	bool stageMemoryReady = false;
-	bool validForRender = false;
+
+	// 6/18/23 bug on startup need to set true at start?
+//	bool validForRender = false;
+	bool validForRender = true;
 
 	obs_weak_source_t* src_ref;
 	char src_name[DefNameLenSource];

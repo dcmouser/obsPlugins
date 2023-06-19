@@ -55,6 +55,9 @@ void TrackedSource::init(SourceTracker* st, int indexin) {
 	lastGoodMarkerRegion1.init();
 	lastGoodMarkerRegion2.init();
 
+	// ATTN: 6/18/23 too hard to figure out why starting autotrack false has problems with this; start with valid true solves it; FML
+	validForRender = true;
+
 	clear();
 }
 

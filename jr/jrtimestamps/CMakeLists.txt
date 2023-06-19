@@ -30,7 +30,7 @@ target_sources(
 		../jrcommon/src/jrobsplugin.hpp
 		../jrcommon/src/jrobsplugin_options.cpp
 		../jrcommon/src/jrobsplugin_options.hpp
-		src/plugininfo.hpp
+		src/pluginInfo.hpp
 		)
 
 target_link_libraries(jrtimestamps)
