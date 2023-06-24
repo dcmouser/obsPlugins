@@ -789,10 +789,34 @@ QLabel#errorLabel {
     font-weight: bold;
 }
 
+
+
 * [themeID="error"] {
     color: rgb(192,0,0);
     font-weight: bold;
 }
+
+* [themeID="bigerror"] {
+    color: rgb(222,0,0);
+    font-weight: 900;
+    font-size: 48pt;
+    background: yellow;
+    border-width: 1px;
+    border-style: solid;
+    border-color: white;
+		padding: 20px;
+}
+
+* [themeID="caution"] {
+    color: rgb(222,0,0);
+    font-weight: bold;
+    font-size: 42pt;
+    background: yellow;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+
 
 * [themeID="good"] {
     color: rgb(0,192,0);
