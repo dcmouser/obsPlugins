@@ -9,6 +9,8 @@ add_library(jrborder MODULE)
 target_link_libraries(jrborder PRIVATE OBS::libobs OBS::frontend-api Qt::Core Qt::Widgets Qt::Network)
 
 set_target_properties(jrborder PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
 
 set(MODULE_DESCRIPTION "OBS Filter adds borders to sources")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrborder.rc)

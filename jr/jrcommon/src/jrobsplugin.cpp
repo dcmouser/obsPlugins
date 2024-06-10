@@ -104,6 +104,30 @@ void jrObsPlugin::createSettingsDir() {
 	os_mkdir(file);
 	bfree(file);
 }
+
+
+int jrObsPlugin::createModuleConfigSubdir(char* path, int maxlen, const char* subdirname) {
+	// make main dir
+	char* file = obs_module_config_path("");
+	if (!os_file_exists(file)) {
+		os_mkdir(file);
+	}
+	// return subdir if they want root
+	strncpy(path, file, maxlen);
+	bfree(file);
+	//
+	// make subdir
+	if (strcmp(subdirname, "") != 0) {
+		char* file = obs_module_config_path(subdirname);
+		if (!os_file_exists(file)) {
+			os_mkdir(file);
+		}
+		// return subdir
+		strncpy(path, file, maxlen);
+		bfree(file);
+	}
+	return 1;
+}
 //---------------------------------------------------------------------------
 
 
@@ -185,6 +209,8 @@ void jrObsPlugin::setupOptionsDialog() {
 	};
 
 	QAction::connect(action, &QAction::triggered, cb);
+	// remember it so we can trigger it?
+	rememberedTriggerOptionsAction = action;
 }
 //---------------------------------------------------------------------------
 

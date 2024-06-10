@@ -19,6 +19,8 @@ protected:
 	bool flagObsIsFullyLoaded = false;
 	bool firstUpdate = true;
 	bool thisIsSingletonRep = false;
+	//
+	QAction* rememberedTriggerOptionsAction = NULL;
 protected:
 	config_t* getMainConfig();
 	config_t* getGlobalConfig();
@@ -31,6 +33,7 @@ protected:
 	void saveSettings();
 	void loadSettings();
 	void createSettingsDir();
+	int createModuleConfigSubdir(char* path, int maxlen, const char* subdirname);
 protected:
 	virtual const char* getPluginName() { return "getPluginName"; };
 	virtual const char* getPluginLabel() { return "getPluginLabel"; };
@@ -69,6 +72,8 @@ public:
 public:
 	virtual void onModulePostLoad() { ; }
 	virtual void onModuleUnload() { ; }
+public:
+	void triggerOptionsShow() { if (rememberedTriggerOptionsAction != NULL) rememberedTriggerOptionsAction->trigger(); }
 };
 
 

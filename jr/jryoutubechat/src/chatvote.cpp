@@ -24,6 +24,8 @@
 ChatVote::ChatVote() {
 	votePatternRe = QRegularExpression(R"(^(?:i\s)?(?:change\s)?(?:my\s)?vote[s]*[\s\:]+(?:for[\s\:])?(?:to[\s\:])?\s*?(?:\:)?\s*([^\(\)]*[^\s])\s*(?:\(.*\))?\s*$)" , QRegularExpression::CaseInsensitiveOption);
 	votePatternRe.optimize();
+	votePatternJesseRe = QRegularExpression(R"(^(?:jesse\s)?vote[s]*[\s\:]+(?:for[\s\:])?(?:to[\s\:])?\s*?(?:\:)?\s*([^\(\)]*[^\s])\s*(?:\(.*\))?\s*$)" , QRegularExpression::CaseInsensitiveOption);
+	votePatternJesseRe.optimize();
 }
 
 
@@ -52,7 +54,7 @@ void ChatVote::clearAndRelease() {
 	voteListItemp = NULL;
 }
 
-bool ChatVote::scanLineForVote(const QString &author, QString messageSimplePlaintext)  {
+bool ChatVote::scanLineForVote(QString author, QString messageSimplePlaintext)  {
 	// lowercase message first
 	if (DefForceVoteStringsLowercase) {
 		messageSimplePlaintext = messageSimplePlaintext.toLower();
@@ -60,8 +62,12 @@ bool ChatVote::scanLineForVote(const QString &author, QString messageSimplePlain
 	// is it a vote regex?
 	QRegularExpressionMatch match = votePatternRe.match(messageSimplePlaintext);
 	if (!match.isValid() || !match.hasMatch()) {
-		// we shouldnt hve to check hasMatch should we?
-		return false;
+		// no match, now check jesse vote message from users
+		match = votePatternJesseRe.match(messageSimplePlaintext);
+		if (!match.isValid() || !match.hasMatch()) {
+			return false;
+		}
+		author = "Jesse (by proxy)";
 	}
 	// got a match
 	QString voteItemStr = match.captured(1);

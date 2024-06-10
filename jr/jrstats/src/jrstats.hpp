@@ -49,9 +49,8 @@ class OptionsDialog;
 
 
 //---------------------------------------------------------------------------
-class jrStats : public QDockWidget, public jrObsPlugin {
-	// produces link error:
-	//Q_OBJECT
+class jrStats : public QWidget, public jrObsPlugin {
+	Q_OBJECT
 protected:
 	bool firstUpdate = true;
 	JrEnumOnAirMode onAirMode = JrEnumOnAirMode_Off;

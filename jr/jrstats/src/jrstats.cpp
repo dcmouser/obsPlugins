@@ -37,13 +37,12 @@
 // jr use
 #define DefJrTestReconnectError		false
 //
-// normal
-//#define DefJeReconnectErrorThemeId	"error"
-//
-// big -- use only if you have a * [themeID="bigerror"] in your style.qss
-#define DefJeReconnectErrorThemeId	"bigerror"
-//
-#define DefJrNotBroadcastingCautionThemeId  "caution"
+// styles found in data/theme style.qss
+#define DefJrThemeBigError "jrbigerror"
+#define DefJrThemeCaution "jrcaution"
+#define DefJrThemeGood "good"
+#define DefJrThemeWarning "warning"
+#define DefJrThemeError "error"
 //---------------------------------------------------------------------------
 
 
@@ -87,7 +86,7 @@ static uint32_t first_lagged = 0;
 
 //---------------------------------------------------------------------------
 static jrStats* moduleInstance = NULL;
-static bool moduleInstanceIsRegisteredAndAutoDeletedByObs = true;
+static bool moduleInstanceIsRegisteredAndAutoDeletedByObs = false;
 
 bool obs_module_load() {
 	blog(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
@@ -140,7 +139,7 @@ void obs_module_unload() {
 //---------------------------------------------------------------------------
 jrStats::jrStats(QWidget* parent)
 	: jrObsPlugin(),
-	QDockWidget(parent),
+	QWidget(parent),
 	cpu_info(os_cpu_usage_info_start()),
 	timer(this),
 	recTimeLeft(this)
@@ -495,8 +494,6 @@ void jrStats::buildUi() {
 	// ?
 	setObjectName(PLUGIN_NAME);
 
-	setFloating(true);
-	hide();
 
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
 	//
@@ -505,9 +502,15 @@ void jrStats::buildUi() {
 	QGridLayout *outLayoutStream = new QGridLayout(this);
 	QGridLayout *outLayoutRecord = new QGridLayout(this);
 
-	auto *dockWidgetContents = new QWidget;
-	dockWidgetContents->setLayout(mainLayout);
-	setWidget(dockWidgetContents);
+	//setWidget(dockWidgetContents);
+	//setFloating(true);
+	//hide();
+	//auto *dockWidgetContents = new QWidget;
+	//dockWidgetContents->setLayout(mainLayout);
+	//setWidget(dockWidgetContents);
+	setLayout(mainLayout);
+
+
 
 	bitrates.reserve(REC_TIME_LEFT_INTERVAL / TIMER_INTERVAL);
 
@@ -621,8 +624,8 @@ void jrStats::buildUi() {
 	onAirOffLayoutWidget = buildOnAirLayoutWidget("OffAir", onAirTimeOff, onAirTimeOffTypeLabel, flagLayoutOnAirVertical, "", fontSizeHeadlinef * 0.75f, fontSizeHeadlinef * 0.75f);
 	onAirBreakLayoutWidget = buildOnAirLayoutWidget("Break", onAirTimeBreak, onAirTimeBreakTypeLabel, flagLayoutOnAirVertical, "", fontSizeHeadlinef, fontSizeHeadlinef);
 	onAirSessionLayoutWidget = buildOnAirLayoutWidget("Session", onAirTimeSession, onAirTimeSessionTypeLabel, flagLayoutOnAirVertical, "", fontSizeHeadlinef, fontSizeHeadlinef);
-	onAirGenericLayoutWidget = buildOnAirLayoutWidget("OnAir", onAirTimeGeneric, onAirTimeGenericTypeLabel, flagLayoutOnAirVertical, "good", fontSizeHeadlinef, fontSizeHeadlinef);
-	onAirNotLiveLayoutWidget = buildOnAirLayoutWidget("NotLive", onAirTimeNotLive, onAirTimeNotLiveTypeLabel, flagLayoutOnAirVertical, "caution", fontSizeHeadlinef * 0.75f, fontSizeHeadlinef * 0.75f);
+	onAirGenericLayoutWidget = buildOnAirLayoutWidget("OnAir", onAirTimeGeneric, onAirTimeGenericTypeLabel, flagLayoutOnAirVertical, DefJrThemeGood, fontSizeHeadlinef, fontSizeHeadlinef);
+	onAirNotLiveLayoutWidget = buildOnAirLayoutWidget("NotLive", onAirTimeNotLive, onAirTimeNotLiveTypeLabel, flagLayoutOnAirVertical, DefJrThemeCaution, fontSizeHeadlinef * 0.75f, fontSizeHeadlinef * 0.75f);
 
 	// bottom buttons
 	QPushButton *resetButton = new QPushButton(QTStr("Reset"));
@@ -745,7 +748,17 @@ void jrStats::buildUi() {
 		StartRecTimeLeft();
 
 	// add dock
-	obs_frontend_add_dock(this);
+	// add dock
+	// see https://docs.obsproject.com/reference-frontend-api
+	// deprecated in v30:
+	//obs_frontend_add_dock(this);
+	bool bretv;
+	if (false) {
+		bretv = obs_frontend_add_custom_qdock("JrStats", this);
+	}
+	else {
+		bretv = obs_frontend_add_dock_by_id("JrStats", "Jr Stats", this);
+	}
 }
 
 
@@ -1005,9 +1018,9 @@ void jrStats::Update()
 	fps->setText(str);
 
 	if (curFPS < (obsFPS * 0.8))
-		setThemeID(fps, "error");
+		setThemeID(fps, DefJrThemeError);
 	else if (curFPS < (obsFPS * 0.95))
-		setThemeID(fps, "warning");
+		setThemeID(fps, DefJrThemeWarning);
 	else
 		setThemeID(fps, "");
 
@@ -1039,9 +1052,9 @@ void jrStats::Update()
 	hddSpace->setText(str);
 
 	if (num_bytes < GBYTE) {
-		setThemeID(hddSpace, "error");
+		setThemeID(hddSpace, DefJrThemeError);
 	} else if (num_bytes < (5 * GBYTE)) {
-		setThemeID(hddSpace, "warning");
+		setThemeID(hddSpace, DefJrThemeWarning);
 	} else {
 		setThemeID(hddSpace, "");
 	}
@@ -1064,9 +1077,9 @@ void jrStats::Update()
 		(long double)ovi.fps_den * 1000.0l / (long double)ovi.fps_num;
 
 	if (num > fpsFrameTime)
-		setThemeID(renderTime, "error");
+		setThemeID(renderTime, DefJrThemeError);
 	else if (num > fpsFrameTime * 0.75l)
-		setThemeID(renderTime, "warning");
+		setThemeID(renderTime, DefJrThemeWarning);
 	else
 		setThemeID(renderTime, "");
 
@@ -1103,9 +1116,9 @@ void jrStats::Update()
 	skippedFrames->setText(str);
 
 	if (num > 5.0l)
-		setThemeID(skippedFrames, "error");
+		setThemeID(skippedFrames, DefJrThemeError);
 	else if (num > 1.0l)
-		setThemeID(skippedFrames, "warning");
+		setThemeID(skippedFrames, DefJrThemeWarning);
 	else
 		setThemeID(skippedFrames, "");
 
@@ -1164,9 +1177,9 @@ void jrStats::Update()
 	missedFrames->setText(str);
 
 	if (num > 5.0l)
-		setThemeID(missedFrames, "error");
+		setThemeID(missedFrames, DefJrThemeError);
 	else if (num > 1.0l)
-		setThemeID(missedFrames, "warning");
+		setThemeID(missedFrames, DefJrThemeWarning);
 	else
 		setThemeID(missedFrames, "");
 
@@ -1188,15 +1201,13 @@ void jrStats::Update()
 	bool calcIsOnBreak = isInBreak(); //  (startTimeOnAirBreak != 0 && stopTimeOnAirBreak == 0) && calcIsOnAir;
 	bool calcShowSession = (startTimeOnAirSession != 0) && calcIsOnAir;
 	//
-	const char* forcedNotBroadcastingCautionTheme = (!calcIsBroadcasting) ? "caution" : "";
-
-	//blog(LOG_WARNING, "attn isbroadcasting = %d and theme=%s", calcIsBroadcasting, forcedNotBroadcastingCautionTheme);
-
+	const char* forcedNotBroadcastingCautionTheme = (!calcIsBroadcasting) ? DefJrThemeCaution : "";
+	//blog(LOG_WARNING, "attn isbroadcasting = %d and calcIsOnAir=%d", calcIsBroadcasting, calcIsOnAir);
 	updateOnAirBlockTime(onAirTimeOff, onAirTimeOffTypeLabel, onAirOffLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, !calcIsOnAir, false, 0, 0, "");
 	updateOnAirBlockTime(onAirTimeBreak, onAirTimeBreakTypeLabel, onAirBreakLayoutWidget, startTimeOnAirBreak, stopTimeOnAirBreak, calcIsOnBreak, true, 0, 0, forcedNotBroadcastingCautionTheme);
-	updateOnAirBlockTime(onAirTimeSession, onAirTimeSessionTypeLabel, onAirSessionLayoutWidget, startTimeOnAirSession, stopTimeOnAirSession, calcShowSession, true, calcIsOnBreak ? -1 : sessionSecsBeforeWarning, calcIsOnBreak ? -1 : sessionSecsBeforeError, calcIsOnBreak ? "warning" : forcedNotBroadcastingCautionTheme);
+	updateOnAirBlockTime(onAirTimeSession, onAirTimeSessionTypeLabel, onAirSessionLayoutWidget, startTimeOnAirSession, stopTimeOnAirSession, calcShowSession, true, calcIsOnBreak ? -1 : sessionSecsBeforeWarning, calcIsOnBreak ? -1 : sessionSecsBeforeError, calcIsOnBreak ? DefJrThemeWarning : forcedNotBroadcastingCautionTheme);
 	updateOnAirBlockTime(onAirTimeGeneric, onAirTimeGenericTypeLabel, onAirGenericLayoutWidget, startTimeOnAirGeneric, stopTimeOnAirGeneric, calcIsOnAir, true, 0, 0, "");
-	updateOnAirBlockTime(onAirTimeNotLive, onAirTimeNotLiveTypeLabel, onAirNotLiveLayoutWidget, 0, 0, calcIsOnAir && !calcIsBroadcasting, false, 0, 0, "caution");
+	updateOnAirBlockTime(onAirTimeNotLive, onAirTimeNotLiveTypeLabel, onAirNotLiveLayoutWidget, 0, 0, calcIsOnAir && !calcIsBroadcasting, false, 0, 0, DefJrThemeCaution);
 
 
 	if (resetPending) {
@@ -1258,9 +1269,9 @@ void jrStats::RecordingTimeLeft()
 	recordTimeLeft->setText(text);
 
 	if (hours < DefMinHoursLeftBeforeError) {
-		setThemeID(recordTimeLeft, "error");
+		setThemeID(recordTimeLeft, DefJrThemeError);
 	} else if (hours < DefMinHoursLeftBeforeWarning) {
-		setThemeID(recordTimeLeft, "warning");
+		setThemeID(recordTimeLeft, DefJrThemeWarning);
 	}
 	else {
 		setThemeID(recordTimeLeft, "");
@@ -1360,7 +1371,7 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPen
 	// ATTN: jr testing
 	if (DefJrTestReconnectError) {
 		str = QTStr("RECONNECTING");
-		themeID = DefJeReconnectErrorThemeId;
+		themeID = DefJrThemeBigError;
 	}
 	else {
 		if (rec) {
@@ -1368,7 +1379,7 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPen
 			// note that we dont seem to show a DROPPED frame count for recording
 			if (active) {
 				str = QTStr("Recording");
-				themeID = "good";
+				themeID = DefJrThemeGood;
 			}
 		}
 		else {
@@ -1379,12 +1390,11 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPen
 
 				if (reconnecting) {
 					str = QTStr("RECONNECTING");
-					themeID = DefJeReconnectErrorThemeId;
-					//themeID = "error";
+					themeID = DefJrThemeBigError;
 				}
 				else {
 					str = QTStr("Live");
-					themeID = "good";
+					themeID = DefJrThemeGood;
 				}
 			}
 		}
@@ -1438,9 +1448,9 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPen
 		droppedFrames->setText(str);
 
 		if (num > 5.0l)
-			setThemeID(droppedFrames, "error");
+			setThemeID(droppedFrames, DefJrThemeError);
 		else if (num > 1.0l)
-			setThemeID(droppedFrames, "warning");
+			setThemeID(droppedFrames, DefJrThemeWarning);
 		else
 			setThemeID(droppedFrames, "");
 	}
@@ -1480,12 +1490,18 @@ void jrStats::OutputLabels::Reset(obs_output_t *output)
 
 //---------------------------------------------------------------------------
 void jrStats::BroadcastStarts() {
+	//blog(LOG_WARNING, "jrstats: BroadcastStarts");
 	startTimeBroadcast = clock();
 	stopTimeBroadcast = 0;
 	broadcastIsLive = true;
 	//
-	onAirStarts();
-	updateOnAirMode();
+	// ATTN: 6/8/24 change this to run
+	//if (false) {
+	if (isStreaming()) {
+		// only trouble here is in auto start mode the broadcast starts BEFORE the streaming
+		onAirStarts();
+		updateOnAirMode();
+	}
 }
 
 void jrStats::BroadcastStops() {
@@ -1538,6 +1554,7 @@ void jrStats::RecordingStops() {
 
 
 void jrStats::onAirStarts() {
+	//blog(LOG_WARNING, "jrstats: onAirStarts");
 	if (!isOnAir()) {
 		resetSessionBreak();
 	}
@@ -1547,6 +1564,7 @@ void jrStats::onAirStarts() {
 	updateSessionBreakOnSceneChange(true);
 }
 void jrStats::onAirStops() {
+	//blog(LOG_WARNING, "jrstats: onAirStops");
 	stopTimeOnAirGeneric = clock();
 	sessionStops();
 	breakStops();
@@ -1554,10 +1572,12 @@ void jrStats::onAirStops() {
 
 
 void jrStats::sessionStarts() {
+	//blog(LOG_WARNING, "jrstats: sessionStarts");
 	startTimeOnAirSession = clock();
 	stopTimeOnAirSession = 0;
 }
 void jrStats::sessionStops() {
+	//blog(LOG_WARNING, "jrstats: sessionStops");
 	stopTimeOnAirSession = clock();
 }
 void jrStats::breakStarts() {
@@ -1748,11 +1768,11 @@ void jrStats::updateOnAirBlockTime(QLabel* labelp, QLabel* typelabelp, QWidget* 
 			}
 			int secs = (endTime - startTime) / CLOCKS_PER_SEC;
 			if (secsBeforeError>0 && secs >= secsBeforeError) {
-				strcpy(themeIdStr, "error");
+				strcpy(themeIdStr, DefJrThemeError);
 			} else if (secsBeforeWarning>0 && secs >= secsBeforeWarning) {
-				strcpy(themeIdStr, "warning");
+				strcpy(themeIdStr, DefJrThemeWarning);
 			} else {
-				strcpy(themeIdStr, "good");
+				strcpy(themeIdStr, DefJrThemeGood);
 			}
 		}
 		// we check for !=0 here so we can clear in some cases

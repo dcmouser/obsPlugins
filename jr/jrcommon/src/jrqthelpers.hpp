@@ -39,3 +39,8 @@ void showModalQtDialog(const QString& title, const QString& msg);
 void showModalQtDialogError(const QString& msg);
 
 qint64 qtHelpLaunchCommandline(const QString &str, bool optionStartMinimized);
+
+
+
+QString SaveFile(QWidget *parent, QString title, QString path, QString extensions);
+QString OpenFile(QWidget *parent, QString title, QString path, QString extensions);

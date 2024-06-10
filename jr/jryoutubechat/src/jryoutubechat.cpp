@@ -125,7 +125,7 @@ void obs_module_post_load() {
 //---------------------------------------------------------------------------
 JrYouTubeChat::JrYouTubeChat(QWidget* parent)
 	: jrObsPlugin(),
-	QDockWidget(parent),
+	QWidget(parent),
 	autoTimer(this)
 {
 	// this will trigger LOAD of settings
@@ -193,6 +193,7 @@ void JrYouTubeChat::loadStuff(obs_data_t *settings) {
 	loadHotkey(settings, "clear", hotkeyId_clear);
 	loadHotkey(settings, "cycleTab", hotkeyId_cycleTab);
 	loadHotkey(settings, "toggleAutoAdvance", hotkeyId_toggleAutoAdvance);
+	loadHotkey(settings, "toggleLastAuto", hotkeyId_toggleShowLastAuto);
 	loadHotkey(settings, "golast", hotkeyId_goLast);
 	//
 	loadHotkey(settings, "voteStart", hotkeyId_voteStart);
@@ -238,6 +239,7 @@ void JrYouTubeChat::saveStuff(obs_data_t *settings) {
 	saveHotkey(settings, "clear", hotkeyId_clear);
 	saveHotkey(settings, "cycleTab", hotkeyId_cycleTab);
 	saveHotkey(settings, "toggleAutoAdvance", hotkeyId_toggleAutoAdvance);
+	saveHotkey(settings, "toggleLastAuto", hotkeyId_toggleShowLastAuto);
 	saveHotkey(settings, "golast", hotkeyId_goLast);
 	saveHotkey(settings, "voteStart", hotkeyId_voteStart);
 	saveHotkey(settings, "voteStop", hotkeyId_voteStop);
@@ -355,6 +357,10 @@ void JrYouTubeChat::handleObsFrontendEvent(enum obs_frontend_event event) {
 		// handle broadcast selected
 		case OBS_FRONTEND_EVENT_BROADCAST_SELECTED:
 			grabVideoIdFromObsSelectedBroadcast();
+			if (true) {
+				// ATTN: new 5/7/24 autostart chat when we select a broadcast
+				autoStartChatUtility();
+			}
 			break;
 		case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
 			isStreaming = false;
@@ -399,6 +405,8 @@ void JrYouTubeChat::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 		cycleParentDockTab();
 	} else if (id == hotkeyId_toggleAutoAdvance) {
 		toggleAutoAdvance();
+	} else if (id == hotkeyId_toggleShowLastAuto) {
+		toggleShowLastAutoAdvance();
 	} else if (id == hotkeyId_goLast) {
 		gotoLastMessage();
 	}
@@ -462,6 +470,7 @@ void JrYouTubeChat::registerCallbacksAndHotkeys() {
 	registerHotkey(ObsHotkeyCallback, this, "clear", hotkeyId_clear, "Clear chat msg");
 	registerHotkey(ObsHotkeyCallback, this, "cycleTab", hotkeyId_cycleTab, "Cycle parent tab");
 	registerHotkey(ObsHotkeyCallback, this, "toggleAutoAdvance", hotkeyId_toggleAutoAdvance, "Toggle auto advance");
+	registerHotkey(ObsHotkeyCallback, this, "toggleLastAuto", hotkeyId_toggleShowLastAuto, "Toggle golast auto");
 	registerHotkey(ObsHotkeyCallback, this, "goLast", hotkeyId_goLast, "Goto last");
 	//
 	registerHotkey(ObsHotkeyCallback, this, "voteStart", hotkeyId_voteStart, "Vote start");
@@ -482,6 +491,7 @@ void JrYouTubeChat::unregisterCallbacksAndHotkeys() {
 	unRegisterHotkey(hotkeyId_clear);
 	unRegisterHotkey(hotkeyId_cycleTab);
 	unRegisterHotkey(hotkeyId_toggleAutoAdvance);
+	unRegisterHotkey(hotkeyId_toggleShowLastAuto);
 	unRegisterHotkey(hotkeyId_goLast);
 	//
 	unRegisterHotkey(hotkeyId_voteStart);
@@ -644,14 +654,17 @@ void JrYouTubeChat::buildUi() {
 	bool deleteOnClose = moduleInstanceIsRegisteredAndAutoDeletedByObs;
 
 	setObjectName(PLUGIN_NAME);
-	setFloating(true);
-	hide();
+
 
 	mainLayout = new QVBoxLayout(this);
+	//setFloating(true);
+	//hide();
+	//auto *dockWidgetContents = new QWidget;
+	//dockWidgetContents->setLayout(mainLayout);
+	//setWidget(dockWidgetContents);
+	setLayout(mainLayout);
 
-	auto* dockWidgetContents = new QWidget;
-	dockWidgetContents->setLayout(mainLayout);
-	setWidget(dockWidgetContents);
+
 
 	bool optionWordWrap = false;
 	if (optionSetStyle) {
@@ -697,7 +710,7 @@ void JrYouTubeChat::buildUi() {
 		QHBoxLayout* buttonLayoutInner2 = new QHBoxLayout;
 		chatUtilityLaunchButton = new QPushButton(QTStr("Launch chat"));
 		buttonLayoutInner2->addWidget(chatUtilityLaunchButton);
-		connect(chatUtilityLaunchButton, &QPushButton::clicked, [this]() { goLaunchChatUtility(); });
+		connect(chatUtilityLaunchButton, &QPushButton::clicked, [this]() { goLaunchChatUtility(true); });
 		stopUtilityButton = new QPushButton(QTStr("Kill chat"));
 		buttonLayoutInner2->addWidget(stopUtilityButton);
 		connect(stopUtilityButton, &QPushButton::clicked, [this]() { stopRunningProcessClick(); });
@@ -785,7 +798,7 @@ void JrYouTubeChat::buildUi() {
 	// context menu for listview?
 	if (true) {
 		// see https://stackoverflow.com/questions/31383519/qt-rightclick-on-qlistwidget-opens-contextmenu-and-delete-item
-		    // you can create the actions here, or in designer
+		// create context menu actions
 		auto actClearList = new QAction("Clear list", this);
 		connect(actClearList, &QAction::triggered, [=]() { clearMessageList(); });
 		//
@@ -793,10 +806,12 @@ void JrYouTubeChat::buildUi() {
 		connect(actTestVoting1, &QAction::triggered, [=]() { testVoting1(); });
 		auto actTestVoting2 = new QAction("Test voting (many)", this);
 		connect(actTestVoting2, &QAction::triggered, [=]() { testVoting2(); });
+		auto actLaunchChatBrowser = new QAction("Open browser to chat url", this);
+		connect(actLaunchChatBrowser, &QAction::triggered, [=]() { goOpenYtChatWebPage(); });
 		//
-		// and this will take care of everything else:
+		// add them to right-click of panel
 		msgList->setContextMenuPolicy(Qt::ActionsContextMenu);
-		msgList->addActions({ actClearList, actTestVoting1, actTestVoting2 });
+		msgList->addActions({ actClearList, actTestVoting1, actTestVoting2, actLaunchChatBrowser });
 
 	}
 
@@ -807,8 +822,8 @@ void JrYouTubeChat::buildUi() {
 		mainLayout->addStretch();
 	}
 
-	resize(260, 160);
-	setWindowTitle(QTStr(PLUGIN_LABEL));
+	//resize(260, 160);
+	//setWindowTitle(QTStr(PLUGIN_LABEL));
 
 #ifdef __APPLE__
 	setWindowIcon(
@@ -817,7 +832,7 @@ void JrYouTubeChat::buildUi() {
 	setWindowIcon(QIcon::fromTheme("obs", QIcon(":/res/images/obs.png")));
 #endif
 
-	setWindowModality(Qt::NonModal);
+	//setWindowModality(Qt::NonModal);
 
 	// ?
 	if (deleteOnClose) {
@@ -831,7 +846,7 @@ void JrYouTubeChat::buildUi() {
 	Update();
 
 	// ATTN: move this
-	if (true) {
+	if (false) {
 		const char *geometry = config_get_string(obs_frontend_get_global_config(), "JrYouTubeChat", "geometry");
 		if (geometry != NULL) {
 			QByteArray byteArray =
@@ -850,7 +865,16 @@ void JrYouTubeChat::buildUi() {
 	}
 
 	// add dock
-	obs_frontend_add_dock(this);
+	// see https://docs.obsproject.com/reference-frontend-api
+	// deprecated in v30:
+	//obs_frontend_add_dock(this);
+	bool bretv;
+	if (false) {
+		bretv = obs_frontend_add_custom_qdock(PLUGIN_DOCK_ID, this);
+	}
+	else {
+		bretv = obs_frontend_add_dock_by_id(PLUGIN_DOCK_ID, PLUGIN_DOCK_LABEL, this);
+	}
 
 	// add a save callback?
 	obs_frontend_add_save_callback(do_frontend_save, this);
@@ -964,13 +988,18 @@ void JrYouTubeChat::goSetBrowserChatIds() {
 }
 
 
-void JrYouTubeChat::goLaunchChatUtility() {
+void JrYouTubeChat::goLaunchChatUtility(bool clearExisting) {
 	// stop auto timer
 	userDoesActionStopAutoTimer();
+	doLaunchChatUtility(clearExisting);
+}
+
+
+void JrYouTubeChat::doLaunchChatUtility(bool clearExisting) {
 	// youtube id
 	auto yts = editYouTubeId->text();
 	// two things happen here, FIRST we send the video id to any chat browser sources
-	launchChatMonitorUtility(yts);
+	launchChatMonitorUtility(yts, clearExisting);
 }
 
 void JrYouTubeChat::goOpenYtWebPage() {
@@ -979,6 +1008,16 @@ void JrYouTubeChat::goOpenYtWebPage() {
 	// youtube id
 	auto yts = editYouTubeId->text();
 	auto url = "https://www.youtube.com/watch?v=" + yts;
+	QDesktopServices::openUrl(url);
+}
+
+void JrYouTubeChat::goOpenYtChatWebPage() {
+	// stop auto timer
+	userDoesActionStopAutoTimer();
+	// youtube id
+	auto yts = editYouTubeId->text();
+	//auto url = "https://gaming.youtube.com/live_chat?v=" + yts;
+	auto url = "https://www.youtube.com/live_chat?v=" + yts;
 	QDesktopServices::openUrl(url);
 }
 
@@ -1027,7 +1066,7 @@ void JrYouTubeChat::receiveYoutubeIdSelectedSignal(QString videoid) {
 
 
 //---------------------------------------------------------------------------
-void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
+void JrYouTubeChat::launchChatMonitorUtility(QString videoid, bool clearExisting) {
 	//mydebug("In JrYouTubeChat::launchChatMonitorUtility");
 	//mydebug("%s", videoid.toStdString().c_str());
 
@@ -1049,7 +1088,10 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 	std::string outpath = calcTimestampFilePath(filePrefix, fileSuffix);
 	QString outpathq = QString::fromStdString(outpath);
 	//
-	comlineq = comlineq.replace("%VIDEOID%", videoid);
+	// kludge for python chat app not parsing video starting with -
+	QString videoidFixed = videoid.replace("-","__minus__");
+	//
+	comlineq = comlineq.replace("%VIDEOID%", videoidFixed);
 	comlineq = comlineq.replace("%OUTPATH%", outpathq);
 	//mydebug("Launching %s.", comlineq.toStdString().c_str());
 
@@ -1062,7 +1104,9 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 
 
 	// clear listbox
-	clearMessageList();
+	if (clearExisting) {
+		clearMessageList();
+	}
 
 	// fill initial manual items
 	fillListWithManualItems();
@@ -1082,8 +1126,8 @@ void JrYouTubeChat::launchChatMonitorUtility(QString videoid) {
 			});
 	}
 
+
 	if (optionStartEmbedded) {
-		// catch data output
 		process.setProcessChannelMode(QProcess::MergedChannels);
 		QObject::connect(&process, &QProcess::readyRead, [this]() {
 			this->processStdInputFromProcess();
@@ -1158,34 +1202,52 @@ void JrYouTubeChat::sendYoutubeIdToBrowserChatSources(const QString videoid) {
                 	auto sourceSettings = obs_source_get_settings(itemSource);
 			auto url = obs_data_get_string(sourceSettings, "url");
 			QString urlq = QString(url);
+			QString newUrlq = urlq;
+			//
 			// regex check
-			QRegularExpression re("(.+live_chat\\?)(.*)(v=[^&\\?]*)(.*)");
-			QRegularExpressionMatch match = re.match(urlq);
-			if (!match.isValid()) {
+			//
+			if (newUrlq == urlq) {
+				// type 2 livestreaming
+				// https://studio.youtube.com/video/yCNDdJSgcnA/livestreaming/console
 				//mydebug("Match says invalid.");
-			}
-			if (match.hasMatch()) {
-				// built replacement url
-				auto pre = match.captured(1)+match.captured(2);
-				auto post = match.captured(4);
-				QString newUrlq = pre + QString("v=") + *videoidstrp + post;
-				if (newUrlq != urlq) {
-					// save it
-					obs_data_set_string(sourceSettings, "url", newUrlq.toStdString().c_str());
-					//mydebug("Changed url from %s to %s.", url, newUrlq.toStdString().c_str());
-					// force refresh kludge?
-					if (false) {
-						auto fps = obs_data_get_int(sourceSettings, "fps");
-						if (fps % 2 == 0) {
-							obs_data_set_int(sourceSettings, "fps", fps + 1);
-						}
-						else {
-							obs_data_set_int(sourceSettings, "fps", fps - 1);
-						}
-					}
-					obs_source_update(itemSource, sourceSettings);
+				QRegularExpression re("^(.*/video/)([^&\\?/]*)(/livestreaming.*)$");
+				QRegularExpressionMatch match = re.match(urlq);
+				if (match.hasMatch()) {
+					// replace
+					auto pre = match.captured(1);
+					auto post = match.captured(3);
+					newUrlq = pre + (*videoidstrp) + post;
 				}
 			}
+			if (newUrlq == urlq) {
+				// type 1 live chat
+				// https://studio.youtube.com/live_chat?v=yCNDdJSgcnA
+				QRegularExpression re("(.+live_chat\\?)(.*)(v=[^&\\?]*)(.*)");
+				QRegularExpressionMatch match = re.match(urlq);
+				if (match.hasMatch()) {
+					// replace
+					auto pre = match.captured(1) + match.captured(2);
+					auto post = match.captured(4);
+					newUrlq = pre + QString("v=") + *videoidstrp + post;
+				}
+			}
+			if (newUrlq != urlq) {
+				// save it
+				obs_data_set_string(sourceSettings, "url", newUrlq.toStdString().c_str());
+				//mydebug("Changed url from %s to %s.", url, newUrlq.toStdString().c_str());
+				// force refresh kludge?
+				if (false) {
+					auto fps = obs_data_get_int(sourceSettings, "fps");
+					if (fps % 2 == 0) {
+						obs_data_set_int(sourceSettings, "fps", fps + 1);
+					}
+					else {
+						obs_data_set_int(sourceSettings, "fps", fps - 1);
+					}
+				}
+				obs_source_update(itemSource, sourceSettings);
+			}
+
 			// release settings
 			obs_data_release(sourceSettings);
 		}
@@ -1269,8 +1331,12 @@ void JrYouTubeChat::prepareForDelete() {
 
 //---------------------------------------------------------------------------
 void JrYouTubeChat::processStdInputFromProcess() {
+	//mydebug("In processStdInputFromProcess A.");
+
 	QByteArray stdOut = process.readAll(); // process.readAllStandardOutput();
 	QString qstr = QString::fromUtf8(stdOut);
+
+	//mydebug("In processStdInputFromProcess B: %s.", qstr.toStdString().c_str());
 
 	// in case we got more lines
 	QStringList qstrlist = qstr.split("\r\n", Qt::SkipEmptyParts);
@@ -1297,7 +1363,7 @@ void JrYouTubeChat::autoStartChatUtility() {
 	if (true) {
 		auto yts = editYouTubeId->text();
 		if (!isProcessRunning() || yts != youTubeIdQstrUsedByChatUtil) {
-			goLaunchChatUtility();
+			goLaunchChatUtility(true);
 		}
 	}
 }
@@ -1588,22 +1654,31 @@ bool JrYouTubeChat::moveSelection(int offset, bool trigger) {
 
 //---------------------------------------------------------------------------
 void JrYouTubeChat::cycleParentDockTab() {
+	// ATTN: 6/8/24 - this broken on obs 30 update; different doc widget?
+	// //
 	// helper util to cycle through activate tabs on parent dock
 	// see https://stackoverflow.com/questions/45828478/how-to-set-current-tab-of-qtabwidget-by-name
 	// see https://stackoverflow.com/questions/46613165/qt-tab-icon-when-qdockwidget-becomes-docked
 	// see https://www.qtcentre.org/threads/22812-How-to-get-list-of-DockWidgets-in-QMainWindow
 	// see https://bugreports.qt.io/browse/QTBUG-40913
 	// see https://www.qtcentre.org/threads/21362-Setting-the-active-tab-with-tabified-docking-windows
-	auto dockParent = parent();
+
+	// ATTN: 6/8/24 trying change new obs docks
+	//auto dockParent = parent();
+	auto dockParent = parent()->parent();
+
 	QList<QTabBar*> tabBars = dockParent->findChildren<QTabBar*>();
+	//mydebug("cycleParentDockTab start.");
 	foreach( QTabBar* bar, tabBars )
 	{
 		int count = bar->count();
 		for (int i = 0; i < count; i++)
 		{
 			QString tabtitle = bar->tabText(i);
-			if (tabtitle == QString(PLUGIN_LABEL)) {
+			//mydebug("cycleParentDockTab: '%s'.", tabtitle.toStdString().c_str());
+			if (tabtitle == QString(PLUGIN_DOCK_LABEL)) {
 				// found us, now advance tab
+				//mydebug("cycleParentDockTab FOUND US: '%s'.", tabtitle.toStdString().c_str());
 				int index = bar->currentIndex();
 				++index;
 				if (index >= bar->count()) {
@@ -1626,7 +1701,34 @@ void JrYouTubeChat::toggleAutoAdvance() {
 	}
 	else {
 		// start it
-		startAutoAdvance();
+		startAutoAdvance(false);
+	}
+}
+
+
+void JrYouTubeChat::toggleShowLastAutoAdvance() {
+	if (optionAutoEngaged && selectedListItem) {
+		// auto advancing AND item showing and clear it
+		stopAutoAdvance();
+		clearSelectedItemTriggerUpdate();
+	}
+	else {
+		if (selectedListItem) {
+			// not auto advancing, but is something showing; hide it (and stop auto advance)
+			clearSelectedItemTriggerUpdate();
+			if (optionAutoEngaged) {
+				stopAutoAdvance();
+			}
+		} else {
+			// nothing showing; go to LAST then begin auto advance
+			gotoLastMessage();
+			if (selectedListItem) {
+				triggerWsSelectedMessageChangeEvent();
+				updateDskStateAfterCheckingIgnoreList();
+			}
+			// make sure autoadvance is on
+			startAutoAdvance(true);
+		}
 	}
 }
 
@@ -1647,7 +1749,7 @@ void JrYouTubeChat::stopAutoAdvance() {
 	triggerWsStateChangeEvent_AutoToggle();
 }
 
-void JrYouTubeChat::startAutoAdvance() {
+void JrYouTubeChat::startAutoAdvance(bool showEvenLastRow) {
 	// first stop if running
 	if (optionAutoEngaged) {
 		stopAutoAdvance();
@@ -1659,7 +1761,7 @@ void JrYouTubeChat::startAutoAdvance() {
 	} else {
 		// not yet shown
 		// do we want to start by showing the current selection? or only if new lines come in?
-		if (isOnLastNonInfoRow()) {
+		if (!showEvenLastRow && isOnLastNonInfoRow()) {
 			// when we are on last row, we just sit and wait and dont force last one on
 			autoAdvanceStage = JrYtAutoAdvanceStageEnum_LastCheck;
 		}
@@ -2185,6 +2287,10 @@ void JrYouTubeChat::requestWsHandleCommandByClient(obs_data_t *request_data, obs
 	}  else if (commandString == "getStatsAll") {
 		QString retstr = getStatsAll();
 		obs_data_set_string(response_data, "data", retstr.toStdString().c_str());
+	} else if (commandString == "restart") {
+		// kill chat and restart it; can be useful on failure to connect
+		QMetaObject::invokeMethod(this, [=]() { goLaunchChatUtility(false); }, Qt::QueuedConnection);
+		return;
 	} else {
 		mydebug("Unknown requestWsHandleCommandByClient: %s.", comStr);
 	}
@@ -2461,7 +2567,7 @@ void JrYouTubeChat::turnGoLastAndEnableAutoAdvance() {
 	if (!optionAutoEngaged) {
 		//mydebug("In turnGoLastAndEnableAutoAdvance2.");
 		gotoLastMessage();
-		startAutoAdvance();
+		startAutoAdvance(false);
 		shouldTurnOffAutoOnAutoSceneLeave = true;
 	}
 }

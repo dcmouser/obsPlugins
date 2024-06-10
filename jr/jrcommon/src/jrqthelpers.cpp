@@ -1,7 +1,7 @@
 #include "jrqthelpers.hpp"
 
 #include <../qt-wrappers.hpp>
-
+#include <QFileDialog>
 
 
 
@@ -148,5 +148,30 @@ qint64 qtHelpLaunchCommandline(const QString &str, bool optionStartMinimized) {
 	process.startDetached(&pid);
 
 	return pid;
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+//---------------------------------------------------------------------------
+// from qt-wrappers.cpp
+QString SaveFile(QWidget *parent, QString title, QString path,
+		 QString extensions)
+{
+	QString file =
+		QFileDialog::getSaveFileName(parent, title, path, extensions);
+
+	return file;
+}
+
+QString OpenFile(QWidget *parent, QString title, QString path,
+		 QString extensions)
+{
+	QString file =
+		QFileDialog::getOpenFileName(parent, title, path, extensions);
+
+	return file;
 }
 //---------------------------------------------------------------------------

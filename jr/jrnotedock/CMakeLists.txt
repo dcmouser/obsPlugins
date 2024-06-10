@@ -28,6 +28,9 @@ PRIVATE
 
 
 set_target_properties(jrnotedock PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
+
 
 set(MODULE_DESCRIPTION "Jr Note Dock")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrnotedock.rc)
@@ -50,7 +53,7 @@ target_sources(
 		../jrcommon/src/jrobsplugin.hpp
 		../jrcommon/src/jrobsplugin_options.cpp
 		../jrcommon/src/jrobsplugin_options.hpp
-		src/plugnInfo.hpp
+		src/plugininfo.hpp
 		)
 
 target_link_libraries(jrnotedock)

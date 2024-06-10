@@ -40,6 +40,7 @@ typedef std::pair<QString, int> TStringIntPair;
 class ChatVote {
 protected:
 	QRegularExpression votePatternRe;
+	QRegularExpression votePatternJesseRe;
 	bool isOpenAndRunning = false;
 	time_t startTime;
 	int voteListItemIndex = -1;
@@ -63,7 +64,7 @@ public:
 	QListWidgetItem* getVoteListItemp() { return voteListItemp; }
 	void setVoteListItemp(QListWidgetItem* itemp) { voteListItemp = itemp; }
 public:
-	bool scanLineForVote(const QString &author, QString messageSimplePlaintext);
+	bool scanLineForVote(QString author, QString messageSimplePlaintext);
 	void buildResults(QString &htmlResults, QString &plainResults, int &rowcount, int &maxrowwidth, bool &isOpen);
 	void addUserVote(const QString &author, const QString &choiceStr);
 };

@@ -43,10 +43,11 @@ protected:
 	clock_t timestampOrigin = 0;
 	clock_t timestampOriginRecording = 0;
 	clock_t timestampOriginStreaming = 0;
+	double broadcastingOffsetIntoStreaming = 0;
 	//
-	std::string timestampFileSuffix = " timestamp.txt";
 	bool timeStampFileIsOpen = false;
-	FILE* timestampFilep = NULL;
+	FILE* timestampFilepRecording = NULL;
+	FILE* timestampFilepStreaming = NULL;
 	//
 	bool isBroadcasting = false;
 	bool isStreaming = false;
@@ -79,17 +80,17 @@ protected:
 
 protected:
 	// front end events
-	void BroadcastStarts() { if (!optionEnabled) { return; } isBroadcasting = true; resetTimestampOrigin(AddTimeOffsetHintToLabel("Broadcast begins"), true); };
+	void BroadcastStarts() { if (!optionEnabled) { return; } isBroadcasting = true; resetTimestampOrigin(AddTimeOffsetHintToLabel("Broadcast begins"), true, "broadcasting"); };
 	void BroadcastStops() { timestampEvent("Broadcast ends", true); isBroadcasting = false;  finalizeTimestampFileIfAppropriate(false); };
-	void StreamingStarts() { if (!optionEnabled) { return; } isStreaming = true; optionUseTimestampAdjust = true;  recordTimestamp(timestampOriginStreaming);  resetTimestampOrigin(AddTimeOffsetHintToLabel(AddVideoIdToLabel("Streaming begins")), true); };
+	void StreamingStarts() { if (!optionEnabled) { return; } isStreaming = true; optionUseTimestampAdjust = true;  recordTimestamp(timestampOriginStreaming);  resetTimestampOrigin(AddTimeOffsetHintToLabel(AddVideoIdToLabel("Streaming begins")), true, "streaming"); };
 	void StreamingStops() { timestampEvent("Streaming ends", true); isStreaming = false; optionUseTimestampAdjust = false; zeroTimestamp(timestampOriginStreaming); isBroadcasting = false; finalizeTimestampFileIfAppropriate(false); };
-	void RecordingStarts() { if (!optionEnabled) { return; } isRecording = true;  recordTimestamp(timestampOriginRecording);  if (isStreaming) { timestampEvent("Recording begins (timestamps unaffected)", true); } else { resetTimestampOrigin("Recording begins", true); } };
+	void RecordingStarts() { if (!optionEnabled) { return; } isRecording = true;  recordTimestamp(timestampOriginRecording);  if (isStreaming) { timestampEvent("Recording begins (timestamps unaffected)", true); } else { resetTimestampOrigin("Recording begins", true, "recording"); } };
 	void RecordingStops() { timestampEvent("Recording ends", true); isRecording = false; zeroTimestamp(timestampOriginRecording);  finalizeTimestampFileIfAppropriate(false); };
 protected:
 	bool timestampEvent(std::string label, bool flagWithWallClockTime) { return writeTimestamp(label, flagWithWallClockTime); }
 	bool writeTimestamp(std::string label, bool flagWithWallClockTime);
 	//
-	void resetTimestampOrigin(std::string label, bool flagWithWallClockTime);
+	void resetTimestampOrigin(std::string label, bool flagWithWallClockTime, std::string resetTypeStr);
 	void recordTimestamp(clock_t& ts) { ts = clock(); };
 	void zeroTimestamp(clock_t& ts) { ts = 0; };
 protected:
@@ -101,7 +102,11 @@ protected:
 	bool openTimestampFileIfAppropriate();
 	void finalizeTimestampFileIfAppropriate(bool flagForce);
 protected:
-	std::string getCurrentTimesOffsetAsString();
+	double getObsFrameRate();
+	double calcStreamingTime();
+protected:
+	std::string getCurrentRecordingTimesOffsetAsString();
+	std::string getCurrentStreamingTimesOffsetAsString();
 protected:
 	bool isTimetampFileActive() { return timeStampFileIsOpen; };
 protected:

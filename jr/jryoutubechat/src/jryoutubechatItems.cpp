@@ -58,8 +58,10 @@ QListWidgetItem* JrYouTubeChat::addYouTubeItemViaJson(const QString& str, int in
 	QJsonParseError jerror;
 	QJsonDocument itemJsonDoc;
 	JrYtWidgetListItemTypeEnum typeEnum = JrYtWidgetListItemTypeEnum_Normal;
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson: %s.", str.toStdString().c_str());
 	//
 	if (str.length() > 0 && str[0] != '{') {
+		//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 2");
 		// not json just a simple message; to keep uniformity of processing we will just convert it to json doc with just a message string
 		QJsonObject chatItemObj;
 		chatItemObj["message"] = str;
@@ -71,12 +73,16 @@ QListWidgetItem* JrYouTubeChat::addYouTubeItemViaJson(const QString& str, int in
 	}
 	else {
 		// parse json
+		//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 3");
 		itemJsonDoc = QJsonDocument::fromJson(str.toUtf8(), &jerror);
 	}
+
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 5");
 
 	// ok we have our json doc -- is it valid?
 	if (itemJsonDoc.isNull()) {
 		// error parsing, so store string raw
+		//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 6");
 		QJsonObject chatItemObj;
 		chatItemObj["message"] = ("JSONERR: " + jerror.errorString() + "\n" + str);
 		itemJsonDoc = QJsonDocument(chatItemObj);
@@ -86,6 +92,8 @@ QListWidgetItem* JrYouTubeChat::addYouTubeItemViaJson(const QString& str, int in
 	// ok lets process the json object decide what to save, what we can precompute, sanitize, etc.
 	QJsonObject itemJson = itemJsonDoc.object();
 
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 7");
+
 	// ok now we will extract message in different forms and precompute some variations and properties
 	QString messageHtml;
 	QString messageSimplePlaintext;
@@ -93,10 +101,15 @@ QListWidgetItem* JrYouTubeChat::addYouTubeItemViaJson(const QString& str, int in
 	QString authorImageUrl;
 	bool bretv = calcMessageDataFromYouTubeItemJson(messageHtml, messageSimplePlaintext, authorName, authorImageUrl, itemJson, flagNeedsSanitizing);
 
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 8: %d", (int)bretv);
+
 	// before we add it lets see if some other spin-off handles it
 	if (checkScanStatementBeforeAdding(authorName, messageSimplePlaintext, false)) {
+		//mydebug("ATTN: JR - IN addYouTubeItemViaJson SKIPPING because checkScanStatementBeforeAdding returns true.");
 		return NULL;
 	}
+
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 9.");
 
 	// build simple label for listview
 	QString authorNameUpper = authorName.toUpper();
@@ -126,6 +139,8 @@ QListWidgetItem* JrYouTubeChat::addYouTubeItemViaJson(const QString& str, int in
 	msgObj["plainTextLen"] = messageSimplePlaintext.length();
 	msgObj["authorName"] = authorName;
 	msgObj["authorImageUrl"] = authorImageUrl;
+
+	//mydebug("ATTN: JR - IN addYouTubeItemViaJson stage 10: %s (author:%s) [%s].", messageSimplePlaintext.toStdString().c_str(), authorName.toStdString().c_str(), authorNameUpper.toStdString().c_str());
 
 	QListWidgetItem* itemp = addGenericMessageListItem(label, msgObj, typeEnum, index, flagTriggerWsBroadcast);
 	return itemp;
@@ -250,8 +265,22 @@ QListWidgetItem* JrYouTubeChat::addGenericMessageListItem(const QString& label, 
 	int itemIndex = (index != -1) ? index : getLastListIndex()+1;
 	msgObj["index"] = itemIndex;
 
+	// ATTN: 5/7/24 we were getting failure to add items, and i think it is because of newlines in label
+	QString labelDisplay = label;
+	if (false) {
+		labelDisplay.replace("\n", "<br/>");
+	}
+	else if (false) {
+		labelDisplay.replace("\n", " ");
+	} else {
+		// nothing
+	}
+
+	// 
+	//mydebug("ATTN: JR - IN addGenericMessageListItem label = '%s' (%s).", label.toStdString().c_str(), labelDisplay.toStdString().c_str());
+
 	// create new list item
-	QListWidgetItem* itemp = makeNewListWidgetItem(label, typeEnum);
+	QListWidgetItem* itemp = makeNewListWidgetItem(labelDisplay, typeEnum);
 
 	// add the data msgObj as a json object wrapped in variant to the list item
 	setUserRoleDataForItem(itemp, msgObj);
@@ -354,8 +383,8 @@ QListWidgetItem* JrYouTubeChat::fillListWithManualItem(QString str, int index, b
 		msgObj["notes"] = notes;
 	}
 
-	// newline \n replace
-	str.replace("\\n", "<br/>");
+	// newline \n replace (this will get further replaced during display)
+	str.replace("\\n", "\n");
 
 	// main fields
 	msgObj["messageHtml"] = str;
@@ -683,3 +712,5 @@ time_t JrYouTubeChat::getNowTime() {
 	return t;
 }
 //---------------------------------------------------------------------------
+
+

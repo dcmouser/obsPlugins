@@ -964,12 +964,14 @@ void JrBorder::updateSizePosFromSceneItem(obs_sceneitem_t* borderSceneItemp, obs
 	struct vec2 outBorderBoundsOrig;
 
 	// get shadowed object transform
-	obs_sceneitem_get_info(shadowedSceneItemp, &inShadowTransform);
+	//obs_sceneitem_get_info(shadowedSceneItemp, &inShadowTransform);
+	obs_sceneitem_get_info2(shadowedSceneItemp, &inShadowTransform);
 	obs_sceneitem_get_crop(shadowedSceneItemp, &inShadowCrop);
 	obs_sceneitem_get_bounds(shadowedSceneItemp, &inShadowBounds);
 
 	// get current
-	obs_sceneitem_get_info(borderSceneItemp, &outBorderTransformOrig);
+	//obs_sceneitem_get_info(borderSceneItemp, &outBorderTransformOrig);
+	obs_sceneitem_get_info2(borderSceneItemp, &outBorderTransformOrig);
 	obs_sceneitem_get_crop(borderSceneItemp, &outBorderCropOrig);
 	obs_sceneitem_get_bounds(borderSceneItemp, &outBorderBoundsOrig);
 
@@ -1102,7 +1104,8 @@ void JrBorder::updateSizePosFromSceneItem(obs_sceneitem_t* borderSceneItemp, obs
 	*/
 
 	if (outBorderTransform.pos.x != outBorderTransformOrig.pos.x || outBorderTransform.pos.y != outBorderTransformOrig.pos.y || outBorderTransform.scale.x != outBorderTransformOrig.scale.x || outBorderTransform.scale.y != outBorderTransformOrig.scale.y) {
-		obs_sceneitem_set_info(borderSceneItemp, &outBorderTransform);
+		//obs_sceneitem_set_info(borderSceneItemp, &outBorderTransform);
+		obs_sceneitem_set_info2(borderSceneItemp, &outBorderTransform);
 	}
 	if (outBorderCropOrig.left != outBorderCrop.left || outBorderCropOrig.top != outBorderCrop.top || outBorderCropOrig.right != outBorderCrop.right || outBorderCropOrig.bottom != outBorderCrop.bottom) {
 		obs_sceneitem_set_crop(borderSceneItemp, &outBorderCrop);
@@ -1877,9 +1880,9 @@ void JrBorder::setEffectsCustomMask() {
 	struct vec2 add_val = {0};
 	struct vec2 mul_val = {1.0f, 1.0f};
 	if (!opt_customMaskStretchAspect) {
-		struct vec2 source_size;
-		struct vec2 mask_size;
-		struct vec2 mask_temp;
+		struct vec2 source_size = vec2();
+		struct vec2 mask_size = vec2();
+		struct vec2 mask_temp = vec2();
 		float source_aspect;
 		float mask_aspect;
 		bool size_to_x;
@@ -1920,7 +1923,7 @@ void JrBorder::setEffectsCustomMask() {
 	jrazUint32ToRgbaVec(opt_borderColor, borderColorVec);
 	gs_effect_set_vec4(param, &borderColorVec);
 
-	vec2 pixel_size;
+	vec2 pixel_size = vec2();
 	pixel_size.x = 1.0f / (float)cropScaleStageFinalWidth;
 	pixel_size.y = 1.0f / (float)cropScaleStageFinalHeight;
 	param = gs_effect_get_param_by_name(effectCustomMask, "pixel_size");

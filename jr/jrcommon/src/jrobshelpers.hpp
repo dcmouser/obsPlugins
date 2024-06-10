@@ -114,7 +114,8 @@ void jrDrawTextureFillColor(gs_texrender_t* texrender, uint32_t cx, uint32_t cy,
 #ifndef PLUGIN_LABEL
 	#define do_log(level, format, ...) blog(level, "[UNKNOWNJRPLUGIN] " format, ##__VA_ARGS__)
 #else
-	#define do_log(level, format, ...) blog(level, "[" ## PLUGIN_LABEL ## "] " format, ##__VA_ARGS__)
+	//#define do_log(level, format, ...) blog(level, "[" ## PLUGIN_LABEL ## "] " format, ##__VA_ARGS__)
+	#define do_log(level, format, ...) blog(level, "[" PLUGIN_LABEL "] " format, ##__VA_ARGS__)
 #endif
 
 #define warn(format, ...) do_log(LOG_WARNING, format, ##__VA_ARGS__)
@@ -134,7 +135,7 @@ void jrDrawTextureFillColor(gs_texrender_t* texrender, uint32_t cx, uint32_t cy,
 #ifdef __cplusplus
 extern "C" {
 #endif
-	void property_list_add_sources(obs_property_t *prop, obs_source_t *self);
+	void property_list_add_sources(obs_property_t *prop, obs_source_t *self, int filterBySourceType=-1);
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -169,6 +170,7 @@ void setSourceVisiblityByName(bool flagAllScenes, const char* targetSourceName, 
 void fixAudioMonitoringInObsSource(OBSSource itemSource);
 void refreshBrowserSource(OBSSource itemSource);
 void restartMediaSource(OBSSource itemSource);
+void sendKeyToBrowserSource(OBSSource itemSource, void* param);
 //---------------------------------------------------------------------------
 
 

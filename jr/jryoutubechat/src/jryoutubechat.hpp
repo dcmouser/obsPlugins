@@ -46,6 +46,7 @@ enum JrYtAutoAdvanceStageEnum {JrYtAutoAdvanceStageEnum_Show, JrYtAutoAdvanceSta
 //---------------------------------------------------------------------------
 #define Def_MaxSleepMsOnRestartWaitForClose 2000
 #define Def_MaxSleepMsOnExitWaitForClose 2000
+#define Def_MaxSleepMsOnRestartWebsocket 200
 //---------------------------------------------------------------------------
 
 
@@ -77,9 +78,8 @@ class OptionsDialog;
 //---------------------------------------------------------------------------
 void do_frontend_save(obs_data_t* save_data, bool saving, void* data);
 
-class JrYouTubeChat : public QDockWidget, public jrObsPlugin {
-	// produces link error:
-	//Q_OBJECT
+class JrYouTubeChat : public QWidget, public jrObsPlugin {
+	Q_OBJECT
 protected:
 	ChatVote chatVote;
 	ChatStats chatStats;
@@ -151,6 +151,7 @@ protected:
 	size_t hotkeyId_clear = -1;
 	size_t hotkeyId_cycleTab = -1;
 	size_t hotkeyId_toggleAutoAdvance = -1;
+	size_t hotkeyId_toggleShowLastAuto = -1;
 	size_t hotkeyId_goLast = -1;
 	size_t hotkeyId_voteStart = -1;
 	size_t hotkeyId_voteStop = -1;
@@ -216,12 +217,14 @@ public slots:
 	void Reset();
 	void goDistribute();
 	void goSetBrowserChatIds();
-	void goLaunchChatUtility();
+	void goLaunchChatUtility(bool clearExisting);
+	void doLaunchChatUtility(bool clearExisting);
 	void goOpenYtWebPage();
+	void goOpenYtChatWebPage();
 public:
 	void grabVideoIdFromObsSelectedBroadcast();
 	void sendYoutubeIdToBrowserChatSources(const QString videoid);
-	void launchChatMonitorUtility(QString videoid);
+	void launchChatMonitorUtility(QString videoid, bool clearExisting);
 	void receiveYoutubeIdSelectedSignal(QString videoid);
 public:
 	void prepareForDelete();
@@ -294,8 +297,9 @@ public:
 	void cycleParentDockTab();
 public:
 	void toggleAutoAdvance();
+	void toggleShowLastAutoAdvance();
 	void stopAutoAdvance();
-	void startAutoAdvance();
+	void startAutoAdvance(bool showEvenLastRow);
 	void autoTimerTrigger();
 	void setNextAutoTimer();
 	void updateAutoButton();

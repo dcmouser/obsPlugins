@@ -25,7 +25,7 @@
 class jrTimestamper;
 
 class OptionsDialog : public JrPluginOptionsDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	jrTimestamper* timestamperp = NULL;
 	QGridLayout *mainLayout;
 	QCheckBox* checkbox_enable;

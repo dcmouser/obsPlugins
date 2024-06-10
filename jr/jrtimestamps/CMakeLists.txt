@@ -9,6 +9,8 @@ add_library(jrtimestamps MODULE)
 target_link_libraries(jrtimestamps PRIVATE OBS::libobs OBS::frontend-api Qt::Core Qt::Widgets Qt::Network)
 
 set_target_properties(jrtimestamps PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
 
 set(MODULE_DESCRIPTION "YouTube Timestamp File Writer")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrtimestamps.rc)
@@ -30,7 +32,7 @@ target_sources(
 		../jrcommon/src/jrobsplugin.hpp
 		../jrcommon/src/jrobsplugin_options.cpp
 		../jrcommon/src/jrobsplugin_options.hpp
-		src/pluginInfo.hpp
+		src/plugininfo.hpp
 		)
 
 target_link_libraries(jrtimestamps)

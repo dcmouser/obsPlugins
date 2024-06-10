@@ -232,9 +232,17 @@ void jrTimestamper::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
 
 
 //---------------------------------------------------------------------------
-void jrTimestamper::resetTimestampOrigin(std::string label, bool flagWithWallClockTime) {
-	sessionCounter = 0;
-	timestampOrigin = clock();
+void jrTimestamper::resetTimestampOrigin(std::string label, bool flagWithWallClockTime, std::string resetTypeStr) {
+	// ATTN: new 6/7/24 we only reset on RECORDING start
+	if (resetTypeStr=="recording" || timestampOrigin == 0) {
+		sessionCounter = 0;
+		timestampOrigin = clock();
+	}
+	if (resetTypeStr == "broadcasting") {
+		broadcastingOffsetIntoStreaming = this->calcStreamingTime();
+	}
+
+
 	openTimestampFileIfAppropriate();
 	// log timestamp of reset event
 	writeTimestamp(label, flagWithWallClockTime);
@@ -323,12 +331,14 @@ bool jrTimestamper::openTimestampFileIfAppropriate() {
 	}
 	// filename
 	std::string prefix = "";
-	std::string filePath = calcTimestampFilePath(prefix, timestampFileSuffix);
+	std::string filePathRecording = calcTimestampFilePath(prefix, "timestamp_rec.txt");
+	std::string filePathStreaming = calcTimestampFilePath(prefix, "timestamp_stream.txt");
 	//blog(LOG_WARNING, "Timestamp file path: %s.", filePath.c_str());
 	// open file
-	timestampFilep = os_fopen(filePath.c_str(), "w");
+	timestampFilepRecording = os_fopen(filePathRecording.c_str(), "w");
+	timestampFilepStreaming = os_fopen(filePathStreaming.c_str(), "w");
 	//
-	timeStampFileIsOpen = (timestampFilep!=NULL);
+	timeStampFileIsOpen = (timestampFilepRecording!=NULL);
 	//
 	if (false && timeStampFileIsOpen) {
 		writeInitialCommentsToTimestampFile();
@@ -346,8 +356,10 @@ void jrTimestamper::finalizeTimestampFileIfAppropriate(bool flagForce) {
 		return;
 	}
 	// ATTN: TODO - close file
-	fclose(timestampFilep);
-	timestampFilep = NULL;
+	fclose(timestampFilepRecording);
+	fclose(timestampFilepStreaming);
+	timestampFilepRecording = NULL;
+	timestampFilepStreaming = NULL;
 	timeStampFileIsOpen = false;
 }
 //---------------------------------------------------------------------------
@@ -365,13 +377,18 @@ bool jrTimestamper::writeTimestamp(std::string label, bool flagWithWallClockTime
 	if (flagWithWallClockTime) {
 		parenExtra = " (" + getCurrentDateTimeAsNiceString() + ")";
 	}
-	std::string timeString = getCurrentTimesOffsetAsString();
-	std::string line = timeString + " - " + label + parenExtra + "\n";
 
-	// ATTN: TODO write line
-	fputs(line.c_str(), timestampFilep);
+	std::string timeStringRecording = getCurrentRecordingTimesOffsetAsString();
+	std::string lineRecording = timeStringRecording + " - " + label + parenExtra + "\n";
+	fputs(lineRecording.c_str(), timestampFilepRecording);
+
+	std::string timeStringStreaming = getCurrentStreamingTimesOffsetAsString();
+	std::string lineStreaming = timeStringStreaming + " - " + label + parenExtra + "\n";
+	fputs(lineStreaming.c_str(), timestampFilepStreaming);
+
 	if (option_FlushFileEveryLine) {
-		fflush(timestampFilep);
+		fflush(timestampFilepRecording);
+		fflush(timestampFilepStreaming);
 	}
 	//blog(LOG_WARNING, "Logging timestamp: %s.", line.c_str());
 
@@ -382,7 +399,7 @@ bool jrTimestamper::writeTimestamp(std::string label, bool flagWithWallClockTime
 
 
 //---------------------------------------------------------------------------
-std::string jrTimestamper::getCurrentTimesOffsetAsString() {
+std::string jrTimestamper::getCurrentRecordingTimesOffsetAsString() {
 	clock_t nowTime = clock();
 	clock_t offset = nowTime - timestampOrigin;
 	unsigned long secs = offset / CLOCKS_PER_SEC;
@@ -392,6 +409,63 @@ std::string jrTimestamper::getCurrentTimesOffsetAsString() {
 	}
 
 	return calcSecsAsNiceTimeString(secs, optionPadLeadingZeros);
+}
+
+
+
+
+
+std::string jrTimestamper::getCurrentStreamingTimesOffsetAsString() {
+	//
+	double stream_elapsed_time_sec = this->calcStreamingTime();
+	if (stream_elapsed_time_sec < 0) {
+		return "not streaming";
+	}
+
+	// now offset into broadcasting, since we really care about youtube time
+	stream_elapsed_time_sec -= broadcastingOffsetIntoStreaming;
+
+	//
+	unsigned long secs = (long)stream_elapsed_time_sec;
+	//
+	if (optionTimestampAdjustSecs > 0 ||  (optionTimestampAdjustSecs<0 && secs > (unsigned long) (- 1 * optionTimestampAdjustSecs))) {
+		secs += optionTimestampAdjustSecs;
+	}
+
+	return calcSecsAsNiceTimeString(secs, optionPadLeadingZeros);
+}
+
+double jrTimestamper::getObsFrameRate() {
+	auto video_info = obs_video_info();
+	if (obs_get_video_info(&video_info)) {
+		double framerate = video_info.fps_num / video_info.fps_den;
+		return framerate;
+	}
+	return 0;
+}
+
+double jrTimestamper::calcStreamingTime() {
+	if (true && broadcastingOffsetIntoStreaming==0) {
+		bool isStreaming = obs_frontend_streaming_active();
+		if (!isStreaming) {
+			return -1;
+		}
+	}
+	auto stream_output = obs_frontend_get_streaming_output();
+	if (!stream_output) {
+		return -1;
+	}
+	auto framerate = this->getObsFrameRate();
+	if (framerate == 0) {
+		obs_output_release(stream_output);
+		return -1;
+	}
+
+	auto stream_frame_count = obs_output_get_total_frames(stream_output);
+	auto last_stream_frame_count = stream_frame_count;
+	auto stream_elapsed_time_sec = stream_frame_count / framerate;
+	obs_output_release(stream_output);
+	return stream_elapsed_time_sec;
 }
 //---------------------------------------------------------------------------
 
@@ -410,9 +484,11 @@ void jrTimestamper::writeInitialCommentsToTimestampFile() {
 	std::string line = std::string("// Timestamps from ") + timeString + std::string("\n");
 
 	// ATTN: TODO write line
-	fputs(line.c_str(), timestampFilep);
+	fputs(line.c_str(), timestampFilepRecording);
+	fputs(line.c_str(), timestampFilepStreaming);
 	if (option_FlushFileEveryLine) {
-		fflush(timestampFilep);
+		fflush(timestampFilepRecording);
+		fflush(timestampFilepStreaming);
 	}
 }
 //---------------------------------------------------------------------------

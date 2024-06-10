@@ -2,6 +2,7 @@
 
 #include <../obs-frontend-api/obs-frontend-api.h>
 #include <./util/platform.h>
+#include <obs-interaction.h>
 
 
 //---------------------------------------------------------------------------
@@ -529,6 +530,7 @@ struct add_sources_s
 {
 	obs_source_t *self;
 	std::vector<std::string> source_names;
+	int filterBySourceType;
 };
 
 bool add_sources(void *data, obs_source_t *source)
@@ -545,18 +547,35 @@ bool add_sources(void *data, obs_source_t *source)
 	if (obs_source_is_group(source))
 		return true;
 
+	if (ctx.filterBySourceType != -1) {
+		auto sourceType = obs_source_get_type(source);
+		if (sourceType != ctx.filterBySourceType) {
+			// wrong type, skip it
+			return true;
+		}
+	}
+
+
 	const char *name = obs_source_get_name(source);
 	ctx.source_names.push_back(name);
 	return true;
 }
 
-void property_list_add_sources(obs_property_t *prop, obs_source_t *self)
+void property_list_add_sources(obs_property_t *prop, obs_source_t *self, int filterBySourceType)
 {
 	// scenes, same order as the scene list
 	obs_frontend_source_list sceneList = {};
 	obs_frontend_get_scenes(&sceneList);
 	for (size_t i = 0; i < sceneList.sources.num; i++) {
 		obs_source_t *source = sceneList.sources.array[i];
+		if (filterBySourceType != -1) {
+			// check if it is the proper type
+			auto sourceType = obs_source_get_type(source);
+			if (sourceType != filterBySourceType) {
+				// wrong type, skip it
+				continue;
+			}
+		}
 		const char *c_name = obs_source_get_name(source);
 		std::string name = obs_module_text("Scene: "); name += c_name;
 		obs_property_list_add_string(prop, name.c_str(), c_name);
@@ -566,6 +585,7 @@ void property_list_add_sources(obs_property_t *prop, obs_source_t *self)
 	// sources, alphabetical order
 	add_sources_s ctx;
 	ctx.self = self;
+	ctx.filterBySourceType = filterBySourceType;
 	obs_enum_sources(add_sources, &ctx);
 
 	std::sort(ctx.source_names.begin(), ctx.source_names.end());
@@ -880,6 +900,8 @@ void refreshBrowserSource(OBSSource itemSource) {
 void restartMediaSource(OBSSource itemSource) {
 	// see https://docs.obsproject.com/reference-sources
 	uint32_t outputFlags = obs_source_get_output_flags(itemSource);
+
+	// media source
 	if (outputFlags && OBS_SOURCE_CONTROLLABLE_MEDIA == 0) {
 		// not controllable
 		return;
@@ -890,6 +912,39 @@ void restartMediaSource(OBSSource itemSource) {
 		obs_source_media_restart(itemSource);
 	}
 }
+
+
+
+void sendKeyToBrowserSource(OBSSource itemSource, void* param) {
+	auto source_id = obs_source_get_unversioned_id(itemSource);
+	if (strcmp(source_id, "browser_source") == 0) {
+		// got a browser source! send it key
+		const char* keycharp = (const char*)param;
+		//
+		// see https://programtalk.com/vs4/python/upgradeQ/OBS-Studio-Python-Scripting-Cheatsheet-obspython-Examples-of-API/src/browser_source_interaction.py/
+		auto key = obs_key_from_name(keycharp);
+		if (key == OBS_KEY_NONE) {
+			// error
+			mydebug("Failed to lookup sendKeyToBrowserSource for key string in obs_key_from_name('%s').",keycharp);
+			return;
+		}
+		auto vk = obs_key_to_virtual_key(key);
+		//
+		obs_key_event event;
+		event.native_vkey = vk;
+		//event.modifiers = get_modifiers(key_modifiers);
+		event.native_modifiers = 0;
+		event.native_scancode = vk;
+		//event.text = "";
+		//
+		bool key_up = true;
+		//
+		// see https://github.com/obsproject/obs-browser/blob/9d15e25a5bc7351b751914f25eccb77fe8160e67/obs-browser-source.cpp#L307
+		obs_source_send_key_click(itemSource, &event, key_up);
+		mydebug("Sent key to browser.");
+	}
+}
+
 //---------------------------------------------------------------------------
 
 

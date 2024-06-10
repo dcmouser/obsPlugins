@@ -22,7 +22,7 @@
 
 
 class JrPluginOptionsDialog : public QDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	QGridLayout *mainLayout;
 public:
 	JrPluginOptionsDialog(QMainWindow *parent);

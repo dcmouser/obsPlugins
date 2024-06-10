@@ -27,7 +27,7 @@ class JrYouTubeChat;
 
 
 class OptionsDialog : public JrPluginOptionsDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	JrYouTubeChat* pluginp = NULL;
 	QGridLayout *mainLayout;
 	QLineEdit* editChatUtilityCommandline;

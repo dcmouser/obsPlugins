@@ -28,6 +28,9 @@ PRIVATE
 
 
 set_target_properties(jryoutubechat PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
+
 
 set(MODULE_DESCRIPTION "Jr YouTube Id")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jryoutubechat.rc)
