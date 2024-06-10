@@ -669,7 +669,7 @@ void JrDockie::RefreshDocksetRecentMenu()
 	connect(action, &QAction::triggered, this, &JrDockie::on_actionImportDockset_triggered);
 	menup->addAction(action);
 	//
-	action = new QAction(QT_UTF8("&Save dockset.."), this);
+	action = new QAction(QT_UTF8("&Save current dockset (window layout) as.."), this);
 	connect(action, &QAction::triggered, this, &JrDockie::on_actionExportDockset_triggered);
 	menup->addAction(action);
 	//
