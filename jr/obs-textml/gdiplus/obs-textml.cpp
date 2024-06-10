@@ -156,7 +156,7 @@ using namespace Gdiplus;
 
 #define S_MULTILINEGROUP_TEXT		"Multi-line tweaks (see help for formatting syntax)"
 #define S_MULTILINE			"multiline"
-#define S_MULTILINE_TEXT		T_("Enable multi-line features")
+#define S_MULTILINE_TEXT		T_("Enable multi-line features and color effects (uncheck to revert to normal Text source behavior)")
 #define S_MULTILINE_DEF			true
 #define S_WRAPLEN			"wraplen"
 #define S_WRAPLEN_TEXT			T_("Word wrap position")
@@ -166,7 +166,7 @@ using namespace Gdiplus;
 #define S_LINESPACEADJUST_DEF		-20
 #define S_GRADIENTPERLINE		"gradientPerLine"
 #define S_GRADIENTPERLINE_TEXT		T_("Gradients are per line")
-#define S_GRADIENTPERLINE_DEF		false
+#define S_GRADIENTPERLINE_DEF		true
 #define S_NOTES				"notes"
 #define S_NOTES_TEXT			T_("Private Notes")
 #define S_NOTES_DEF			""
@@ -235,7 +235,7 @@ static inline DWORD get_alpha_val(uint32_t opacity)
 static inline DWORD calc_color(uint32_t color, uint32_t opacity, int hueShift, int saturationShift, int valueShift)
 {
 	//return color & 0xFFFFFF | get_alpha_val(opacity);
-	return hsvShiftColor(color,hueShift, saturationShift, valueShift) & 0xFFFFFF | get_alpha_val(opacity);
+	return hsvShiftColor(color,hueShift, saturationShift, valueShift, true) & 0xFFFFFF | get_alpha_val(opacity);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1139,8 +1139,10 @@ void TextSource::RenderText()
 			//
 			uint32_t rcolor1 = color;
 			uint32_t rcolor2 = color2;
-			uint32_t lastColor1 = rcolor1;
-			uint32_t lastColor2 = rcolor2;
+			//uint32_t lastColor1 = rcolor1;
+			//uint32_t lastColor2 = rcolor2;
+			uint32_t lastColor1 = 0;
+			uint32_t lastColor2 = 0;
 			//
 			// padding
 			currentY += paddingTop;
@@ -1183,6 +1185,8 @@ void TextSource::RenderText()
 				int fHue = tmodifier.hueShift + hueQuickShift;
 				int fSaturation = tmodifier.saturationShift + saturationQuickShift;
 				int fValue = tmodifier.valueShift + valueQuickShift;
+
+
 				//blog(LOG_WARNING, " hue shift = %d last was %d and tmodhue = %d and quick = %d.", fHue, lastHueShift, tmodifier.hueShift, hueQuickShift);
 				if (gradientPerLine) {
 					brushp = new LinearGradientBrush(RectF(linebox.X, linebox.Y, (float)size.cx, lineHeightOrig[lineNumber]),
@@ -1191,7 +1195,7 @@ void TextSource::RenderText()
 						gradient_dir, 1);
 					flagDeleteBrush = true;
 				} else {
-					if (lastColor1 != rcolor1 || lastColor2 != rcolor2) {
+					if (true || lastColor1 != rcolor1 || lastColor2 != rcolor2) {
 						setCurrentBrushColorUsingHsvShift(brushp, rcolor1, rcolor2, tmodifier);
 						}
 				}

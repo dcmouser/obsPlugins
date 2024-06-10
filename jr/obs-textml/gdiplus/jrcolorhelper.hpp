@@ -11,4 +11,4 @@
 
 uint32_t hueShiftColor_v1_old(uint32_t color, int hueShift);
 uint32_t hueShiftColor(uint32_t color, int hueShift);
-uint32_t hsvShiftColor(uint32_t color, int hueShift, int saturationShift, int valueShift);
+uint32_t hsvShiftColor(uint32_t color, int hueShift, int saturationShift, int valueShift, bool flagFixZeroSaturationHue);

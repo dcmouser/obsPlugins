@@ -92,17 +92,13 @@ float clamp01(float val) {
 
 
 //---------------------------------------------------------------------------
-uint32_t hsvShiftColor(uint32_t color, int hueShift, int saturationShift, int valueShift) {
+uint32_t hsvShiftColor(uint32_t color, int hueShift, int saturationShift, int valueShift, bool flagFixZeroSaturationHue) {
 	// see http://beesbuzz.biz/code/16-hsv-color-transforms
 	// this doesnt seem to work quite right, but im running out of patience and it doesnt really matter it's just used to inject some color changes
-	if (hueShift == 0) {
+	if (hueShift == 0 && saturationShift==0 && valueShift==0) {
 		return color;
 	}
 
-	// TEST -- this should leave color unchanged after shift
-	if (false) {
-		hueShift = 0;
-	}
 
 	// see https://stackoverflow.com/questions/61506398/how-to-unpack-uint32-t-colour-in-c
 
@@ -131,6 +127,18 @@ uint32_t hsvShiftColor(uint32_t color, int hueShift, int saturationShift, int va
 	//
 	float fH, fS, fV;
 	RGBtoHSV(fR, fG, fB, fH, fS, fV);
+
+	if (flagFixZeroSaturationHue) {
+		// if user is trying to shift HUE but saturation is 0, then it seems to have no effect, so we kludge a fix here for that edge case
+		if (fS < 0.1) {
+			// zero saturation in base color, now are they trying to change hue?
+			if (fabs(hueShift) > 0.01) {
+				// they ARE attempting to change hue; and the base color has too small saturation, so we "fix" by bumping up saturation to a value that is at least visible
+				// ATTN: we could also check here if they are trying to shift saturation, and NOT do this if they are, but it shouldnt really make a difference
+				fS += 0.50;
+			}
+		}
+	}
 
 	// now shift hue (which is from 0 to 360)
 	float fHShifted = rot360(fH + hueShift);
