@@ -9,7 +9,7 @@ set zcmd="c:\program files\7-zip\7z" a -t%zformat% -r %extraoptions%
 set zcmd1="c:\program files\7-zip\7z"
 set zcmd2=a -t%zformat% -r %extraoptions%
 
-set releasedir=..\..\release\rundir\RelWithDebInfo
+set releasedir=..\..\build_x64\rundir\RelWithDebInfo
 set releasedirDlls=%releasedir%\obs-plugins\64bit
 
 
@@ -171,3 +171,19 @@ cd %builddir%
 call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
 cd ..\..
 
+
+set pluginName=jrDockie
+set fname=%pluginName%.%zformat%
+set builddir=%pluginName%\release
+mkdir "%builddir%"
+mkdir "%builddir%\obs-plugins"
+mkdir "%builddir%\obs-plugins\64bit"
+mkdir "%builddir%\data"
+mkdir "%builddir%\data\obs-plugins"
+mkdir "%builddir%\data\obs-plugins\%pluginName%"
+copy "%releasedirDlls%\%pluginName%.dll" ".\%builddir%\obs-plugins\64bit\"
+xcopy "%pluginName%\data\*.*" ".\%builddir%\data\obs-plugins\%pluginName%\" /s /e /q /y
+xcopy "%pluginName%\doc\*.*" ".\%builddir%\" /s /e /q /y
+cd %builddir%
+call %zcmd1% %zcmd2% "..\..\%fname%" "*.*"
+cd ..\..

@@ -540,7 +540,7 @@ bool JrDockie::ExportDockstateToFileUserChooses()
 	}
 	QString currentFile = QT_UTF8("mydocks");
 	QString filePath = SaveFile(
-		qmainwp, QTStr("Basic.MainMenu.DockSet.Export"),
+		qmainwp, QTStr("Save dockset file"),
 		QString(path) + "/" + currentFile,
 		"Dockset Files (*" + QString(DefDocksetFileExtension) + ")");
 
@@ -561,7 +561,7 @@ bool JrDockie::ImportDockstateFromFileUserChooses()
 	}
 	QString currentFile = QT_UTF8("mydocks");
 	QString filePath = OpenFile(
-		qmainwp, QTStr("Basic.MainMenu.DockSet.Import"),
+		qmainwp, QTStr("Load dockset file"),
 		QString(path) + "/" + currentFile,
 		"Dockset Files (*" + QString(DefDocksetFileExtension) + ")");
 
@@ -665,11 +665,11 @@ void JrDockie::RefreshDocksetRecentMenu()
 	// now add separator
 	//menup->addSeparator();
 	//
-	action = new QAction(QT_UTF8("&Import dockset.."), this);
+	action = new QAction(QT_UTF8("&Load dockset.."), this);
 	connect(action, &QAction::triggered, this, &JrDockie::on_actionImportDockset_triggered);
 	menup->addAction(action);
 	//
-	action = new QAction(QT_UTF8("&Export dockset.."), this);
+	action = new QAction(QT_UTF8("&Save dockset.."), this);
 	connect(action, &QAction::triggered, this, &JrDockie::on_actionExportDockset_triggered);
 	menup->addAction(action);
 	//
