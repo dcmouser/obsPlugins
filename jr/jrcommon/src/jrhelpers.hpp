@@ -10,6 +10,9 @@ std::vector<std::string> splitString(const std::string& str, bool skipBlankLines
 
 std::string calcSecsAsNiceTimeString(unsigned long secs, bool flagPadLeadingZeros);
 std::string getCurrentDateTimeAsNiceString();
+std::string getCurrentDateTimeAsNiceStringNoColons();
+//
+std::string calcSecsAsNiceTimeStringWords(unsigned long secs);
 
 bool doesStringMatchAnyItemsInPatternList(const std::string needle, std::vector<std::string>* haystackVectorp);
 //---------------------------------------------------------------------------

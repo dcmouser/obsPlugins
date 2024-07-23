@@ -27,7 +27,7 @@ class jrScreenFlip;
 
 
 class OptionsDialog : public JrPluginOptionsDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	jrScreenFlip* pluginp = NULL;
 	QGridLayout *mainLayout;
 	QCheckBox* checkbox_enable;

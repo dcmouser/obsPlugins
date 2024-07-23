@@ -27,12 +27,13 @@ class JrCft;
 
 
 class OptionsDialog : public JrPluginOptionsDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	JrCft* pluginp = NULL;
 	QGridLayout *mainLayout;
 	//
 	QLineEdit* editStartRecStrCommandline;
 	QCheckBox* checkboxRestartMediaOnStart;
+	QCheckBox* checkboxRestartBrowsersOnStart;
 public:
 	OptionsDialog(QMainWindow *parent, JrCft* inpluginp);
 	~OptionsDialog();
@@ -42,4 +43,5 @@ public:
 public:
 	void setOptionStartRecStrCommandline(QString str) {editStartRecStrCommandline->setText(str);}
 	void setOptionRestartMediaOnStart(bool val) { checkboxRestartMediaOnStart->setCheckState(val ? Qt::Checked : Qt::Unchecked); };
+	void setOptionRestartBrowsersOnStart(bool val) { checkboxRestartBrowsersOnStart->setCheckState(val ? Qt::Checked : Qt::Unchecked); };
 };

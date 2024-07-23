@@ -56,7 +56,9 @@ class OptionsDialog;
 //---------------------------------------------------------------------------
 void do_frontend_save(obs_data_t* save_data, bool saving, void* data);
 
-class JrCft : public QDockWidget, public jrObsPlugin {
+class JrCft : public QWidget, public jrObsPlugin {
+	Q_OBJECT
+
 
 protected:
 	QVBoxLayout* mainLayout;
@@ -67,6 +69,7 @@ protected:
 protected:
 	QString startRecStrCommandline;
 	bool restartMediaOnStart = true;
+	bool restartBrowsersOnStart = true;
 	clock_t lastTimeRunCommandline = 0;
 	clock_t lastTimeRunMediaRestart = 0;
 public:
@@ -115,6 +118,7 @@ public:
 public:
 	void setOptionStartRecStrCommandline(QString str) { startRecStrCommandline = str; };
 	void setOptionRestartMediaOnStart(bool val) { restartMediaOnStart = val; };
+	void setOptionRestartBrowsersOnStart(bool val) { restartBrowsersOnStart = val; };
 	virtual void optionsFinishedChanging();
 public:
 	void testHotkeyTriggerAction();
@@ -122,8 +126,13 @@ public:
 	void fixAudioMonitoringInScenes(bool flagAllScenes);
 	void refreshBrowserSourcesInScenes(bool flagAllScenes);
 	void restartMediaSourcesInScenes(bool flagAllScenes);
+	void sendKeyToCurrentSceneBrowserSource(QString keystring);
 protected:
 	void doOnStrRecStartStuff(enum obs_frontend_event event, bool flagRestartMedia, bool flagLaunchBatch);
+public:
+	void setPreferredAudioMonitoringDevice();
+	void debugAudioMonitoringDevices();
+	void findAndSwitchToPreferredAudioMonitoringDevice();
 };
 //---------------------------------------------------------------------------
 

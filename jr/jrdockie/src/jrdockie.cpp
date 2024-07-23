@@ -54,6 +54,10 @@ bool obs_module_load() {
 }
 
 void obs_module_unload() {
+	if (moduleInstance != NULL) {
+		moduleInstance->onModuleUnload();
+	}
+
 	if (moduleInstanceIsRegisteredAndAutoDeletedByObs) {
 		blog(LOG_INFO, "plugin managed by and should be auto deleted by OBS.");
 		return;
@@ -69,7 +73,14 @@ void obs_module_unload() {
 //---------------------------------------------------------------------------
 
 
-
+//---------------------------------------------------------------------------
+void obs_module_post_load() {
+	//blog(LOG_INFO, "plugin in onModulePostLoad");
+	if (moduleInstance != NULL) {
+		moduleInstance->onModulePostLoad();
+	}
+}
+//---------------------------------------------------------------------------
 
 
 
@@ -119,6 +130,16 @@ JrDockie::~JrDockie()
 
 
 
+//---------------------------------------------------------------------------
+void JrDockie::onModulePostLoad() {
+	wsSetupWebsocketStuff();
+}
+
+void JrDockie::onModuleUnload() {
+	wsShutdownWebsocketStuff();
+}
+//---------------------------------------------------------------------------
+
 
 
 
@@ -162,6 +183,11 @@ void JrDockie::handleObsFrontendEvent(enum obs_frontend_event event) {
 
 
 void JrDockie::handleObsHotkeyPress(obs_hotkey_id id, obs_hotkey_t *key) {
+	jrObsPlugin::handleObsHotkeyPress(id, key);
+
+	if (id == hotkeyId_cycleDocksets) {
+		doCycleDockset(1);
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -206,10 +232,13 @@ void JrDockie::optionsFinishedChanging() {
 
 //---------------------------------------------------------------------------
 void JrDockie::registerCallbacksAndHotkeys() {
+	//
+	registerHotkey(ObsHotkeyCallback, this, "jrDockieCycleDocksets", hotkeyId_cycleDocksets, "JrDockie - Cycle Docksets");
 	obs_frontend_add_event_callback(ObsFrontendEvent, this);
 }
 
 void JrDockie::unregisterCallbacksAndHotkeys() {
+	unRegisterHotkey(hotkeyId_cycleDocksets);
 	obs_frontend_remove_event_callback(ObsFrontendEvent, this);
 }
 //---------------------------------------------------------------------------
@@ -218,6 +247,7 @@ void JrDockie::unregisterCallbacksAndHotkeys() {
 
 void JrDockie::loadStuff(obs_data_t *settings) {
 	//
+	loadHotkey(settings, "jrDockieCycleDocksets", hotkeyId_cycleDocksets);
 	//
 	const char* charp = obs_data_get_string(settings, "topLevelMenuLabel");
 	if (charp != NULL) {
@@ -229,6 +259,7 @@ void JrDockie::loadStuff(obs_data_t *settings) {
 }
 
 void JrDockie::saveStuff(obs_data_t *settings) {
+	saveHotkey(settings, "jrDockieCycleDocksets", hotkeyId_cycleDocksets);
 	//
 	obs_data_set_string(settings, "topLevelMenuLabel", opt_topLevelDockLabel.toStdString().c_str());
 }
@@ -492,8 +523,7 @@ void JrDockie::Reset()
 
 
 
-// ATTN: jr 9/25/22 dock saving and loading
-#define DefDocksetFileExtension ".dockset"
+
 
 void JrDockie::on_actionExportDockset_triggered()
 {
@@ -583,6 +613,7 @@ bool JrDockie::ExportDockstateToFile(QString filepath)
 						dockStateCharp,
 						strlen(dockStateCharp), false);
 	if (success) {
+		config_set_string(obs_frontend_get_global_config(), "jrDockie", "lastDockset", filepath.toUtf8());
 		RefreshDocksetRecentMenu();
 	}
 	return true;
@@ -597,6 +628,7 @@ bool JrDockie::ImportDockstateFromFile(QString filepath)
 	bool success = ImportDockstateFromCharp(dockStateCharp);
 	bfree(dockStateCharp);
 	if (success) {
+		config_set_string(obs_frontend_get_global_config(), "jrDockie", "lastDockset", filepath.toUtf8());
 		RefreshDocksetRecentMenu();
 	}
 	return success;
@@ -690,13 +722,22 @@ void JrDockie::RefreshDocksetRecentMenu()
 	// separator
 	menup->addSeparator();
 
+	QString lastDocksetFilePath = this->getLastDocksetFilePath();
+
 	// add actions for enumerate files found
 	auto addRecentDocksetFile = [&](std::string name, const char *path, size_t index) {
+		//
 		if (index < 9) {
 			name = "&" + std::to_string(index+1) + ". " + name;
 		}
 		QAction *action = new QAction(QT_UTF8(name.c_str()), this);
 		action->setProperty("file_name", QT_UTF8(path));
+
+		if (lastDocksetFilePath == QString(path)) {
+			action->setCheckable(true);
+			action->setChecked(true);
+		}
+
 		connect(action, &QAction::triggered, this,
 			&JrDockie::OnClickRecentDockset);
 		menup->addAction(action);
@@ -857,6 +898,205 @@ void JrDockie::hideDockMenuWidgetp() {
 	QMenu* menup = getDockMenuWidgetp();
 	if (menup != NULL) {
 		menup->menuAction()->setVisible(false);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+void JrDockie::wsSetupWebsocketStuff() {
+	vendor = obs_websocket_register_vendor("jrDockie");
+	if (!vendor) {
+		warn("Failed to register websockets vendor.");
+		return;
+	}
+
+	// register request clients can make of us: LoadDockset
+	auto event_request_cb_JrLoadDockset = [](obs_data_t *request_data, obs_data_t *response_data, void *thisptr) {
+		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
+		JrDockie* ytp = static_cast<JrDockie*>(thisptr);
+		// handle callback
+		ytp->requestWsHandleLoadDockset(request_data, response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "LoadDockset", event_request_cb_JrLoadDockset, this)) {
+		warn("Failed to register obs - websocket request LoadDockset");
+	}
+
+	// register request clients can make of us: LoadDockset
+	auto event_request_cb_JrCycleDockset = [](obs_data_t *request_data, obs_data_t *response_data, void *thisptr) {
+		//mydebug("IN cb event_request_cb_JrYtMessageGet.");
+		JrDockie* ytp = static_cast<JrDockie*>(thisptr);
+		// handle callback
+		ytp->requestWsHandleCycleDockset(request_data, response_data);
+	};
+	//
+	if (!obs_websocket_vendor_register_request(vendor, "CycleDockset", event_request_cb_JrCycleDockset, this)) {
+		warn("Failed to register obs - websocket request CycleDockset");
+	}
+
+}
+
+
+
+void JrDockie::wsShutdownWebsocketStuff() {
+	if (vendor) {
+		// concerned about crashing
+		//obs_websocket_vendor_unregister_request(vendor, "JrDockieLoadDockset");
+		vendor = NULL;
+	}
+}
+
+
+
+
+void JrDockie::requestWsHandleLoadDockset(obs_data_t *request_data, obs_data_t* response_data) {
+	// find the index of the selected item then jump to it and make it active
+	const char* docksetFileName = obs_data_get_string(request_data, "filename");
+	blog(LOG_INFO, "JrDockie receiving websocket command to load dockset '%s'.", docksetFileName);
+	QString docksetFilePath = resolveDocksetPathSmartly(QString(docksetFileName));
+	if (docksetFilePath != "") {
+		blog(LOG_INFO, "JrDockie trying to loading found dockset '%s'.", docksetFilePath.toStdString().data());
+		if (true) {
+			QMetaObject::invokeMethod(this, [=]() { ImportDockstateFromFile(docksetFilePath); }, Qt::QueuedConnection);
+		}
+		else {
+			ImportDockstateFromFile(docksetFilePath);
+		}
+	}
+}
+
+
+void JrDockie::requestWsHandleCycleDockset(obs_data_t *request_data, obs_data_t* response_data) {
+	// find the index of the selected item then jump to it and make it active
+	//blog(LOG_INFO, "JrDockie receiving websocket command to cycle dockset.");
+	if (true) {
+		QMetaObject::invokeMethod(this, [=]() { doCycleDockset(1); }, Qt::QueuedConnection);
+	}
+	else {
+		doCycleDockset(1);
+	}
+}
+//---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+QString JrDockie::resolveDocksetPathSmartly(QString filename) {
+	// user passes in name of dockset, here we will add path IF its needed, add extension IF its needed
+	// add path and extension if needed
+	if (jrqtFileExists(filename)) {
+		return filename;
+	}
+	//
+	QString tryPath;
+	QString dockDir = getDocksetDirectory();
+	QString ext = QString(DefDocksetFileExtension);
+	tryPath = dockDir + "/" + filename;
+	if (jrqtFileExists(tryPath)) {
+		return tryPath;
+	}
+	tryPath = dockDir + QString("/") + filename + ext;
+	if (jrqtFileExists(tryPath)) {
+		return tryPath;
+	}
+	tryPath = filename + ext;
+	if (jrqtFileExists(tryPath)) {
+		return tryPath;
+	}
+	// not found
+	blog(LOG_INFO, "JrDockie could not find dock file.");
+	//blog(LOG_WARNING, "JrDockie trying to load dockset '%s' but it could not be found.", filename.toStdString().data());
+	return "";
+}
+
+
+QString JrDockie::getDocksetDirectory() {
+	char path[512];
+	strcpy(path, "");
+	int ret = GetConfigPathDockset(path, 512);
+	if (ret < 0) {
+		return "";
+	}
+	QString pathString = QString(path);
+	if (pathString.endsWith("/") || pathString.endsWith("\\")) {
+		pathString = pathString.left(pathString.length() - 1);
+	}
+	return pathString;
+}
+
+
+
+QString JrDockie::getLastDocksetFilePath() {
+	const char *lastDocksetFilePathCharp = config_get_string(obs_frontend_get_global_config(), "jrDockie", "lastDockset");
+	QString lastDocksetFilePath = "";
+	if (lastDocksetFilePathCharp != NULL) {
+		lastDocksetFilePath = QString(lastDocksetFilePathCharp);
+		return lastDocksetFilePath;
+	}
+	return "";
+}
+//---------------------------------------------------------------------------
+//
+//
+// 
+//---------------------------------------------------------------------------
+void JrDockie::doCycleDockset(int delta) {
+	// get last dockset loaded
+	QString lastDocksetFilePath = this->getLastDocksetFilePath();
+
+	// build list
+	// add actions for enumerate files found
+	QStringList docksetFileList;
+	auto addToStringList = [&](std::string name, const char *path, size_t index) {
+		QString fullPath = QString(path);
+		docksetFileList.append(fullPath);
+		return true;
+	};
+	EnumDocksetFiles(addToStringList);
+
+	// find in list
+	int index = -1;
+	if (lastDocksetFilePath != "") {
+		index = docksetFileList.indexOf(lastDocksetFilePath);
+	}
+
+	// if found, go to next (cycling around)
+	index += delta;
+	if (index >= docksetFileList.count()) {
+		index = 0;
+	}
+	// what if we walked backwards
+	if (index < 0) {
+		index = docksetFileList.count() - 1;
+	}
+	if (index >= 0 && index < docksetFileList.count()) {
+		QString newFilePath = docksetFileList[index];
+		ImportDockstateFromFile(newFilePath);
 	}
 }
 //---------------------------------------------------------------------------

@@ -40,9 +40,9 @@ class OptionsDialog;
 //---------------------------------------------------------------------------
 void note_frontend_save(obs_data_t* save_data, bool saving, void* data);
 
-class jrNoteDock : public QDockWidget, public jrObsPlugin {
+class jrNoteDock : public QWidget, public jrObsPlugin {
 	// produces link error:
-	//Q_OBJECT
+	Q_OBJECT
 	QVBoxLayout* mainLayout;
 
 protected:

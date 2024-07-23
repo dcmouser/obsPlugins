@@ -62,7 +62,29 @@ std::string calcSecsAsNiceTimeString(unsigned long secs, bool flagPadLeadingZero
 	//
 	return std::string(str);
 }
+
+
+std::string calcSecsAsNiceTimeStringWords(unsigned long secs) {
+	unsigned long mins = (unsigned long) (secs / 60L);
+	secs = secs % 60;
+	unsigned long hours = (unsigned long) (mins / 60L);
+	mins = mins % 60;
+	//
+	char str[64];
+	if (hours > 0) {
+		sprintf(str, "%lu hours, %lu minutes", hours, mins);
+
+	} else {
+		sprintf(str, "%lu minutes, %lu seconds", mins, secs);
+	}
+	//
+	return std::string(str);
+}
 //---------------------------------------------------------------------------
+
+
+
+
 
 
 
@@ -74,6 +96,17 @@ std::string getCurrentDateTimeAsNiceString() {
 	temp = time(NULL);
 	timeptr = localtime(&temp);
 	strftime(timestr, 80, "%A, %d %b %Y at %I:%M %p", timeptr);
+	return std::string(timestr);
+}
+
+
+std::string getCurrentDateTimeAsNiceStringNoColons() {
+	char timestr[80];
+	time_t temp;
+	struct tm *timeptr;
+	temp = time(NULL);
+	timeptr = localtime(&temp);
+	strftime(timestr, 80, "%A, %d %b %Y at %I%M %p", timeptr);
 	return std::string(timestr);
 }
 //---------------------------------------------------------------------------

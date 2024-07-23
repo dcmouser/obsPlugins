@@ -9,6 +9,8 @@ add_library(jrAutoAspect MODULE)
 target_link_libraries(jrAutoAspect PRIVATE OBS::libobs OBS::frontend-api Qt::Core Qt::Widgets Qt::Network)
 
 set_target_properties(jrAutoAspect PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
 
 set(MODULE_DESCRIPTION "OBS Filter auto switches source aspect ratio")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrAutoAspect.rc)

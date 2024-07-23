@@ -10,9 +10,14 @@
 #include <QLabel>
 #include <QList>
 
+// websocket
+#include "../../plugins/obs-websocket/lib/obs-websocket-api.h"
+
+
 #include "plugininfo.hpp"
 
 #include "../../jrcommon/src/jrobsplugin.hpp"
+
 
 
 
@@ -39,6 +44,11 @@ class OptionsDialog;
 //---------------------------------------------------------------------------
 
 
+//---------------------------------------------------------------------------
+// ATTN: jr 9/25/22 dock saving and loading
+#define DefDocksetFileExtension ".dockset"
+//---------------------------------------------------------------------------
+
 
 //---------------------------------------------------------------------------
 
@@ -48,9 +58,15 @@ protected:
 	QString opt_topLevelDockLabel;
 protected:
 	QMainWindow* qmainwp;
+protected:
+	obs_websocket_vendor vendor = NULL;
+	size_t hotkeyId_cycleDocksets = -1;
 public:
 	JrDockie(QMainWindow* in_qmainwp);
 	~JrDockie();
+public:
+	virtual void onModulePostLoad();
+	virtual void onModuleUnload();
 public:
 	static void ObsFrontendEvent(enum obs_frontend_event event, void* ptr);
 	static void ObsHotkeyCallback(void* data, obs_hotkey_id id, obs_hotkey_t* key, bool pressed);
@@ -108,8 +124,19 @@ public:
 	void RefreshDocksetRecentMenu();
 	void EnumDocksetFiles(std::function<bool(std::string name, const char *, size_t index)> &&cb);
 public:
+	QString resolveDocksetPathSmartly(QString filename);
+	QString getDocksetDirectory();
+	QString getLastDocksetFilePath();
+	void doCycleDockset(int delta);
+public:
 	QMenu* getDockMenuWidgetp();
 	void hideDockMenuWidgetp();
+// websocket stuff
+public:
+	void wsSetupWebsocketStuff();
+	void wsShutdownWebsocketStuff();
+	void requestWsHandleLoadDockset(obs_data_t* request_data, obs_data_t* response_data);
+	void requestWsHandleCycleDockset(obs_data_t* request_data, obs_data_t* response_data);
 };
 //---------------------------------------------------------------------------
 

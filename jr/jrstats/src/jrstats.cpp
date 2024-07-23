@@ -43,6 +43,7 @@
 #define DefJrThemeGood "good"
 #define DefJrThemeWarning "warning"
 #define DefJrThemeError "error"
+//
 //---------------------------------------------------------------------------
 
 
@@ -65,6 +66,8 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 #define REC_TIME_LEFT_INTERVAL 30000
 //
 #define DefResetKeepZeroSec 0.5
+//
+#define DefThresholdBigWarnOnDropStreak 2
 //---------------------------------------------------------------------------
 
 
@@ -1447,7 +1450,16 @@ void jrStats::OutputLabels::Update(obs_output_t *output, bool rec, bool resetPen
 
 		droppedFrames->setText(str);
 
-		if (num > 5.0l)
+		if (dropped > last_dropped) {
+			++streak_drops_increasing;
+		} else {
+			streak_drops_increasing = 0;
+		}
+		last_dropped = dropped;
+
+		if (streak_drops_increasing > DefThresholdBigWarnOnDropStreak) {
+			setThemeID(droppedFrames, DefJrThemeBigError);
+		} else if (num > 5.0l)
 			setThemeID(droppedFrames, DefJrThemeError);
 		else if (num > 1.0l)
 			setThemeID(droppedFrames, DefJrThemeWarning);

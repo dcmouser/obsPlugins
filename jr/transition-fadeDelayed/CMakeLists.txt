@@ -3,9 +3,15 @@ project(transition-fadeDelayed)
 add_library(transition-fadeDelayed MODULE)
 # add_library(OBS::obs-textml ALIAS obs-textml)
 
+find_qt(COMPONENTS Widgets Core)
+
 target_link_libraries(transition-fadeDelayed PRIVATE OBS::libobs)
 
 set_target_properties(transition-fadeDelayed PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
+
+
 
 set(MODULE_DESCRIPTION "Delayed version of fade transition module")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in transition-fadeDelayed.rc)

@@ -4,4 +4,4 @@
 #define PLUGIN_VERSION "1.0"
 #define PLUGIN_CONFIGFILENAME "jrnotedock.json"
 #define PLUGIN_AUTHOR "jessereichler@gmail.com"
-#define PLUGIN_OPTIONS_LABEL PLUGIN_LABEL ## " Options"
+#define PLUGIN_OPTIONS_LABEL PLUGIN_LABEL " Options"

@@ -59,6 +59,12 @@ void OptionsDialog::buildUi() {
 		mainLayout->addWidget(checkboxRestartMediaOnStart, idx, 1, Qt::AlignLeft);
 		++idx;
 
+		label = new QLabel(obs_module_text("Restart browsers on Streaming/Recording/Broadcasting start?"));
+		mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+		checkboxRestartBrowsersOnStart = new QCheckBox;
+		mainLayout->addWidget(checkboxRestartBrowsersOnStart, idx, 1, Qt::AlignLeft);
+		++idx;
+
 		label = new QLabel(obs_module_text("Commandline to run on Streaming/Recording/Broadcasting start"));
 		mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
 		++idx;
@@ -107,6 +113,7 @@ void OptionsDialog::onClickApply() {
 	//
 	pluginp->setOptionStartRecStrCommandline(editStartRecStrCommandline->text());
 	pluginp->setOptionRestartMediaOnStart(checkboxRestartMediaOnStart->checkState() == Qt::Checked);
+	pluginp->setOptionRestartBrowsersOnStart(checkboxRestartBrowsersOnStart->checkState() == Qt::Checked);
 	pluginp->optionsFinishedChanging();
 }
 //---------------------------------------------------------------------------

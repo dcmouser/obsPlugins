@@ -64,6 +64,24 @@ void OptionsDialog::buildUi() {
 	textEdit_breakPatternString->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 	textEdit_breakPatternString->setAcceptRichText(false);
 	++idx;
+
+	//
+	label = new QLabel(obs_module_text("Kludge adjustment for reconnect (seconds) [default = 0]"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	spinBoxReconnectAdjust = new QSpinBox;
+	spinBoxReconnectAdjust->setMinimum(-15);
+	spinBoxReconnectAdjust->setMaximum(15);
+	mainLayout->addWidget(spinBoxReconnectAdjust, idx, 1, Qt::AlignLeft);
+	++idx;
+	//
+	label = new QLabel(obs_module_text("Kludge adjustment for overall timestamps (seconds) [default = 0]"));
+	mainLayout->addWidget(label, idx, 0, Qt::AlignLeft);
+	spinBoxReportAdjust = new QSpinBox;
+	spinBoxReportAdjust->setMinimum(-15);
+	spinBoxReportAdjust->setMaximum(15);
+	mainLayout->addWidget(spinBoxReportAdjust, idx, 1, Qt::AlignLeft);
+	++idx;
+
 	//
 	mainLayout->setColumnStretch(1, 1);
 
@@ -108,6 +126,11 @@ void OptionsDialog::setOptionLogAllSceneTransitions(bool val) {
 void OptionsDialog::setBreakPatternStringNewlined(std::string str) {
 	textEdit_breakPatternString->setPlainText(str.c_str());
 }
+
+void OptionsDialog::setOptionKludgeAdjustments(int reconnectAdjustSecs, int reportAdjustSecs) {
+	spinBoxReconnectAdjust->setValue(reconnectAdjustSecs);
+	spinBoxReportAdjust->setValue(reportAdjustSecs);
+}
 //---------------------------------------------------------------------------
 
 
@@ -116,6 +139,9 @@ void OptionsDialog::onClickApply() {
 	timestamperp->setOptionEnabled(checkbox_enable->checkState() == Qt::Checked);
 	timestamperp->setOptionLogAllSceneTransitions(checkbox_recordAllTransitions->checkState() == Qt::Checked);
 	timestamperp->fillBreakScenePatterns(textEdit_breakPatternString->toPlainText().toStdString());
+	timestamperp->setOptionKludgeAdjustments(spinBoxReconnectAdjust->value(), spinBoxReportAdjust->value());
 	timestamperp->optionsFinishedChanging();
 }
 //---------------------------------------------------------------------------
+
+

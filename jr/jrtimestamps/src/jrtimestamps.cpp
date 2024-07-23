@@ -28,7 +28,7 @@ c) BROADCAST start time; this is not used by all people and can come well after 
 #include <vector>
 
 
-
+// #define JROLDSTREAMTIMESTAMP
 
 
 //---------------------------------------------------------------------------
@@ -37,10 +37,9 @@ OBS_MODULE_AUTHOR(PLUGIN_AUTHOR);
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 //---------------------------------------------------------------------------
 
-
-
-
-
+//---------------------------------------------------------------------------
+#define TIMER_INTERVAL 1000
+//---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
 static jrTimestamper* moduleInstance = NULL;
@@ -89,18 +88,26 @@ void obs_module_unload() {
 
 
 
-
 //---------------------------------------------------------------------------
-jrTimestamper::jrTimestamper() {
+jrTimestamper::jrTimestamper()
+	: jrObsPlugin(), QObject(), timer(this)
+{
 	// defaults
 	fillBreakScenePatterns(Def_breakPatternStringNewlined);
 	//
+	//
 	initialStartup();
+	//
+	// timers
+	QObject::connect(&timer, &QTimer::timeout, this, &jrTimestamper::timerTrigger);
+	timer.setInterval(TIMER_INTERVAL);
+	timer.start();
 }
 
 jrTimestamper::~jrTimestamper() {
 	//blog(LOG_WARNING, "deleting.");
 
+	timer.stop();
 	finalizeTimestampFileIfAppropriate(true);
 
 	finalShutdown();
@@ -239,8 +246,12 @@ void jrTimestamper::resetTimestampOrigin(std::string label, bool flagWithWallClo
 		timestampOrigin = clock();
 	}
 	if (resetTypeStr == "broadcasting") {
-		broadcastingOffsetIntoStreaming = this->calcStreamingTime();
-	}
+		timestampOriginBroadcasting = clock();
+		#ifdef JROLDSTREAMTIMESTAMP
+			broadcastingOffsetIntoStreaming = this->calcStreamingTime();
+			blog(LOG_INFO, "Resetting broadcastingOffsetIntoStreaming to %lu.", (unsigned long)broadcastingOffsetIntoStreaming);
+		#endif
+		}
 
 
 	openTimestampFileIfAppropriate();
@@ -306,7 +317,7 @@ void jrTimestamper::recordSceneChangeIfAppropriate(const std::string sceneName) 
 
 
 void jrTimestamper::transitionedSceneFromBreakToNonBreak(const std::string lastSceneName, const std::string sceneName) {
-	char str[255];
+	char str[1024];
 	bool flagWithWallClockTime = false;
 	if (optionLogAllSceneTransitions) {
 		sprintf(str, "%s", sceneName.c_str());
@@ -375,7 +386,7 @@ bool jrTimestamper::writeTimestamp(std::string label, bool flagWithWallClockTime
 
 	std::string parenExtra;
 	if (flagWithWallClockTime) {
-		parenExtra = " (" + getCurrentDateTimeAsNiceString() + ")";
+		parenExtra = " (" + getCurrentDateTimeAsNiceStringNoColons() + ")";
 	}
 
 	std::string timeStringRecording = getCurrentRecordingTimesOffsetAsString();
@@ -392,6 +403,8 @@ bool jrTimestamper::writeTimestamp(std::string label, bool flagWithWallClockTime
 	}
 	//blog(LOG_WARNING, "Logging timestamp: %s.", line.c_str());
 
+	blog(LOG_INFO, "ATTN: Logging LABELED STREAMING timestamp: %s.", lineStreaming.c_str());
+
 	return true;
 }
 //---------------------------------------------------------------------------
@@ -404,9 +417,20 @@ std::string jrTimestamper::getCurrentRecordingTimesOffsetAsString() {
 	clock_t offset = nowTime - timestampOrigin;
 	unsigned long secs = offset / CLOCKS_PER_SEC;
 
-	if (optionTimestampAdjustSecs > 0 ||  (optionTimestampAdjustSecs<0 && secs > (unsigned long) (- 1 * optionTimestampAdjustSecs))) {
-		secs += optionTimestampAdjustSecs;
-	}
+	secs = max((long)secs + optionReportAdjustSecs, 0);
+
+	return calcSecsAsNiceTimeString(secs, optionPadLeadingZeros);
+}
+
+
+std::string jrTimestamper::getCurrentStreamingTimesOffsetAsString() {
+	clock_t nowTime = clock();
+	clock_t offset = nowTime - timestampOriginBroadcasting;
+	// subtracted time spent disconnected
+	offset -= disconnectedClockCount;
+	unsigned long secs = offset / CLOCKS_PER_SEC;
+
+	secs = max((long)secs + optionReportAdjustSecs, 0);
 
 	return calcSecsAsNiceTimeString(secs, optionPadLeadingZeros);
 }
@@ -415,7 +439,7 @@ std::string jrTimestamper::getCurrentRecordingTimesOffsetAsString() {
 
 
 
-std::string jrTimestamper::getCurrentStreamingTimesOffsetAsString() {
+std::string jrTimestamper::getCurrentStreamingTimesOffsetAsString_Previous() {
 	//
 	double stream_elapsed_time_sec = this->calcStreamingTime();
 	if (stream_elapsed_time_sec < 0) {
@@ -427,10 +451,7 @@ std::string jrTimestamper::getCurrentStreamingTimesOffsetAsString() {
 
 	//
 	unsigned long secs = (long)stream_elapsed_time_sec;
-	//
-	if (optionTimestampAdjustSecs > 0 ||  (optionTimestampAdjustSecs<0 && secs > (unsigned long) (- 1 * optionTimestampAdjustSecs))) {
-		secs += optionTimestampAdjustSecs;
-	}
+	secs = max((long)secs + optionReportAdjustSecs, 0);
 
 	return calcSecsAsNiceTimeString(secs, optionPadLeadingZeros);
 }
@@ -445,26 +466,138 @@ double jrTimestamper::getObsFrameRate() {
 }
 
 double jrTimestamper::calcStreamingTime() {
+	// ATTN: 6/27/24 discovered a bug; when OBS disconnects it resets the stream_frame_count, bringing it back to 0
 	if (true && broadcastingOffsetIntoStreaming==0) {
 		bool isStreaming = obs_frontend_streaming_active();
 		if (!isStreaming) {
+			//blog(LOG_INFO, "calcStreamingTime early return 1");
 			return -1;
 		}
 	}
 	auto stream_output = obs_frontend_get_streaming_output();
 	if (!stream_output) {
+		//blog(LOG_INFO, "calcStreamingTime early return 2");
 		return -1;
 	}
 	auto framerate = this->getObsFrameRate();
 	if (framerate == 0) {
 		obs_output_release(stream_output);
+		//blog(LOG_INFO, "calcStreamingTime early return 3");
 		return -1;
 	}
 
-	auto stream_frame_count = obs_output_get_total_frames(stream_output);
+	auto stream_frame_countRaw = obs_output_get_total_frames(stream_output);
+	auto droppedFrames = obs_output_get_frames_dropped(stream_output);
+	int isReconnecting = obs_output_reconnecting(stream_output);
+	int isActive = obs_output_active(stream_output);
+	obs_output_release(stream_output);
+
+	// track justStartedReconnecting and justFinishedReconnecting
+	bool justStartedReconnecting = false;
+	if (isReconnecting && !lastReconnecting) {
+		justStartedReconnecting = true;
+		walltime_startReconnect = time(NULL);
+	}
+	bool justFinishedReconnecting = false;
+	if (!isReconnecting && lastReconnecting) {
+		justFinishedReconnecting = true;
+	}
+	lastReconnecting = isReconnecting;
+
+
+	// stream count modified
+	auto stream_frame_count = stream_frame_countRaw;
+
+
+	if (justFinishedReconnecting) {
+		// we've reconnected, so now, start using the NEW values we calculated when we disconnected
+		//reconnectStartFrameCount = stream_frame_count;
+		reconnectStartFrameCount = disconnectFrameCount;
+		// do we need to now RESET previousDroppedFrames (beacuse reconnectStartFrameCount takes it into consideration)
+		if (true) {
+			previousDroppedFrames = 0;
+		}
+		// ATTN: this should not be needed anymore (or minimal if so)
+		if (true) {
+			reconnectStartFrameCount -= (optionReconnectAdjustSecs * framerate);
+		}
+		droppingStreakFrameStart = 0;
+	}
+
+
+
+
+
+	// take into account dropped frames (current and remembered)
+
+	if (droppedFrames < lastDroppedFrames) {
+		// dropped frame count has RESET (gotten smaller)
+		previousDroppedFrames += lastDroppedFrames;
+		droppingStreakFrameStart = 0;
+	}
+
+
+	// calculate stream_frame_count by subtracting dropped frames
+	stream_frame_count -= (previousDroppedFrames + droppedFrames);
+
+
+	// kludge attempts to get REAL disconnect time at start of major frame dropping
+	if (droppedFrames > lastDroppedFrames) {
+		// frames being dropped
+		// new kludge
+		if (last_stream_frame_count > 0) {
+			// kludge says when we drop frames, lock timestamp to previous (this is BAD for just a few dropped frames but kludge fixes lost frames on disconnect)
+			long dif = (long)stream_frame_count - last_stream_frame_count;
+			if (dif > 0 && dif < 60) {
+				previousDroppedFrames += dif;
+				stream_frame_count = last_stream_frame_count;
+			}
+		}
+		if (!isDropping) {
+			// start of dropping
+			isDropping = true;
+			droppingStreakFrameStart = stream_frame_count;
+		}
+	}
+	else {
+		isDropping=false;
+	}
+
+	last_stream_frame_count = stream_frame_count;
+
+	// remember
+	lastDroppedFrames = droppedFrames;
+
+
+	// add reconnect offset (0 unless we had to reconnect)
+	stream_frame_count += reconnectStartFrameCount;
+
+
+	if (justStartedReconnecting) {
+		// remember the framecount (including dropped frames and previous adjustment) but don't use it yet
+		//if ((droppingStreakFrameStart > 0) && (droppingStreakFrameStart < stream_frame_count) && ((int)(stream_frame_count-droppingStreakFrameStart) < 300)) {
+		long difFrameCount = (stream_frame_count - droppingStreakFrameStart);
+		if (false && (droppingStreakFrameStart > 0) && (difFrameCount>0) && (difFrameCount < 300)) {
+			// kludge try to use this value instead, the place where frames first started dropping
+			disconnectFrameCount = droppingStreakFrameStart;
+		}
+		else {
+			// use now framecount
+			disconnectFrameCount = stream_frame_count;
+		}
+	}
+
+
+
+
+
 	auto last_stream_frame_count = stream_frame_count;
 	auto stream_elapsed_time_sec = stream_frame_count / framerate;
-	obs_output_release(stream_output);
+
+	// ATTN: test
+	//blog(LOG_INFO, "ATTN: logging timestamp time, time = %f... juststartedrecon = %d, justfinishedrecon = %d;  rawframecount = %lu, framecount=%lu, recononnctstart=%lu, framerate =%lu, dropped = %lu; prevDropped = %lu; lastDropped = %lu; optionrecon = %lu; reconnecting = %d; active=%d.", (float) (stream_elapsed_time_sec - broadcastingOffsetIntoStreaming), (int)justStartedReconnecting, (int)justFinishedReconnecting, (unsigned long)stream_frame_countRaw, (unsigned long)stream_frame_count, (unsigned long)reconnectStartFrameCount, (unsigned long)framerate, (unsigned long) droppedFrames, (unsigned long)previousDroppedFrames, (unsigned long) lastDroppedFrames,  (unsigned long) optionReconnectAdjustSecs, (int) isReconnecting, (int) isActive);
+
+
 	return stream_elapsed_time_sec;
 }
 //---------------------------------------------------------------------------
@@ -480,7 +613,7 @@ void jrTimestamper::writeInitialCommentsToTimestampFile() {
 		return;
 	}
 
-	std::string timeString = getCurrentDateTimeAsNiceString();
+	std::string timeString = getCurrentDateTimeAsNiceStringNoColons();
 	std::string line = std::string("// Timestamps from ") + timeString + std::string("\n");
 
 	// ATTN: TODO write line
@@ -514,6 +647,9 @@ void jrTimestamper::loadStuff(obs_data_t *settings) {
 	optionEnabled = obs_data_get_bool(settings, "jrTimestamps.enabled");
 	obs_data_set_default_bool(settings, "jrTimestamps.logAllSceneTransitions", false);
 	optionLogAllSceneTransitions = obs_data_get_bool(settings, "jrTimestamps.logAllSceneTransitions");
+	//
+	optionReconnectAdjustSecs = obs_data_get_int(settings, "jrTimestamps.optionReconnectAdjustSecs");
+	optionReportAdjustSecs = obs_data_get_int(settings, "jrTimestamps.optionReportAdjustSecs");
 
 	// parse breaklines
 	fillBreakScenePatterns(breakPatternStringNewlined);
@@ -526,6 +662,9 @@ void jrTimestamper::saveStuff(obs_data_t *settings) {
 	//
 	obs_data_set_bool(settings, "jrTimestamps.enabled", optionEnabled);
 	obs_data_set_bool(settings, "jrTimestamps.logAllSceneTransitions", optionLogAllSceneTransitions);
+	//
+	obs_data_set_int(settings, "jrTimestamps.optionReconnectAdjustSecs", optionReconnectAdjustSecs);
+	obs_data_set_int(settings, "jrTimestamps.optionReportAdjustSecs", optionReportAdjustSecs);
 }
 //---------------------------------------------------------------------------
 
@@ -581,6 +720,12 @@ void jrTimestamper::fillBreakScenePatterns(const std::string inBreakPatternStrin
 	breakPatternStringNewlined = inBreakPatternStringNewlined;
 	breakScenePatterns = splitString(breakPatternStringNewlined, true);
 }
+
+
+void jrTimestamper::setOptionKludgeAdjustments(int reconnectAdjustSecs, int reportAdjustSecs) {
+	optionReconnectAdjustSecs = reconnectAdjustSecs;
+	optionReportAdjustSecs = reportAdjustSecs;
+}
 //---------------------------------------------------------------------------
 
 
@@ -619,6 +764,7 @@ void jrTimestamper::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialo
 	optionDialog->setOptionEnabled(optionEnabled);
 	optionDialog->setOptionLogAllSceneTransitions(optionLogAllSceneTransitions);
 	optionDialog->setBreakPatternStringNewlined(breakPatternStringNewlined);
+	optionDialog->setOptionKludgeAdjustments(optionReconnectAdjustSecs, optionReportAdjustSecs);
 }
 //---------------------------------------------------------------------------
 
@@ -634,7 +780,7 @@ std::string jrTimestamper::AddTimeOffsetHintToLabel(std::string label) {
 		clock_t timeOffsetIntoRecording = nowTime - timestampOriginRecording;
 		secsOffsetIntoRecording = timeOffsetIntoRecording / CLOCKS_PER_SEC;
 	}
-	if (secsOffsetIntoRecording > 0) {
+	if (false && secsOffsetIntoRecording > 0) {
 		label += " (" + std::to_string(secsOffsetIntoRecording) + " secs into recording)";
 	}
 	return label;
@@ -665,5 +811,139 @@ std::string jrTimestamper::reqVideoIdFromObsSelectedBroadcast() {
 	}
 
 	return broadcastIdQstr.toStdString();
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+void jrTimestamper::checkStreamingSituation() {
+	#ifdef JROLDSTREAMTIMESTAMP
+		calcStreamingTime();
+		return;
+	#endif
+		updateStreamingSituation();
+}
+
+
+void jrTimestamper::updateStreamingSituation() {
+	// ATTN: 6/27/24 discovered a bug; when OBS disconnects it resets the stream_frame_count, bringing it back to 0
+	if (true && broadcastingOffsetIntoStreaming==0) {
+		bool isStreaming = obs_frontend_streaming_active();
+		if (!isStreaming) {
+			//blog(LOG_INFO, "calcStreamingTime early return 1");
+			return;
+		}
+	}
+	auto stream_output = obs_frontend_get_streaming_output();
+	if (!stream_output) {
+		//blog(LOG_INFO, "calcStreamingTime early return 2");
+		return;
+	}
+
+	auto droppedFrames = obs_output_get_frames_dropped(stream_output);
+	int isReconnecting = obs_output_reconnecting(stream_output);
+	int isActive = obs_output_active(stream_output);
+	obs_output_release(stream_output);
+
+
+
+	// track justStartedReconnecting and justFinishedReconnecting
+	bool justStartedReconnecting = false;
+	if (isReconnecting && !lastReconnecting) {
+		justStartedReconnecting = true;
+		clockStartReconnect = clock();
+	}
+	bool justFinishedReconnecting = false;
+	if (!isReconnecting && lastReconnecting) {
+		justFinishedReconnecting = true;
+		clockEndReconnect = clock();
+		clock_t guessStartDif = clockStartReconnect - dropStart;
+		long guessStartDifSecs = guessStartDif / CLOCKS_PER_SEC;
+		if (guessStartDif > 0 && guessStartDifSecs < 20) {
+			// guess that the first recent drop of frames is where we REALLY lost our connection
+			clockStartReconnect = dropStart;
+			//blog(LOG_INFO, "For disconnect reconnect jrtimestamp, using first drop streak instead of start disconnectd (%lu sec earlier)", guessStartDifSecs);
+		}
+		// we have reconnected, so adjust for missing time
+		auto thisDisconnectedClockCount = clockEndReconnect - clockStartReconnect;
+		thisDisconnectedClockCount -= (optionReconnectAdjustSecs * CLOCKS_PER_SEC);
+		// add it to our total missing time
+		disconnectedClockCount += thisDisconnectedClockCount;
+		float duration = thisDisconnectedClockCount / CLOCKS_PER_SEC;
+		//blog(LOG_INFO, "reconnect details start = %lu  end = %lu; drop starts = %lu; dif = %lu, in secs = %lu.  optionrecond = %d; clocks_per_sec=%lu duration = %f and total = %lu", (unsigned long)clockStartReconnect, (unsigned long)clockEndReconnect, (unsigned long)dropStart, (unsigned long)guessStartDif, (unsigned long)guessStartDifSecs, (int)optionReconnectAdjustSecs, (unsigned long)CLOCKS_PER_SEC, (float)duration, (unsigned long)disconnectedClockCount);
+	}
+	lastReconnecting = isReconnecting;
+
+	// kludge attempts to get REAL disconnect time at start of major frame dropping
+	if (droppedFrames > lastDroppedFrames) {
+		if (!isDropping) {
+			// start of dropping
+			isDropping = true;
+			dropStart = clock();
+		}
+	}
+	else {
+		isDropping=false;
+	}
+	// remember
+	lastDroppedFrames = droppedFrames;
+
+	//std::string streamtimestr = getCurrentStreamingTimesOffsetAsString();
+	//blog(LOG_INFO, "ATTN: logging timestamp time, streamtime = %s; disconnectedClockCount = %f;  juststartedrecon = %d, justfinishedrecon = %d; dropped = %lu; prevDropped = %lu; lastDropped = %lu; optionrecon = %d; reconnecting = %d; active=%d.", streamtimestr.c_str(), (float)disconnectedClockCount/CLOCKS_PER_SEC, (int)justStartedReconnecting, (int)justFinishedReconnecting, (unsigned long) droppedFrames, (unsigned long)previousDroppedFrames, (unsigned long) lastDroppedFrames,  (int) optionReconnectAdjustSecs, (int) isReconnecting, (int) isActive);
+
+}
+//---------------------------------------------------------------------------
+
+
+
+//---------------------------------------------------------------------------
+void jrTimestamper::timerTrigger() {
+	auto reconnectStartFrameCountPrev = reconnectStartFrameCount;
+	//
+	static int wasReconnecting = 0;
+	checkStreamingSituation();
+
+	//
+	if (lastReconnecting && !wasReconnecting) {
+		// a reconnect has happened
+		//writeTimestamp("Disconnected, attempting reconnect..", true);
+	}
+	else if (!lastReconnecting && wasReconnecting) {
+		// a reconnect has happened
+		#ifdef JROLDSTREAMTIMESTAMP
+			time_t walltime_endReconnect = time(NULL);
+			unsigned long timeDifSecs = walltime_endReconnect - walltime_startReconnect;
+		#endif
+		#ifndef JROLDSTREAMTIMESTAMP
+			clock_t clockDif = clockEndReconnect - clockStartReconnect;
+			unsigned long timeDifSecs = clockDif / CLOCKS_PER_SEC;
+		#endif
+		std::string msg = "Reconnected after " + calcSecsAsNiceTimeStringWords(timeDifSecs) + " of network outage.";
+		writeTimestamp(msg, true);
+	}
+	//
+	wasReconnecting = lastReconnecting;
+}
+//---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+void jrTimestamper::resetTrackedFrameCounts() {
+	largestStreamingFrameCount = -1;
+	reconnectStartFrameCount = 0;
+	previousDroppedFrames = 0;
+	lastDroppedFrames = 0;
+	lastRawFrameCount = 0;
+	lastReconnecting = 0;
+	disconnectFrameCount = 0;
+	isDropping = false;
+	droppingStreakFrameStart = 0;
+	last_stream_frame_count = 0;
+	//
+	time_t walltime_startReconnect;
+	walltime_startReconnect = time(NULL);
+	//
+	disconnectedClockCount = 0;
+	timestampOriginBroadcasting = 0;
 }
 //---------------------------------------------------------------------------

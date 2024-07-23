@@ -92,7 +92,7 @@ void obs_module_unload() {
 //---------------------------------------------------------------------------
 jrNoteDock::jrNoteDock(QWidget* parent)
 	: jrObsPlugin(),
-	QDockWidget(parent),
+	QWidget(parent),
 	timer(this)
 {
 	allocateInitNoteStuff();
@@ -380,14 +380,14 @@ void jrNoteDock::buildUi() {
 	// ?
 	setObjectName(PLUGIN_NAME);
 
-	setFloating(true);
-	hide();
 
 	mainLayout = new QVBoxLayout(this);
-
-	auto *dockWidgetContents = new QWidget;
-	dockWidgetContents->setLayout(mainLayout);
-	setWidget(dockWidgetContents);
+	//setFloating(true);
+	//hide();
+	//auto *dockWidgetContents = new QWidget;
+	//dockWidgetContents->setLayout(mainLayout);
+	//setWidget(dockWidgetContents);
+	setLayout(mainLayout);
 
 
 	// bottom buttons
@@ -401,8 +401,8 @@ void jrNoteDock::buildUi() {
 		mainLayout->addLayout(buttonLayout);
 		}
 
-	resize(640, 480);
-	setWindowTitle(QTStr(PLUGIN_NAME));
+	//resize(640, 480);
+	//setWindowTitle(QTStr(PLUGIN_NAME));
 
 #ifdef __APPLE__
 	setWindowIcon(
@@ -411,7 +411,7 @@ void jrNoteDock::buildUi() {
 	setWindowIcon(QIcon::fromTheme("obs", QIcon(":/res/images/obs.png")));
 #endif
 
-	setWindowModality(Qt::NonModal);
+	//setWindowModality(Qt::NonModal);
 
 	// ?
 	if (deleteOnClose) {
@@ -421,7 +421,7 @@ void jrNoteDock::buildUi() {
 	// timers
 	QObject::connect(&timer, &QTimer::timeout, this, &jrNoteDock::Update);
 	timer.setInterval(TIMER_INTERVAL);
-	if (isVisible())
+	if (isVisible() || true)
 		timer.start();
 
 	// initial update
@@ -448,7 +448,17 @@ void jrNoteDock::buildUi() {
 	}
 
 	// add dock
-	obs_frontend_add_dock(this);
+	// add dock
+	// see https://docs.obsproject.com/reference-frontend-api
+	// deprecated in v30:
+	//obs_frontend_add_dock(this);
+	bool bretv;
+	if (false) {
+		bretv = obs_frontend_add_custom_qdock("JrNoteDock", this);
+	}
+	else {
+		bretv = obs_frontend_add_dock_by_id("JrNoteDock", "Jr Note Dock", this);
+	}
 }
 //---------------------------------------------------------------------------
 

@@ -27,7 +27,7 @@ class jrNoteDock;
 
 
 class OptionsDialog : public JrPluginOptionsDialog {
-	//Q_OBJECT
+	Q_OBJECT
 	jrNoteDock* pluginp = NULL;
 	QGridLayout *mainLayout;
 public:

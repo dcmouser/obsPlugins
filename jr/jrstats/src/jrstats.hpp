@@ -117,6 +117,8 @@ protected:
 
 		int first_total = 0;
 		int first_dropped = 0;
+		long last_dropped = 0;
+		long streak_drops_increasing = 0;
 
 		void Update(obs_output_t *output, bool rec, bool resetPending);
 		void Reset(obs_output_t *output);

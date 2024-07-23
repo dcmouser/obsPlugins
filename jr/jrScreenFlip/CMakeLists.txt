@@ -9,6 +9,8 @@ add_library(jrScreenFlip MODULE)
 target_link_libraries(jrScreenFlip PRIVATE OBS::libobs OBS::frontend-api Qt::Core Qt::Widgets Qt::Network)
 
 set_target_properties(jrScreenFlip PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
 
 set(MODULE_DESCRIPTION "OBS Preview Window Streaming Mirror Screen Flip")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrScreenFlip.rc)
@@ -18,7 +20,7 @@ target_sources(
 	PRIVATE
 		src/jrScreenFlip.cpp
 		src/jrScreenFlip.hpp
-		src/pluginInfo.hpp
+		src/plugininfo.hpp
 		src/pluginRender.cpp
 		src/pluginMainRenderHook.cpp
 		src/jrScreenFlip_options.cpp

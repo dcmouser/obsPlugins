@@ -135,7 +135,7 @@ void do_frontend_save(obs_data_t *save_data, bool saving, void *data) {
 //---------------------------------------------------------------------------
 JrCft::JrCft(QWidget* parent)
 	: jrObsPlugin(),
-	QDockWidget(parent)
+	QWidget(parent)
 {
 	// this will trigger LOAD of settings
 	initialStartup();
@@ -229,6 +229,7 @@ void JrCft::setSettingsOnOptionsDialog(JrPluginOptionsDialog* optionDialog) {
 
 void JrCft::setDerivedSettingsOnOptionsDialog(OptionsDialog* optionDialog) {
 	optionDialog->setOptionRestartMediaOnStart(restartMediaOnStart);
+	optionDialog->setOptionRestartBrowsersOnStart(restartBrowsersOnStart);
 	optionDialog->setOptionStartRecStrCommandline(startRecStrCommandline);
 }
 //---------------------------------------------------------------------------
@@ -245,6 +246,7 @@ void JrCft::loadStuff(obs_data_t *settings) {
 	loadHotkey(settings, "trigger", hotkeyId_trigger);
 	//
 	restartMediaOnStart = obs_data_get_bool(settings, "restartMediaOnStart");
+	restartBrowsersOnStart = obs_data_get_bool(settings, "restartBrowsersOnStart");
 	startRecStrCommandline = obs_data_get_string(settings, "startRecStrCommandline");
 }
 
@@ -253,6 +255,7 @@ void JrCft::saveStuff(obs_data_t *settings) {
 	saveHotkey(settings, "trigger", hotkeyId_trigger);
 	//
 	obs_data_set_bool(settings, "restartMediaOnStart", restartMediaOnStart);
+	obs_data_set_bool(settings, "restartBrowsersOnStart", restartBrowsersOnStart);
 	obs_data_set_string(settings, "startRecStrCommandline", startRecStrCommandline.toUtf8().constData());
 }
 //---------------------------------------------------------------------------
@@ -442,16 +445,20 @@ void JrCft::buildUi() {
 
 	// window basics
 	setObjectName(PLUGIN_NAME);
-	setWindowTitle(QTStr(PLUGIN_LABEL));
-	setFloating(true);
-	hide();
+	//setWindowTitle(QTStr(PLUGIN_LABEL));
 
 	// build UI
 	mainLayout = new QVBoxLayout(this);
 	//
-	auto* dockWidgetContents = new QWidget;
-	dockWidgetContents->setLayout(mainLayout);
-	setWidget(dockWidgetContents);
+	//setFloating(true);
+	//hide();
+	//auto *dockWidgetContents = new QWidget;
+	//dockWidgetContents->setLayout(mainLayout);
+	//setWidget(dockWidgetContents);
+	setLayout(mainLayout);
+
+
+	//setWidget(dockWidgetContents);
 
 	// user iterface elements
 	int idx=0;
@@ -470,7 +477,7 @@ void JrCft::buildUi() {
 
 	// resize window and style
 	resize(260, 160);
-	setWindowModality(Qt::NonModal);
+	//setWindowModality(Qt::NonModal);
 
 
 	#ifdef __APPLE__
@@ -486,7 +493,7 @@ void JrCft::buildUi() {
 	}
 
 	// reload last position
-	if (true) {
+	if (false) {
 		const char *geometry = config_get_string(obs_frontend_get_global_config(), "JrCft", "geometry");
 		if (geometry != NULL) {
 			QByteArray byteArray =
@@ -508,7 +515,17 @@ void JrCft::buildUi() {
 	Update();
 
 	// add window as obs managed dock
-	obs_frontend_add_dock(this);
+	// add dock
+	// see https://docs.obsproject.com/reference-frontend-api
+	// deprecated in v30:
+	//obs_frontend_add_dock(this);
+	bool bretv;
+	if (false) {
+		bretv = obs_frontend_add_custom_qdock("JrCft", this);
+	}
+	else {
+		bretv = obs_frontend_add_dock_by_id("JrCft", "Jr Cft", this);
+	}
 }
 //---------------------------------------------------------------------------
 

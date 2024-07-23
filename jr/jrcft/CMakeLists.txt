@@ -28,6 +28,8 @@ PRIVATE
 
 
 set_target_properties(jrcft PROPERTIES FOLDER "plugins/jr")
+set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+
 
 set(MODULE_DESCRIPTION "jrCft")
 configure_file(${CMAKE_SOURCE_DIR}/cmake/bundle/windows/obs-module.rc.in jrcft.rc)
@@ -50,7 +52,7 @@ target_sources(
 		../jrcommon/src/jrobsplugin.hpp
 		../jrcommon/src/jrobsplugin_options.cpp
 		../jrcommon/src/jrobsplugin_options.hpp
-		src/pluginInfo.hpp
+		src/plugininfo.hpp
 		)
 
 target_link_libraries(jrcft)

@@ -175,3 +175,15 @@ QString OpenFile(QWidget *parent, QString title, QString path,
 	return file;
 }
 //---------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------
+bool jrqtFileExists(QString filepath) {
+    QFileInfo check_file(filepath);
+    if (check_file.exists() && check_file.isFile()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+//---------------------------------------------------------------------------

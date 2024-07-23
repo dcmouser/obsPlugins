@@ -31,6 +31,9 @@ class OptionsDialog : public JrPluginOptionsDialog {
 	QCheckBox* checkbox_enable;
 	QCheckBox* checkbox_recordAllTransitions;
 	QTextEdit* textEdit_breakPatternString;
+	//
+	QSpinBox* spinBoxReconnectAdjust;
+	QSpinBox* spinBoxReportAdjust;
 public:
 	OptionsDialog(QMainWindow *parent, jrTimestamper* intimestamperp);
 	~OptionsDialog();
@@ -41,4 +44,5 @@ public:
 	void setOptionEnabled(bool val);
 	void setOptionLogAllSceneTransitions(bool val);
 	void setBreakPatternStringNewlined(std::string str);
+	void setOptionKludgeAdjustments(int reconnectAdjustSecs, int reportAdjustSecs);
 };
