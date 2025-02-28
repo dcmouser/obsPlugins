@@ -1,0 +1,170 @@
+<!-- 10/10/23 -->
+
+body {
+	background-color: rgb(0, 0, 0, 0);
+	margin: 0px auto;
+	overflow: hidden;
+} 
+
+
+
+ 
+#message.yt-live-chat-text-message-renderer {
+	color: #fff;
+	font-size: 24px;
+	font-family: 'Calibri', Arial;
+	line-height: 20px !important;
+	position: relative;
+	top: 1px;
+}
+
+
+
+
+yt-live-chat-header-renderer.yt-live-chat-renderer {
+	display:none;
+}
+
+#yt-live-chat-viewer-engagement-message-renderer {
+	display: none;
+}
+
+
+
+
+
+
+#contents.yt-live-chat-text-message-renderer {
+	margin-top: 0px;
+}
+
+
+#card {
+	display:none;
+}
+
+
+yt-live-chat-viewer-engagement-message-renderer {
+	display:none;
+}
+
+
+
+.yt-img-shadow {
+	height: 40px;
+	width: 40px;
+}
+
+
+#author-photo.yt-live-chat-text-message-renderer {
+	margin-top: 2px;
+	margin-left: -16px;
+	margin-right: 18px;
+	margin-bottom: 2px;
+}
+
+
+
+
+#input-panel.yt-live-chat-renderer {
+	height:0px;
+	display:none;
+}
+
+
+
+#chat-badges.yt-live-chat-author-chip {
+	display: none;
+}
+
+
+
+yt-live-chat-author-chip[is-highlighted] #author-name.owner.yt-live-chat-author-chip, #author-name.owner.yt-live-chat-author-chip {
+	color: white;
+	background-color: initial;
+}
+
+yt-live-chat-author-chip[is-highlighted] #author-name.yt-live-chat-author-chip {
+	padding: 0px;
+	color: initial;
+	background-color: initial;
+}
+
+
+
+yt-live-chat-text-message-renderer #author-name::after {
+	content: ":";
+	margin-left: 1px;
+}
+
+
+
+
+@keyframes anim_RENDISABLED {
+	0% { opacity: 0; transform: translateX(-16px); }
+	100% { opacity: 1; transform: none;}
+}
+
+yt-live-chat-text-message-renderer_RENDISABLED,
+yt-live-chat-legacy-paid-message-renderer_RENDISABLED {
+	animation: anim 400ms;
+	animation-fill-mode: both;
+}
+
+
+
+@keyframes anim_RENDISABLED2 {
+  from {opacity:0;; }
+  to {opacity: 1;}
+}
+
+yt-live-chat-text-message-renderer_RENDISABLED2,
+yt-live-chat-legacy-paid-message-renderer_RENDISABLED2 {
+	animation: anim 700ms;
+  animation-fill-mode: normal;
+}
+
+
+
+
+
+
+
+
+yt-live-chat-text-message-renderer {
+	font-size: 18px;
+	line-height: 3px !important;
+	background-color: #FFFFFF1f !important;
+	border-radius: 4px !important;
+	margin: 4px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+
+#author-name.moderator.yt-live-chat-author-chip {
+	margin-top:-20px;
+}
+
+#contents.yt-live-chat-item-list-renderer {
+	right: -25px;
+}
+
+#content.yt-live-chat-text-message-renderer {
+	margin-top:-5px;
+}
+
+
+
+
+#item-offset.yt-live-chat-item-list-renderer {
+	min-height: 1072px !important;
+}
+
+
+#chat.yt-live-chat-renderer {
+	padding-top: 8px;
+	padding-bottom: 2px;
+	padding-left: 2px;
+	padding-right: 9px;
+}
